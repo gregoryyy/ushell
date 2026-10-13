@@ -1,0 +1,186 @@
+/* pdf-style.css: print stylesheet for the markdown documents (README, docs/).
+ *
+ * Wired through the justfile: pandoc --standalone --embed-resources --mathml
+ * --css tools/pdf-style.css, rendered to PDF by headless Chrome.
+ *
+ * Type system: Charter/Georgia serif for body text, system sans for headings and
+ * tables, Menlo for code, STIX Two Math for formulas (MathML, rendered natively
+ * by Chrome, so the build needs no network). Body 10.5pt screen / 10pt print;
+ * code blocks stay at 8pt so wide listings fit an A4 text block.
+ */
+
+:root {
+  --ink:    #1c1e21;
+  --muted:  #5a6270;
+  --accent: #2f5d8a;
+  --rule:   #d8dce2;
+  --panel:  #f4f6f8;
+  --mono:  "Menlo", "DejaVu Sans Mono", "Consolas", monospace;
+  --sans:  -apple-system, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --serif: "Charter", "Bitstream Charter", Georgia, Cambria, serif;
+}
+
+html { font-size: 10.5pt; }
+
+body {
+  font-family: var(--serif);
+  color: var(--ink);
+  line-height: 1.5;
+  max-width: 44em;
+  margin: 0 auto;
+  padding: 2.5em 1.5em;
+}
+
+/* ---- headings: sans, tight, kept with their content ---- */
+
+h1, h2, h3, h4 {
+  font-family: var(--sans);
+  font-weight: 650;
+  line-height: 1.25;
+  letter-spacing: -0.012em;
+  color: var(--ink);
+  break-after: avoid-page;
+}
+
+h1 {
+  font-size: 1.9rem;
+  margin: 0 0 0.9em;
+  padding-bottom: 0.35em;
+  border-bottom: 3px solid var(--accent);
+}
+
+h2 {
+  font-size: 1.4rem;
+  margin: 2.1em 0 0.6em;
+  padding-bottom: 0.2em;
+  border-bottom: 1px solid var(--rule);
+}
+
+h3 { font-size: 1.12rem; margin: 1.7em 0 0.5em; }
+h4 { font-size: 1rem;    margin: 1.4em 0 0.4em; }
+
+/* ---- body copy ---- */
+
+p  { margin: 0.65em 0; orphans: 3; widows: 3; }
+ul, ol { margin: 0.6em 0; padding-left: 1.5em; }
+li { margin: 0.28em 0; }
+li > p { margin: 0.3em 0; }
+
+strong { font-weight: 650; }
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+hr { border: 0; border-top: 1px solid var(--rule); margin: 2.2em 0; }
+
+/* ---- blockquotes: doc meta headers and normative findings ---- */
+
+blockquote {
+  margin: 1.1em 0;
+  padding: 0.65em 1.1em;
+  border-left: 3px solid var(--accent);
+  background: var(--panel);
+  font-size: 0.95em;
+  break-inside: avoid;
+}
+blockquote p { margin: 0.35em 0; }
+
+/* ---- code ---- */
+
+code {
+  font-family: var(--mono);
+  font-size: 0.85em;
+  background: var(--panel);
+  border-radius: 3px;
+  padding: 0.08em 0.3em;
+}
+
+pre {
+  font-family: var(--mono);
+  font-size: 8pt;
+  line-height: 1.2;
+  white-space: pre;
+  background: var(--panel);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  padding: 0.9em 1.1em;
+  margin: 1.1em 0;
+  overflow-x: auto;
+  break-inside: avoid;
+}
+
+pre code {
+  font-size: inherit;
+  background: none;
+  border-radius: 0;
+  padding: 0;
+}
+
+/* ---- math: pandoc --mathml; display formulas centred, kept whole ---- */
+
+math { font-family: "STIX Two Math", "Latin Modern Math", "Cambria Math", math; }
+
+math[display="block"] {
+  margin: 0.9em 0;
+  overflow-x: auto;
+  break-inside: avoid;
+}
+
+/* ---- images: never wider than the text column ---- */
+/* Screenshots come off a Retina display at 2x, so without this they render at
+   natural pixel size and run off the page. Centred with a little air, and kept
+   whole rather than split across a page break. */
+img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 1.2em auto;
+  page-break-inside: avoid;
+}
+
+/* ---- tables: sans, quiet rules, subtle zebra ---- */
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.1em 0;
+  font-family: var(--sans);
+  font-size: 0.87rem;
+  line-height: 1.35;
+}
+
+th {
+  text-align: left;
+  font-weight: 650;
+  padding: 0.45em 0.6em 0.3em;
+  border-bottom: 2px solid var(--ink);
+}
+
+td {
+  padding: 0.38em 0.6em;
+  border-bottom: 1px solid var(--rule);
+  vertical-align: top;
+}
+
+tbody tr:nth-child(even) td { background: #fafbfc; }
+tr { break-inside: avoid; }
+
+/* ---- print ---- */
+
+@media print {
+  @page { size: A4; margin: 2cm; }
+
+  html { font-size: 10pt; }
+
+  body {
+    max-width: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  a { color: inherit; }            /* links read as plain text on paper */
+  tbody tr:nth-child(even) td { background: #f5f6f8; }  /* survives print rasterizing */
+  pre, blockquote { break-inside: avoid; }
+  pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+  th, td { overflow-wrap: anywhere; }
+}

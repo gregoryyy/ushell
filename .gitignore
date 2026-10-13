@@ -1,0 +1,5 @@
+# Generated document PDFs and incremental build stamps.
+*.md.pdf
+.pdfstamps/
+
+.DS_Store
