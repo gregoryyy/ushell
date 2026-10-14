@@ -1,0 +1,130 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="1020" viewBox="0 0 1100 1020" role="img" aria-labelledby="title description">
+  <title id="title">wish: lean phase 1 command flow</title>
+  <desc id="description">Proposed lean phase 1 flow. Manual commands and optional natural-language translation share validation and isolated shell execution. just-bash and a Pyodide notebook use checked file adapters with path permissions, versions, and limits. Files live in bounded memory with one browser persistence backend and import/export. Results update the shell, file editor, and notebook plot. Authenticated remote storage and kernels are optional phase 2 extensions.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto-start-reverse" markerUnits="userSpaceOnUse">
+      <path d="M0 0 L9 4.5 L0 9 Z" fill="#334155"/>
+    </marker>
+    <marker id="result-arrow" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0 0 L9 4.5 L0 9 Z" fill="#047857"/>
+    </marker>
+    <style>
+      text { font-family: Arial, Helvetica, sans-serif; fill: #172033; }
+      .title { font-size: 29px; font-weight: 700; }
+      .zone { font-size: 18px; font-weight: 700; letter-spacing: .7px; }
+      .heading { font-size: 23px; font-weight: 700; }
+      .body { font-size: 19px; }
+      .small { font-size: 18px; }
+      .code { font-family: Menlo, Consolas, monospace; font-size: 18px; }
+      .label { font-size: 17px; fill: #475569; }
+      .wire { fill: none; stroke: #334155; stroke-width: 2.4; marker-end: url(#arrow); }
+      .rpc { marker-start: url(#arrow); }
+      .result { fill: none; stroke: #047857; stroke-width: 2.4; stroke-dasharray: 8 6; marker-end: url(#result-arrow); }
+      .card { fill: white; stroke: #c5d0df; stroke-width: 1.6; }
+    </style>
+  </defs>
+
+  <rect width="1100" height="1020" fill="white"/>
+  <text class="title" x="35" y="40">wish: lean phase 1 command flow</text>
+
+  <!-- The trusted application owns credentials, policy, and workspace storage. -->
+  <rect x="35" y="75" width="675" height="865" rx="16" fill="#f1f5fa" stroke="#94a9c3" stroke-width="1.8"/>
+  <text class="zone" x="60" y="106">TRUSTED BROWSER APP · app.wish.example</text>
+
+  <!-- Request paths and responses are drawn under the cards. -->
+  <path class="wire" d="M220 210 V370"/>
+  <text class="label" x="235" y="303">manual command</text>
+  <path class="wire" d="M540 210 V250"/>
+  <text class="label" x="556" y="238">// request</text>
+  <path class="wire rpc" d="M680 290 H760"/>
+  <text class="label" x="695" y="278">AI call</text>
+  <path class="wire" d="M540 330 V370"/>
+  <text class="label" x="556" y="356">shell program</text>
+
+  <path class="wire" d="M680 412 H720 V450 H740"/>
+  <text class="label" x="713" y="437" text-anchor="end">run</text>
+  <path class="result" d="M740 488 H704 V443 H680"/>
+  <text class="label" x="702" y="502" text-anchor="end">results</text>
+  <path class="wire" d="M220 465 V515"/>
+  <text class="label" x="235" y="496">editor / file controls</text>
+
+  <path class="wire rpc" d="M900 550 V572 H680"/>
+  <text class="label" x="730" y="594">checked file / notebook RPC</text>
+  <path class="wire rpc" d="M230 620 V665"/>
+  <path class="wire rpc" d="M540 620 V665"/>
+  <text class="label" x="317" y="652">read / stage writes</text>
+  <path class="wire rpc" d="M680 604 H720 V742 H740"/>
+  <text class="label" x="738" y="641">phase 2 attachment</text>
+
+  <path class="wire" d="M230 775 V835"/>
+  <path class="wire" d="M540 775 V835"/>
+  <text class="label" x="285" y="809">commits + change events</text>
+  <path class="result" d="M90 415 H60 V880 H90"/>
+  <text class="label" x="72" y="823">status / results</text>
+
+  <!-- Input and the optional translator share the same downstream executor. -->
+  <rect class="card" x="90" y="125" width="590" height="85" rx="9"/>
+  <text class="heading" x="110" y="154">1. Enter a command in the workspace</text>
+  <text class="code" x="110" y="179">notebook run /notebooks/analysis.ipynb</text>
+  <text class="code" x="110" y="201">or: // plot measurements</text>
+
+  <rect class="card" x="400" y="250" width="280" height="80" rx="9"/>
+  <text class="heading" x="418" y="278">2. AI translator</text>
+  <text class="small" x="418" y="302">Key held by trusted transport;</text>
+  <text class="small" x="418" y="323">send only approved context.</text>
+
+  <rect x="760" y="240" width="280" height="110" rx="10" fill="#fff8e8" stroke="#c9a55c" stroke-width="1.6"/>
+  <text class="heading" x="778" y="269">External AI · optional</text>
+  <text class="small" x="778" y="296">Your key authenticates the call.</text>
+  <text class="small" x="778" y="319">Returns a shell program.</text>
+
+  <rect class="card" x="90" y="370" width="590" height="95" rx="9"/>
+  <text class="heading" x="110" y="401">3. Validate and dispatch</text>
+  <text class="body" x="110" y="427">Same supported syntax for manual and AI-generated input.</text>
+  <text class="small" x="110" y="451">Check commands, arguments, workspace, and job limits.</text>
+
+  <!-- User code runs on its own origin and obtains only scoped interfaces. -->
+  <rect x="740" y="400" width="320" height="150" rx="13" fill="#f4f0fc" stroke="#a697c6" stroke-width="1.6"/>
+  <text class="zone" x="755" y="424">BROWSER · ISOLATED RUNTIME</text>
+  <rect class="card" x="760" y="435" width="280" height="100" rx="8"/>
+  <text class="heading" x="778" y="460">4. Execute</text>
+  <text class="small" x="778" y="485">just-bash / Pyodide workers</text>
+  <text class="small" x="778" y="507">Bash commands / Python cells</text>
+  <text class="small" x="778" y="529">Checked files; no AI key.</text>
+
+  <rect x="90" y="515" width="590" height="105" rx="9" fill="#eaf2fe" stroke="#7f9ec9" stroke-width="1.8"/>
+  <text class="heading" x="110" y="546">5. Checked file adapters</text>
+  <text class="body" x="110" y="574">Check each file operation and notebook request.</text>
+  <text class="small" x="110" y="598">Path scope · caller identity · versions · file limits</text>
+
+  <rect class="card" x="90" y="665" width="280" height="110" rx="9"/>
+  <text class="heading" x="108" y="695">6. Workspace files</text>
+  <text class="small" x="108" y="721">Memory · imported files</text>
+  <text class="code" x="108" y="747">/data /notebooks</text>
+  <text class="small" x="108" y="767">Read inputs; stage artifacts.</text>
+
+  <rect class="card" x="400" y="665" width="280" height="110" rx="9"/>
+  <text class="heading" x="418" y="695">6. Persistence</text>
+  <text class="small" x="418" y="721">One browser storage backend</text>
+  <text class="small" x="418" y="747">Save / reload / import / export</text>
+  <text class="small" x="418" y="767">Files and revision metadata</text>
+
+  <!-- Storage and remote execution are separate explicitly attached resources. -->
+  <rect x="740" y="660" width="320" height="165" rx="13" fill="#fff8e8" stroke="#c9a55c" stroke-width="1.6"/>
+  <text class="zone" x="758" y="687">PHASE 2 · OPTIONAL SERVER</text>
+  <rect class="card" x="760" y="701" width="280" height="110" rx="8"/>
+  <text x="778" y="728" font-size="21" font-weight="700">6. Authenticated gateway</text>
+  <text class="small" x="778" y="753">Explicit remote file storage</text>
+  <text class="small" x="778" y="777">Independent leased kernels</text>
+  <text class="small" x="778" y="802">Server authorization and quotas</text>
+
+  <rect x="90" y="835" width="590" height="85" rx="9" fill="#eaf7f1" stroke="#8ab9a6" stroke-width="1.8"/>
+  <text class="heading" x="110" y="866">7. Save results and update views</text>
+  <text class="small" x="110" y="889">Commit permitted writes; publish artifacts and change events.</text>
+  <text class="small" x="110" y="912">Shell · file editor · notebook / plot</text>
+
+  <path class="wire" d="M90 981 H145"/>
+  <text class="small" x="159" y="987">Commands / resource requests</text>
+  <path class="result" d="M600 981 H655"/>
+  <text class="small" x="669" y="987">Job results / UI updates</text>
+</svg>

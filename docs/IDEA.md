@@ -2,8 +2,10 @@
 
 wish is the web interactive shell.
 
-Status: design proposal. The commands and interfaces below define intended behavior;
-they are not implemented yet.
+Status: phased design proposal, 2026-10-14. Runtime commands are not implemented.
+[PHASES.md](PHASES.md) defines the active lean phase 1 and conditional phase 2.
+Phase 1 uses files, ordinary byte/text pipes, one notebook, and BYOK `//` translation;
+the broader page, Wasm, server, and device ideas below belong to phase 2.
 
 ## Definition
 
@@ -21,7 +23,7 @@ commands are one interface to that workspace.
 
 The shell accepts both explicit commands and natural-language requests prefixed
 with `//`. Using the user's own AI API key, wish translates each request into actual
-wish commands and executes them through the ordinary shell runtime.
+shell commands and executes them through the ordinary shell runtime.
 
 ## The browser as a place to work
 
@@ -45,20 +47,22 @@ An actual camera, serial device, or other user hardware needs the browser's own
 permission flow and a dedicated adapter. Browser virtualization does not imply
 unrestricted access to the host machine.
 
-The technical model is defined in [TECH.md](TECH.md), its trust boundaries and
-browser obstacles in [SEC.md](SEC.md), and related tools in [SOTA.md](SOTA.md).
+The phased scope is defined in [PHASES.md](PHASES.md), the technical model in
+[ARCH.md](ARCH.md), trust boundaries in [SEC.md](SEC.md), and related tools in
+[SOTA.md](SOTA.md). Phase 1 works with files and internal object IDs; the original
+generic resource-handle model is an optional future design, not a prerequisite.
 
 ## Browser resources and shell state
 
 | Shell concept | Browser equivalent |
 | --- | --- |
 | Current working context | Workspace, working directory, selected tool/page, and kernel |
-| Addressable resources | File paths, dataset names, resource handles, URLs, selectors, and modules |
+| Addressable resources | File paths and simple notebook/job names; page/device IDs remain internal when those adapters are added |
 | Executable | Built-in command, registered page function, JavaScript module, or Wasm command |
-| Standard input/output | Streams of text, JSON records, bytes, or scoped resource handles |
+| Standard input/output | Ordinary byte/text streams; JSON and CSV files/text provide structured data |
 | Process/job | Command pipeline, page task, or worker computation |
 | Filesystem | Mounted memory, browser storage, selected local directories, or server storage |
-| Data and devices | Named datasets, database sessions, and scoped virtual resource handles |
+| Data and devices | JSON/CSV files first; selected dataset, database, and device commands can follow |
 | Environment/history | Session settings, selected context, commands, and results |
 
 The selected page stays explicit; changing browser focus does not silently retarget
@@ -74,11 +78,11 @@ access to processes on the user's computer would require a separate native adapt
 
 ## Command language
 
-Start with a small shell grammar: commands with quoted arguments, newlines between
-commands, pipelines using `|`, output redirection using `>`, and `#` comments.
-Command names resolve through a registry that declares argument schemas, input and
-output types, capabilities, and effects. Browser objects flow as typed values;
-resource handles are never converted into executable source.
+Evaluate just-bash before implementing shell parsing and execution. Start with a
+tested subset: commands with quoted arguments, newlines, pipes using `|`, output
+redirection using `>`, and `#` comments. Validate supported syntax and command
+arguments, and check permissions when operations run. Compose with bytes/text and
+JSON/CSV; typed record pipelines and public resource handles are deferred.
 
 Each job exposes output, diagnostics, and an exit status. Pipeline failures stop
 dependent steps, and cancellation stops subsequent commands. Completed page or
@@ -86,27 +90,22 @@ network effects remain visible even if a later step fails; a pipeline is not an
 atomic transaction. History preserves explicit commands so they can be inspected
 and run again without an AI request.
 
-Illustrative command vocabulary:
+Illustrative command vocabulary; the phase column is planned scope, not availability:
 
-| Commands | Purpose |
-| --- | --- |
-| `ls [PATH]`, `mkdir PATH`, `cp SOURCE DEST`, `read PATH`, `write PATH` | Create, inspect, and change workspace files |
-| `mount list`, `mount local PATH`, `mount remote NAME PATH` | Inspect or attach storage with explicit grants |
-| `data import PATH --as NAME`, `data append NAME --from PATH` | Add and update named datasets |
-| `notebook create PATH --kernel NAME`, `notebook open PATH`, `notebook run PATH` | Create and execute interactive notebooks |
-| `resource list`, `resource acquire TYPE --as NAME`, `resource release NAME` | Discover and lease virtual resources |
-| `tab list`, `tab use ID`, `tab open URL` | Inspect, select, or open browser tabs |
-| `page run PATH`, `page reload`, `page info` | Launch workspace pages and manage the current page |
-| `dom query SELECTOR`, `dom text SELECTOR`, `dom attr SELECTOR NAME` | Read elements, text, or attributes |
-| `dom set-text SELECTOR TEXT`, `dom style SELECTOR PROPERTY VALUE` | Change page content or styles |
-| `dom click SELECTOR`, `dom fill SELECTOR VALUE` | Interact with page controls |
-| `page call NAME [ARGS...]` | Invoke a function exposed by a page bridge |
-| `js run PATH [ARGS...]` | Execute a JavaScript command module in the workspace runtime |
-| `wasm load PATH --as NAME`, `wasm call NAME.EXPORT [ARGS...]` | Instantiate a module and call a typed export |
-| `wasm run PATH [ARGS...]` | Execute a module implementing the wish command interface |
-| `fetch URL`, `json parse`, `json stringify` | Fetch and transform data for pipelines |
-| `jobs`, `cancel ID`, `history`, `help [COMMAND]` | Manage and inspect shell work |
-| `ai configure`, `ai status`, `ai clear-key` | Configure and inspect natural-language support |
+| Commands | Purpose | Phase |
+| --- | --- | --- |
+| `ls [PATH]`, `mkdir PATH`, `cp SOURCE DEST`, `cat PATH`, `printf '%s' TEXT > PATH` | Inspect, create, and change files using ordinary shell operations | 1 |
+| `jq FILTER`, other selected text/CSV utilities | Transform file/stream data | 1, tested built-in subset |
+| `notebook create PATH`, `notebook open PATH`, `notebook run PATH` | Use the initial Python notebook adapter | 1 |
+| `jobs`, `cancel ID`, `history`, `help [COMMAND]` | Manage and inspect shell work | 1 |
+| `ai configure`, `ai status`, `ai clear-key` | Configure natural-language support | 1 |
+| `mount local PATH`, `mount remote NAME PATH` | Attach selected physical or server storage | 2 |
+| `data import PATH --as NAME`, `data append NAME --from PATH` | Optional convenience commands over files/datasets | 2, if needed |
+| `page run PATH`, `page reload`, `page info`, `page call NAME [ARGS...]` | Run a live page and invoke its declared functions | 2 |
+| `dom query/text/attr`, `dom set-text/style/click/fill` | Inspect or change explicitly selected page elements | 2 |
+| `js run PATH`, `wasm load/call/run` | Run selected JavaScript or Wasm adapters | 2 |
+| `tab list/use/open` | Work on external tabs through an optional adapter | 2 |
+| `resource list/acquire/release` | Original generic-resource vocabulary | Deferred research; not required by phase 2 |
 
 DOM reads may return multiple matches. Mutations require one matching element,
 unless a supported `--all` flag explicitly requests all matches. Missing or
@@ -116,18 +115,20 @@ ambiguous targets produce errors rather than guessed actions.
 # Work with files, data, and a browser Python notebook.
 ls /data
 mkdir /notebooks
-data import /data/measurements.csv --as measurements
-notebook create /notebooks/analysis.ipynb --kernel python
+cat /data/measurements.csv > /data/working.csv
+notebook create /notebooks/analysis.ipynb
 notebook open /notebooks/analysis.ipynb
+# Prepare an analysis cell in the notebook editor, then execute it.
+notebook run /notebooks/analysis.ipynb
 
-# Run a live workspace application and invoke its exposed function.
+# Phase 2: run a live workspace application and invoke its exposed function.
 page run /pages/counter/index.html
 page call counter.increment 1
 dom text "#counter"
 dom set-text "#status" "Ready"
 
 # Run a computation and pass its output into another command.
-read /data/input.json | wasm run /modules/transform.wasm | write /data/output.json
+cat /data/input.json | wasm run /modules/transform.wasm > /data/output.json
 
 # Attach server storage after choosing the configured server and granting access.
 mount remote team /remote/team
@@ -145,7 +146,8 @@ execute cells, or save artifacts.
 
 ## Live pages and execution
 
-wish has two page environments:
+Phase 1 uses a notebook output/plot view as its first live tool. Phase 2 adds two
+page environments when required:
 
 - **Workspace pages and tools** run user-provided HTML, CSS, JavaScript,
   WebAssembly, and notebook kernels in runtimes separated from the shell's
@@ -175,7 +177,8 @@ not implicitly execute new scripts.
 
 ## WebAssembly
 
-WebAssembly participates in two ways: a live page can run its own Wasm application,
+Phase 2 adds explicit Wasm adapters. WebAssembly participates in two ways: a live
+page can run its own Wasm application,
 and the shell can run Wasm modules as computations or pipeline commands.
 
 `wasm load` creates a named instance with declared imports. `wasm call` invokes an
@@ -212,11 +215,11 @@ workspace runtime. A worker alone does not remove extension restrictions. See
 
 ## Natural-language commands with `//`
 
-When `//` is the first non-whitespace token on a top-level input line, the rest of
-that line is a natural-language request. It is not a comment. `#` remains the shell
-comment marker. URLs, quoted strings, and JavaScript module contents containing
-`//` do not trigger translation. Each request is translated when execution reaches
-its line, so it sees the context established by preceding commands.
+In phase 1, a standalone prompt submission whose first non-whitespace token is
+`//` is a natural-language request. `#` remains the shell comment marker. URLs,
+quoted strings, and source-file contents containing `//` do not trigger translation.
+Mixed natural-language lines within a larger Bash script are deferred. Translation
+uses the current workspace context when the request is submitted.
 
 ```text
 // create a Python notebook named analysis
@@ -225,7 +228,7 @@ its line, so it sees the context established by preceding commands.
 The generated command could be:
 
 ```text
-notebook create /notebooks/analysis.ipynb --kernel python
+notebook create /notebooks/analysis.ipynb
 ```
 
 The shell displays that command and executes it automatically within the user's
@@ -240,10 +243,10 @@ Translation follows a bounded sequence:
    when relevant, available command schemas, and context that the user has allowed
    wish to send to the AI provider.
 2. Call the configured provider using the user's key. Request a structured response
-   containing a finite wish program, for example
-   `{"commands":"notebook create /notebooks/analysis.ipynb --kernel python"}`.
+   containing a bounded shell program, for example
+   `{"commands":"notebook create /notebooks/analysis.ipynb"}`.
 3. Parse the generated source with the same parser used for explicit commands.
-   Validate command names, arguments, pipeline types, target scope, and step limits
+   Validate supported syntax, command names, arguments, target scope, and step limits
    before starting execution. AI output is input to the shell language, never
    JavaScript evaluated inside the privileged shell.
 4. Display the program, check that its workspace and document context is still valid,
@@ -287,43 +290,29 @@ the target page. See [Chrome's cross-origin request documentation](https://devel
 
 ## Runtime structure
 
-```mermaid
-flowchart TD
-    Explicit[Explicit commands] --> Parser[Shell parser and validator]
-    Natural[// natural-language request] --> AI[AI translator using the user's key]
-    AI --> Parser
-    Registry[Command schemas and grants] --> AI
-    Registry --> Parser
-    Parser --> Runner[Command and pipeline executor]
-    Runner --> Browser[Optional tab and page adapter]
-    Runner --> Workspace[Mounted files, data, and live tools]
-    Runner --> Workers[Python, JavaScript, and Wasm runtimes]
-    Runner --> Remote[Optional server storage and compute]
-    Browser --> Results[Output, diagnostics, and history]
-    Workspace --> Results
-    Workers --> Results
-    Remote --> Results
-```
+![Lean phase 1 command flow, with optional server adapters shown as phase 2.](images/wish-execution.svg)
 
-The core owns parsing, command registration, typed pipelines, context, jobs, and
-history. Host adapters own browser access, workspace isolation, executable loading,
-and credential transport. Pages and modules receive scoped interfaces for their
-task rather than the shell's AI credentials or full browser privileges. Manual and
-AI-generated commands share the same executor and permission checks.
+The application owns context, checked file operations, jobs, history, notebook
+commands, and credential transport. Reuse the selected shell engine's parser and
+byte/text pipeline execution. Host adapters own storage and runtime isolation.
+Manual and AI-generated commands share validation and permission checks. See
+[ARCH.md](ARCH.md) for the execution boundaries and file/notebook bridge.
 
 ## First implementation scope
 
-Begin with a standalone workspace shell that creates and edits files in memory,
-persists them in browser storage, opens a live tool, runs a Python notebook, and
-pipes a Wasm command's output into a workspace file. Give all these interfaces the
-same named resources and scoped access model. Add authenticated server storage and
-leased compute as explicit adapters, followed by an optional extension for existing
-tabs.
+Begin with ordinary file commands, one persistence backend plus import/export,
+and a Python notebook whose plot/output view is the first live tool. Evaluate
+just-bash, use JSON/CSV for structured data, and keep IDs/types inside the
+implementation. The connected local workload is the phase 1 acceptance target.
 
 The first AI path should configure one provider adapter with the user's key and
 turn `// create a Python notebook named analysis` into a displayed, validated,
-executed command. Demonstrate equivalent behavior for the explicit command,
-continued tool execution, failure on stale resources or ambiguous targets, and
-normal manual operation without a key. Broader shell syntax, additional providers,
-persistent page transformations, and
-WASI support can follow once these core interactions work.
+executed command. Demonstrate equivalent explicit-command behavior, replay without
+AI, errors on stale files, cancellation, and manual operation without a key.
+
+Phase 2 can add workspace pages, JavaScript/Wasm commands, selected data services,
+remote storage/compute, search/recall, external tabs, and devices. Implement each
+only for a selected use case. Typed pipelines, public resource handles, and a
+uniform local/server placement model remain optional research directions even in
+phase 2. [PHASES.md](PHASES.md) defines the decision gates and [TODO.md](../TODO.md)
+tracks implementation without claiming these commands already exist.

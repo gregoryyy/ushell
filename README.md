@@ -4,10 +4,23 @@ wish is the web interactive shell: a browser workspace for files, datasets,
 notebooks, live tools, and local or explicitly attached server resources.
 The project currently contains design documents and document build tooling.
 
+Phase 1 starts with a lean browser shell: ordinary files, byte/text pipes, JSON/CSV,
+a Python notebook, and `//` commands using the user's key. just-bash is the first
+shell candidate to evaluate. Phase 2 adds tools and remote resources where useful;
+typed pipelines and public resource handles remain deferred.
+
 - [IDEA.md](docs/IDEA.md): product definition and command examples.
-- [TECH.md](docs/TECH.md): technical architecture.
+- [PHASES.md](docs/PHASES.md): lean phase 1 and optional phase 2 ideas.
+- [ARCH.md](docs/ARCH.md): technical architecture.
 - [SEC.md](docs/SEC.md): security profile and browser obstacles.
 - [SOTA.md](docs/SOTA.md): research and comparisons with existing tools.
+- [TODO.md](TODO.md): numbered implementation milestones and acceptance criteria.
+- [DONE.md](DONE.md): implementation notes, validation, deviations, and learnings.
+- [CLAUDE.md](CLAUDE.md): contribution, testing, security, and human-merge rules.
+
+Work follows the plan on feature branches, with implementation notes appended to
+DONE. Changes merge through human-reviewed GitHub PRs; AI never merges. Every
+feature needs tests, and every release needs fresh security checks.
 
 ## Document PDFs
 
@@ -26,7 +39,7 @@ just pdfs 'path with spaces'
 ```
 
 Explicit paths are relative to the directory where the command is called:
-`cd docs` followed by `just pdf TECH.md` or `just pdfs .` works. With no paths,
+`cd docs` followed by `just pdf ARCH.md` or `just pdfs .` works. With no paths,
 `just pdfs` always uses the repository defaults. Bulk conversion includes tracked
 and untracked files that Git does not ignore, and skips `AGENTS.md` and `CLAUDE.md`.
 
