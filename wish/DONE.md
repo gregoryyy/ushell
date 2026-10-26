@@ -190,3 +190,8 @@ directory carried the untracked PDFs along; no PDFs were rebuilt.
 
 Remaining: the remote has no `main` branch (only `feature/wish-planning-process`),
 so PRs and branch protection need a base branch decided by a human.
+
+Status (2026-10-26): committed as `03b2d10` (`docs: split repository into wish and
+ush projects`) on `feature/split-wish-ush` and opened as
+[PR #1](https://github.com/gregoryyy/ushell/pull/1) against the remote default
+branch `feature/wish-planning-process`, since the remote has no `main`. Not merged.

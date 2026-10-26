@@ -76,3 +76,8 @@ Learnings:
   tests use a fake `sudo`.
 - Importing the Anthropic SDK takes ~2 s warm on this machine; follow-ups in a
   session avoid it.
+
+Status (2026-10-26): committed as `de2a5b4` (`feat(ush): add ush 0.1, the local //
+shell for zsh`) on `feature/split-wish-ush` and opened as
+[PR #1](https://github.com/gregoryyy/ushell/pull/1). Before committing, `just ush-test` was rerun
+on this revision: 63 tests OK. The PR's CI run is the first one (TODO 2.3). Not merged.
