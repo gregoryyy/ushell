@@ -1,6 +1,6 @@
 # wish implementation plan
 
-Read this plan before implementation, alongside [CLAUDE.md](CLAUDE.md),
+Read this plan before implementation, alongside [CLAUDE.md](../CLAUDE.md),
 [PHASES.md](docs/PHASES.md), [IDEA.md](docs/IDEA.md), [ARCH.md](docs/ARCH.md),
 [SEC.md](docs/SEC.md), and [SOTA.md](docs/SOTA.md). Implement the next requested,
 ready milestone. A planning task does not authorize executing the entire backlog.
@@ -31,6 +31,9 @@ never merges. Security tests run against every release candidate.
 - [x] 0.5 Record lean phase 1 and conditional phase 2, update the design/architecture
   and just-bash research, and commit the planning. Acceptance: scope agrees across
   documents; runtime tasks remain unchecked; documentation checks and PDFs pass.
+- [x] 0.6 Split the repository into `wish/` (web) and `ush/` (command line) with
+  shared process rules and document tooling. Acceptance: wish documents moved with
+  history, relative links checked, PDF defaults cover both projects.
 
 ## Phase 1: a lean browser workspace
 
@@ -120,7 +123,7 @@ byte/text pipes, and JSON/CSV. Evaluate just-bash before writing shell machinery
   recovery, AI/manual equivalence, and replay. Acceptance: failure, conflict,
   cancellation, denial, and secret-handling cases accompany the success path;
   record browser compatibility, startup, responsiveness, and memory observations.
-- [ ] 9.2 Implement the recurring release security gate in [CLAUDE.md](CLAUDE.md).
+- [ ] 9.2 Implement the recurring release security gate in [CLAUDE.md](../CLAUDE.md).
   Acceptance: run hostile-output/runtime, file-access/bridge, AI disclosure, egress,
   and applicable server tests against every exact release candidate; include secret
   and dependency scans. Earlier passing releases never waive the gate.

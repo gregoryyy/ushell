@@ -1,4 +1,4 @@
-# Document tooling. Run `just` to list the available recipes.
+# Document tooling and checks. Run `just` to list the available recipes.
 
 [private]
 default:
@@ -9,7 +9,15 @@ default:
 pdf file:
     @cd {{quote(invocation_directory())}} && {{quote(justfile_directory() + "/tools/pdf.sh")}} "$@"
 
-# Build PDFs under PATHS (default README.md and docs/), skipping unchanged documents
+# Build PDFs under PATHS (default README.md, wish/, and ush/), skipping unchanged documents
 [positional-arguments]
 pdfs *paths:
     @cd {{quote(invocation_directory())}} && {{quote(justfile_directory() + "/tools/pdfs.sh")}} "$@"
+
+# Run the ush test suite (unit, mock-provider integration, and zsh plugin tests)
+ush-test:
+    @cd ush && ./scripts/test.sh
+
+# Check relative links and images in all Markdown files
+links:
+    @python3 tools/check-links.py

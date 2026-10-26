@@ -3,3 +3,8 @@
 .pdfstamps/
 
 .DS_Store
+
+# ush development environment
+ush/.venv/
+__pycache__/
+*.pyc
