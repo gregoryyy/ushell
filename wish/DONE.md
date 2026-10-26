@@ -7,7 +7,7 @@ features as implemented. Append corrections or later outcomes as new entries.
 
 Implementation completion does not imply a PR was merged or a release shipped.
 When a PR is opened, a human merges, or a release is published, append the reference
-and outcome. All future work follows [CLAUDE.md](CLAUDE.md).
+and outcome. All future work follows [CLAUDE.md](../CLAUDE.md).
 
 ## 2026-10-13 — 0.1 Design and initial research
 
@@ -165,3 +165,33 @@ Status: planning is recorded by `docs: plan lean wish phase 1 and optional phase
 on `feature/wish-planning-process`. This is also the commit-status follow-up for
 0.3 and 0.4; their earlier working-tree notes remain as historical entries.
 No GitHub remote is configured, so no PR is opened and no merge or release occurs.
+
+## 2026-10-26 — 0.6 Repository split into wish and ush
+
+Branch: `feature/split-wish-ush` (local; not committed or pushed at the time of
+writing), based on `feature/wish-planning-process`.
+
+Implemented:
+
+- Moved `docs/`, `TODO.md`, and `DONE.md` into `wish/` with `git mv`. Added
+  `wish/README.md`; the root README now introduces both projects, with an ush
+  quick start, the repository layout, and the CI checks.
+- Updated `CLAUDE.md` for two projects with independent TODO/DONE IDs and
+  ush-specific test and release-security rules.
+- `just pdfs` now defaults to `README.md`, `wish/`, and `ush/`. Added `just links`
+  (`tools/check-links.py`, relative Markdown links and images) and `just ush-test`.
+- Path-only link fixes after the move: `CLAUDE.md` links in `wish/TODO.md` and
+  `wish/docs/PHASES.md`, and in the preamble of this file (not in any entry).
+- The GitHub repository was renamed from `lsh` to `ushell` at the user's request;
+  `origin` now points to `https://github.com/gregoryyy/ushell.git`.
+
+Validation: `python3 tools/check-links.py` reports no broken links. Moving the
+directory carried the untracked PDFs along; no PDFs were rebuilt.
+
+Remaining: the remote has no `main` branch (only `feature/wish-planning-process`),
+so PRs and branch protection need a base branch decided by a human.
+
+Status (2026-10-26): committed as `03b2d10` (`docs: split repository into wish and
+ush projects`) on `feature/split-wish-ush` and opened as
+[PR #1](https://github.com/gregoryyy/ushell/pull/1) against the remote default
+branch `feature/wish-planning-process`, since the remote has no `main`. Not merged.

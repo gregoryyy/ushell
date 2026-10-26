@@ -73,7 +73,7 @@ save/reload and export recovery, explicit-command use without a key, equivalent
 denied file access, hostile outputs, and attempted key/context leakage.
 
 Apply the feature-test and recurring release-security rules in
-[CLAUDE.md](../CLAUDE.md). Runtime milestones remain unchecked until implemented
+[CLAUDE.md](../../CLAUDE.md). Runtime milestones remain unchecked until implemented
 and tested. Phase 1 does not require a server, extension, general Wasm ABI, SQL
 engine, external-tab access, or device adapter to be released.
 

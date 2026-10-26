@@ -1,15 +1,25 @@
-# wish development process
+# wish and ush development process
 
 These instructions apply to human and AI contributors throughout this repository.
-wish is currently a design and document-tooling project; commands described in
-`docs/` are proposed behavior until implemented and tested.
+It holds two projects that share the `//` command paradigm:
+
+- **wish** ([wish/](wish/)), the browser workspace shell. It is still a design
+  project; commands described in `wish/docs/` are proposed behavior until
+  implemented and tested.
+- **ush** ([ush/](ush/)), the local command-line shell extension for zsh. It runs
+  real commands on the user's machine, possibly as root.
+
+Each project has its own TODO and DONE files with independent `x.x` IDs. Refer to
+milestones as "wish 2.1" or "ush 1.3" where the project is not obvious.
 
 ## Start each task
 
-1. Read [TODO.md](TODO.md), [DONE.md](DONE.md), and the relevant design documents:
-   [IDEA.md](docs/IDEA.md), [ARCH.md](docs/ARCH.md), [SEC.md](docs/SEC.md), and
-   [SOTA.md](docs/SOTA.md). [PHASES.md](docs/PHASES.md) defines the active phase 1
-   scope and conditional phase 2 extensions.
+1. Read the project's TODO and DONE files and the relevant design documents.
+   wish: [TODO.md](wish/TODO.md), [DONE.md](wish/DONE.md), [IDEA.md](wish/docs/IDEA.md),
+   [ARCH.md](wish/docs/ARCH.md), [SEC.md](wish/docs/SEC.md), and
+   [SOTA.md](wish/docs/SOTA.md); [PHASES.md](wish/docs/PHASES.md) defines the active
+   phase 1 scope and conditional phase 2 extensions. ush: [TODO.md](ush/TODO.md),
+   [DONE.md](ush/DONE.md), [DESIGN.md](ush/docs/DESIGN.md), and [SEC.md](ush/docs/SEC.md).
 2. Check the branch, working-tree changes, and applicable repository instructions.
    Preserve unrelated work. If on `main`, create/switch to a feature branch before
    editing; carry existing changes only when their ownership and scope are clear.
@@ -59,12 +69,16 @@ wish is currently a design and document-tooling project; commands described in
 
 - Implement the smallest complete milestone. Prefer existing kernels, notebooks,
   SQL engines, and automation adapters where SOTA establishes a suitable foundation.
-- Start with the lean phase 1 plan: evaluate just-bash, compose through files and
-  byte/text pipes, and add a few explicit tool commands. Defer typed pipelines,
+- wish: start with the lean phase 1 plan: evaluate just-bash, compose through files
+  and byte/text pipes, and add a few explicit tool commands. Defer typed pipelines,
   public resource handles, and general placement abstractions until a demonstrated
   workflow justifies them. Phase 2 is selected work, not an automatic scope expansion.
-- Keep the TypeScript core independent of providers and runtimes. Use explicit
+- wish: keep the TypeScript core independent of providers and runtimes. Use explicit
   contracts, validated inputs, typed results, and actionable failures.
+- ush: keep the Python package's policy, execution, and history modules independent
+  of the provider adapter. Tests use fake providers, a local mock API server, and
+  temporary directories; they never call a paid provider or run a mutating command
+  outside a temporary directory. Run them with `just ush-test`.
 - Every feature has automated tests for externally observable behavior and relevant
   errors. Add regression tests for bugs. Use integration/browser tests where unit
   tests cannot establish filesystem, runtime, origin, or server behavior.
@@ -104,8 +118,12 @@ candidate commit and built artifacts. Record the revision, configuration, comman
 and results. Earlier passing checks do not satisfy a new release gate.
 
 1. Run required feature/regression tests and the connected browser acceptance suite
-   for every supported execution profile and browser in the release.
-2. Run applicable adversarial security tests: path traversal and cross-workspace
+   for every supported execution profile and browser in the release. For ush, run
+   the test suite on every supported OS and Python version, including root/sudo
+   resolution and the zsh integration.
+2. Run applicable adversarial security tests. For ush: command-policy bypasses,
+   prompt injection through command output, secret redaction, credential file and
+   key handling under sudo, and history contents. For wish: path traversal and cross-workspace
    access; forged/replayed bridge messages and revoked grants; malicious HTML/SVG
    and notebook outputs; credential leakage and prompt injection; unapproved AI
    disclosure; runtime egress channels; resource exhaustion and cancellation.
