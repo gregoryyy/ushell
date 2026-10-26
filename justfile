@@ -21,3 +21,15 @@ ush-test:
 # Check relative links and images in all Markdown files
 links:
     @python3 tools/check-links.py
+
+# Local CI (tools/ci/README.md): the jobs of .github/workflows/ci.yml on a clean worktree of a
+# commit, while GitHub Actions doesn't start jobs. E.g. `just ci`, `just ci --job ush`, `just ci
+# --post` (commit statuses on the PR), `just ci <rev>`. Logs and summary in .ci/<date>-<commit>/.
+# A run of all jobs that passes then builds the PDFs (`just pdfs`); a PDF that fails fails the run.
+ci *ARGS:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cd "{{justfile_directory()}}"
+    unset VIRTUAL_ENV
+    uv run --quiet --script tools/ci/run.py {{ARGS}}
+    case " {{ARGS}} " in *" --job"*) ;; *) just pdfs ;; esac

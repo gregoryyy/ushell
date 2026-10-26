@@ -8,3 +8,8 @@
 ush/.venv/
 __pycache__/
 *.pyc
+
+# Local CI logs and summaries (tools/ci/README.md).
+.ci/
+.ruff_cache/
+.pytest_cache/

@@ -41,7 +41,7 @@ records the implementation, validation, deviations, and learnings.
   money). Acceptance: a human runs it with their key; result recorded in DONE.
 - [ ] 2.2 Verify macOS keychain access under `sudo` and document the outcome.
   Acceptance: manual run of `sudo ush ai status` with a keychain-stored key.
-- [ ] 2.3 First green run of `.github/workflows/checks.yml` on a PR (Linux and macOS,
+- [ ] 2.3 First green run of `.github/workflows/ci.yml` on a PR (Linux and macOS,
   Python 3.10/3.13); configure branch protection once `main` exists remotely.
 - [ ] 2.4 Extend the read-only command table from real sessions (Linux package
   managers, `podman`, `kubectl get`, `zfs list`, …) with negative tests per command.

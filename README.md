@@ -30,8 +30,8 @@ to the provider.
 CLAUDE.md                 contribution, testing, security, and human-merge rules
 wish/                     browser workspace: README, TODO, DONE, docs/
 ush/                      zsh tool: README, TODO, DONE, docs/, src/, tests/, shell/
-tools/                    PDF build scripts and the Markdown link checker
-.github/workflows/        CI: link check and ush tests on Linux and macOS
+tools/                    PDF build scripts, the Markdown link checker, local CI (ci/)
+.github/workflows/ci.yml  CI: links, ush tests, local CI tests, secret scan
 ```
 
 Each project keeps its own `TODO.md` and `DONE.md` with independent milestone IDs.
@@ -45,10 +45,14 @@ merges. Every feature needs tests, and every release needs fresh security checks
 just                      # list recipes
 just ush-test             # ush unit, integration, and zsh tests
 just links                # check relative links in all Markdown files
+just ci                   # the CI workflow, locally, on a clean checkout of HEAD
 ```
 
-CI ([checks.yml](.github/workflows/checks.yml)) runs the link check and the ush
-suite on Ubuntu and macOS with Python 3.10 and 3.13 for every pull request.
+CI ([ci.yml](.github/workflows/ci.yml)) runs the link check, the ush suite on
+Ubuntu and macOS with Python 3.10 and 3.13, the local CI's own tests, and a gitleaks
+secret scan. GitHub Actions doesn't start jobs for this account at the moment, so
+`just ci --post` runs the workflow on the developer's machine and reports to the PR
+as commit statuses; see [tools/ci/README.md](tools/ci/README.md).
 
 ## Document PDFs
 
