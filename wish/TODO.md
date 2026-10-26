@@ -34,6 +34,10 @@ never merges. Security tests run against every release candidate.
 - [x] 0.6 Split the repository into `wish/` (web) and `ush/` (command line) with
   shared process rules and document tooling. Acceptance: wish documents moved with
   history, relative links checked, PDF defaults cover both projects.
+- [x] 0.7 Run the CI workflow locally while GitHub Actions doesn't start jobs, after
+  lakeshore's design (`just ci`, `--post` commit statuses). Acceptance: the workflow
+  maps completely or fails before running; matrix entries run per platform; tests
+  for the mapping; a full run passes on a commit; a failing step fails the run.
 
 ## Phase 1: a lean browser workspace
 
