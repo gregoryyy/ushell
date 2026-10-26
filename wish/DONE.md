@@ -242,3 +242,7 @@ Validation (macOS 26, arm64):
 Deviations: the Linux matrix entries of `ush` aren't checked locally on a Mac; they
 run when Actions returns or when `just ci` runs on Linux. Local statuses are
 self-reported by the developer's machine.
+
+Status (2026-10-26): `just ci --post` passed on `8bba1af`; opened as
+[PR #2](https://github.com/gregoryyy/ushell/pull/2) against `feature/wish-planning-process`.
+Not merged.
