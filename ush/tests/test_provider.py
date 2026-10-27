@@ -165,3 +165,29 @@ class OllamaRemoteHostTest(TempDirTest):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+@unittest.skipUnless(HAVE_SDK, "anthropic SDK not installed")
+class CompleteTest(TempDirTest):
+    """The checker's request: one message, no tools, no thinking, no streaming."""
+
+    def test_anthropic_and_ollama_send_a_plain_message(self):
+        reply = ([{"type": "text", "text": "FLAG: unrelated"}], "end_turn")
+        for make in (lambda url: AnthropicProvider(SYNTHETIC_KEY, "claude-haiku-5-5", "",
+                                                   base_url=url, max_retries=0),
+                     lambda url: OllamaProvider("qwen3.5:2b", url, max_retries=0)):
+            with MockAPI([reply]) as api:
+                answer = make(api.url).complete("system text", "the prompt")
+            self.assertEqual(answer, "FLAG: unrelated")
+            (request,) = api.requests
+            body = request["body"]
+            self.assertEqual(body["system"], "system text")
+            self.assertEqual(body["messages"], [{"role": "user", "content": "the prompt"}])
+            for option in ("stream", "tools", "thinking", "output_config", "fallbacks"):
+                self.assertNotIn(option, body)
+
+    def test_errors_are_provider_errors(self):
+        with MockAPI([(404, {"type": "not_found_error"})]) as api:
+            with self.assertRaisesRegex(ProviderError, "ollama pull qwen3.5:2b"):
+                OllamaProvider("qwen3.5:2b", api.url, max_retries=0).complete("s", "p")
+

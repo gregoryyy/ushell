@@ -81,6 +81,16 @@ DONE has an entry for it.
   differential fuzzing against zsh, a GTFOBins sweep, redaction vectors, redirect,
   `USH_BASE_URL` under root, planted symlinks, binary output, and oversized stdin.
   Acceptance: each listed gap has a committed test or a documented reason.
+- [x] 2.12 Model menu in `.env.template`: `USH_MODEL` choices per provider by size (Anthropic
+  tiers; Ollama tags with download size and the memory they need, checked against the Ollama
+  library), and `just ush` drops a trailing ` # comment` after a value. Acceptance: every listed
+  model name passes ush's validation; uncommenting a menu line works.
+- [x] 2.13 Checker model: an optional second model (`provider:model`, `checker` setting,
+  `USH_CHECKER`, `-k`) judges each proposed command or script against the user's requests only,
+  never output, piped input, or the main model's reasoning; a flag, an unclear reply, or an error
+  makes the command need approval; OK never approves; disclosed in the banner and `ai status`.
+  Acceptance: agent, parser, settings, provider (`complete`) and end-to-end tests; a live run on a
+  local model recorded in SECTEST; SEC updated.
 
 ## 3. Release
 

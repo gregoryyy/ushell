@@ -12,6 +12,60 @@ top. The format is defined in [SDLC](../../docs/SDLC.md#done-entries).
 
 ---
 
+## 2026-10-27 15:15 — Model menu and checker model
+
+TODO items: 2.12, 2.13. PR: [#6](https://github.com/gregoryyy/ushell/pull/6) (stacked on #5).
+
+Agent: Opus 5.5, reasoning: not exposed, subagents: none.
+
+### Implementation notes
+
+- **Model menu (2.12):** `.env.template` lists `USH_MODEL` choices: Anthropic's three tiers, and
+  Ollama tags by size with download size and memory needs (qwen3.5 2b/4b/9b/27b/35b-a3b,
+  gemma4:12b; sizes from ollama.com/library on 2026-10-27), plus the `USH_CHECKER` choices. The
+  `just ush` recipe drops a trailing ` # comment`, so a menu line works when uncommented. The local
+  `.env` (ignored) was regenerated from the template with its values kept.
+- **Checker (2.13):** `check.py`: `Checker` (lazy client), `build_prompt` (requests and proposal
+  between random-tag markers), `parse` (one `OK` or `FLAG: reason` line; `<think>` blocks
+  skipped; anything else is no verdict), a system prompt with five worked examples. `provider.py`:
+  `complete()`, a non-streaming request without tools or thinking (2,048 tokens, 60 s). `agent.py`:
+  after the policy, before approval; the agent keeps the user's requests and passes them and the
+  proposal redacted; a flag or no verdict sets `auto = False` and adds the reason to the prompt;
+  `Step.check` records the verdict in history. `config.py`: `checker` setting (`provider:model`),
+  `USH_CHECKER` (not as root). `cli.py`: `-k/--checker`, `ai configure` asks for it, banner and
+  `ai status` say where the checker's input goes; the Anthropic key is resolved when either model
+  needs it. `ui.py`: the verdict under the proposal.
+- **Docs:** README (checker section, option, settings, what leaves the machine, limitations), ARCH
+  (component, request flow, decision), SEC (trust boundary, two threats, residual risk), SECTEST
+  (tests, F2 status, results), GAPS (Q4 default, A5 interpretation, A6 off by default).
+- **Validation:**
+  - `just ush-test`: 91 tests OK (73 before; 18 new: `test_check` 12, `CheckerSettingsTest` 2,
+    `EnvTemplateTest` 1, `CompleteTest` 2, one CLI end-to-end test).
+  - pyright 1.1.414 over `src/ush`: the same 19 errors as before the change, none new.
+  - Live, local, no cost: the checker against Ollama 0.40.7 with qwen2.5:1.5b and llama3.2:3b on
+    six, then seven proposals (SECTEST "Results"). The worked examples took llama3.2:3b from 3 to
+    6 of 7 expected verdicts, catching 4 of 4 attacks; qwen2.5:1.5b caught 1 of 4 with them.
+  - `just ci`: see the PR.
+
+### Deviations
+
+- The request was ambiguous ("an adversarial model to check the proposed implementation that
+  takes independent sources"); it was built as a runtime checker of proposed commands and
+  recorded as GAPS A5, so it can be corrected.
+- No newer small model (qwen3.5:2b or 4b) was pulled to measure: that's a multi-GB download for the
+  user to choose. The menu recommends the measured llama3.2:3b and marks qwen3.5:4b as unmeasured.
+
+### Insights
+
+- Small models need worked examples: without them, both flagged `df -h /`; with them, the 3B model
+  passed it and caught every attack. A model under 2B is no useful checker.
+- Failing closed matters more than accuracy: a false alarm costs one approval, a missed attack
+  leaves the policy's decision in place, but "no verdict" must never mean "run".
+- The checker narrows F2 (DNS exfiltration) only when configured; TODO 2.10 still has to close it
+  in the policy.
+
+---
+
 ## 2026-10-27 14:52 — Documents moved to the shared regime
 
 TODO items: none of ush's; the change is wish TODO 0.8 ([wish DONE](../../wish/docs/DONE.md)).

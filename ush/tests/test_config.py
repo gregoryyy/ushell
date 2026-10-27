@@ -204,3 +204,68 @@ class OllamaSettingsTest(TempDirTest):
         with self.assertRaises(ConfigError):
             apply_environment(Settings(), fake_identity(self.tmp),
                               {"USH_PROVIDER": "ollama", "USH_OLLAMA_URL": "http://evil.example"})
+
+
+class CheckerSettingsTest(TempDirTest):
+    def test_checker_is_provider_and_model_or_off(self):
+        s = Settings()
+        for value, provider, model in (("ollama:qwen3.5:2b", "ollama", "qwen3.5:2b"),
+                                       ("anthropic:claude-haiku-5-5", "anthropic",
+                                        "claude-haiku-5-5")):
+            s.set_checker(value)
+            self.assertEqual((s.checker_provider, s.checker_model), (provider, model))
+            self.assertEqual(Settings.from_dict(s.to_dict()).checker, value)
+        for off in ("off", "", "  "):
+            s.set_checker(off)
+            self.assertEqual(s.checker, "")
+        for bad in ("openai:gpt-6", "claude-haiku-5-5", "ollama:bad name!", "anthropic:x; rm",
+                    "ollama:"):
+            with self.subTest(bad=bad), self.assertRaises(ConfigError):
+                s.set_checker(bad)
+        with self.assertRaises(ConfigError):
+            Settings.from_dict({"checker": "openai:gpt-6"})
+
+    def test_checker_from_the_environment_but_not_as_root(self):
+        env = {"USH_CHECKER": "ollama:qwen3.5:2b"}
+        user = Settings()
+        apply_environment(user, fake_identity(self.tmp), env)
+        self.assertEqual(user.checker, "ollama:qwen3.5:2b")
+        root = Settings(checker="anthropic:claude-haiku-5-5")
+        apply_environment(root, fake_identity(self.tmp, uid=0), {"USH_CHECKER": "off"})
+        self.assertEqual(root.checker, "anthropic:claude-haiku-5-5")
+        off = Settings(checker="ollama:qwen3.5:2b")
+        apply_environment(off, fake_identity(self.tmp), {"USH_CHECKER": "off"})
+        self.assertEqual(off.checker, "")
+
+
+class EnvTemplateTest(unittest.TestCase):
+    """The model menu in .env.template (TODO 2.12): every entry is a name ush accepts, and the
+    `just ush` recipe drops the comment after a value when a line is uncommented."""
+
+    ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..")
+
+    def strip_comment(self, value: str) -> str:
+        with open(os.path.join(self.ROOT, "justfile"), encoding="utf-8") as f:
+            (line,) = [x.strip() for x in f if x.strip().startswith("value=$(printf")]
+        script = f'value="$1"\n{line}\nprintf "%s" "$value"'
+        return subprocess.run(["bash", "-c", script, "bash", value], capture_output=True,
+                              text=True, check=True).stdout
+
+    def test_menu_entries_are_valid_after_uncommenting(self):
+        with open(os.path.join(self.ROOT, ".env.template"), encoding="utf-8") as f:
+            entries = [line[1:].rstrip("\n").split("=", 1) for line in f
+                       if line.startswith(("#USH_MODEL=", "#USH_CHECKER="))]
+        self.assertGreaterEqual(len(entries), 10)
+        for key, raw in entries:
+            value = self.strip_comment(raw)
+            with self.subTest(entry=value):
+                self.assertNotIn("#", value)
+                s = Settings()
+                if key == "USH_CHECKER":
+                    s.set_checker(value)
+                    self.assertEqual(s.checker, value)
+                else:
+                    s.set_provider("anthropic" if value.startswith("claude-") else "ollama")
+                    s.set_model(value)
+                    self.assertEqual(s.active_model, value)
+

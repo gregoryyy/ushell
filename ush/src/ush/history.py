@@ -22,6 +22,7 @@ class Step:
     language: str = ""              # script language
     purpose: str = ""
     decision: str = ""              # auto | approved | edited | declined | dry-run | explicit | skipped
+    check: str = ""                 # the checker's verdict: ok | flag: reason | none: reason
     exit_code: Optional[int] = None
     timed_out: bool = False
     duration: float = 0.0

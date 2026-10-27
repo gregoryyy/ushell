@@ -11,6 +11,7 @@ import sys
 from dataclasses import dataclass
 from typing import Optional, TextIO
 
+from .check import Verdict
 from .execute import Result
 
 
@@ -84,6 +85,14 @@ class Terminal:
             self._emit(self.dim(f"{n:4} │ ") + line)
         if note:
             self._emit(self.dim(f"  {note}"))
+
+    def show_check(self, model: str, verdict: Verdict) -> None:
+        """The checker's verdict under the proposal: dim when it has no objection."""
+        if verdict.ok:
+            self._emit(self.dim(f"  checker {model}: no objection"))
+        else:
+            label = "flagged" if verdict.status == "flag" else "no verdict"
+            self._emit(self._style("33", f"  checker {model}: {label}: {verdict.reason}"))
 
     def show_output(self, result: Result, lines: int) -> None:
         text = result.output.rstrip("\n")

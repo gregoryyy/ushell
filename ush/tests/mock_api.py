@@ -46,8 +46,17 @@ def sse(blocks: list[dict], stop_reason: str) -> bytes:
     return b"".join(out)
 
 
+def message(blocks: list[dict], stop_reason: str) -> bytes:
+    """The same reply as one JSON message, for requests without `stream` (the checker's)."""
+    return json.dumps({"id": "msg_test", "type": "message", "role": "assistant",
+                       "model": "claude-opus-5-5", "content": blocks, "stop_reason": stop_reason,
+                       "stop_sequence": None,
+                       "usage": {"input_tokens": 5, "output_tokens": 10}}).encode()
+
+
 class MockAPI:
-    """Serve `replies` in order: (blocks, stop_reason) or (status, error_json)."""
+    """Serve `replies` in order: (blocks, stop_reason) or (status, error_json). A request with
+    `stream` gets server-sent events, one without gets a JSON message."""
 
     def __init__(self, replies: list, tags: list | None = None):
         self.replies = list(replies)
@@ -71,9 +80,9 @@ class MockAPI:
                 self.wfile.write(payload)
 
             def do_POST(self):
-                body = self.rfile.read(int(self.headers.get("content-length", 0)))
+                body = json.loads(self.rfile.read(int(self.headers.get("content-length", 0))))
                 api.requests.append({"path": self.path, "headers": dict(self.headers),
-                                     "body": json.loads(body)})
+                                     "body": body})
                 reply = api.replies.pop(0) if api.replies else (500, {"error": "unscripted"})
                 if isinstance(reply[0], int):
                     payload = json.dumps({"type": "error", "error": {
@@ -85,9 +94,11 @@ class MockAPI:
                     self.end_headers()
                     self.wfile.write(payload)
                     return
-                data = sse(*reply)
+                streamed = bool(body.get("stream"))
+                data = sse(*reply) if streamed else message(*reply)
                 self.send_response(200)
-                self.send_header("content-type", "text/event-stream")
+                self.send_header("content-type",
+                                 "text/event-stream" if streamed else "application/json")
                 self.send_header("content-length", str(len(data)))
                 self.end_headers()
                 self.wfile.write(data)

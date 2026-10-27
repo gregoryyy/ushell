@@ -2,8 +2,8 @@
 
 Under sudo, ush runs as root but uses the invoking user's key and settings
 (found through SUDO_USER), while history is written to root's own state
-directory. Environment overrides of the provider, model, and endpoints are ignored
-as root. An Ollama endpoint must be on this machine.
+directory. Environment overrides of the provider, model, checker, and endpoints are
+ignored as root. An Ollama endpoint must be on this machine.
 """
 
 from __future__ import annotations
@@ -88,6 +88,7 @@ class Settings:
     effort: str = "medium"
     ollama_url: str = OLLAMA_URL
     ollama_model: str = ""         # no default: it must be a model the user has pulled
+    checker: str = ""              # "provider:model" of the checker model (check.py); "" is off
     max_steps: int = 30
     command_timeout: int = 120     # default seconds per command
     max_timeout: int = 900         # upper bound a request may ask for
@@ -108,6 +109,8 @@ class Settings:
             s.ollama_url = check_ollama_url(data["ollama_url"])
         if isinstance(data.get("ollama_model"), str) and OLLAMA_MODEL.match(data["ollama_model"]):
             s.ollama_model = data["ollama_model"]
+        if isinstance(data.get("checker"), str):
+            s.set_checker(data["checker"])
         for name, low, high in (("max_steps", 1, 200), ("command_timeout", 1, 3600),
                                 ("max_timeout", 1, 7200), ("output_limit", 1000, 500_000),
                                 ("show_lines", 0, 10_000)):
@@ -119,7 +122,7 @@ class Settings:
     def to_dict(self) -> dict:
         return {"provider": self.provider, "model": self.model, "effort": self.effort,
                 "ollama_url": self.ollama_url, "ollama_model": self.ollama_model,
-                "max_steps": self.max_steps,
+                "checker": self.checker, "max_steps": self.max_steps,
                 "command_timeout": self.command_timeout, "max_timeout": self.max_timeout,
                 "output_limit": self.output_limit, "show_lines": self.show_lines}
 
@@ -142,6 +145,27 @@ class Settings:
             if not ANTHROPIC_MODEL.match(model):
                 raise ConfigError(f"{model!r} is not an Anthropic model name")
             self.model = model
+
+    def set_checker(self, value: str) -> None:
+        """Set the checker as `provider:model` (`ollama:qwen3:4b`); empty or `off` turns it off."""
+        value = value.strip()
+        if value in ("", "off"):
+            self.checker = ""
+            return
+        provider, _, model = value.partition(":")
+        pattern = OLLAMA_MODEL if provider == "ollama" else ANTHROPIC_MODEL
+        if provider not in PROVIDERS or not pattern.match(model):
+            raise ConfigError(f"checker {value!r} is not provider:model, e.g. ollama:qwen3:4b or "
+                              "anthropic:claude-haiku-5-5")
+        self.checker = f"{provider}:{model}"
+
+    @property
+    def checker_provider(self) -> str:
+        return self.checker.partition(":")[0]
+
+    @property
+    def checker_model(self) -> str:
+        return self.checker.partition(":")[2]
 
 
 def check_ollama_url(url: str) -> str:
@@ -166,8 +190,9 @@ def check_ollama_url(url: str) -> str:
 
 
 def apply_environment(settings: Settings, ident: Identity, environ: Optional[dict] = None) -> None:
-    """USH_PROVIDER, USH_OLLAMA_URL, and USH_MODEL override the settings file, except as root:
-    a root session uses only the invoking user's settings file (as for USH_BASE_URL)."""
+    """USH_PROVIDER, USH_OLLAMA_URL, USH_MODEL, and USH_CHECKER override the settings file,
+    except as root: a root session uses only the invoking user's settings file (as for
+    USH_BASE_URL)."""
     if ident.is_root:
         return
     env = os.environ if environ is None else environ
@@ -177,6 +202,8 @@ def apply_environment(settings: Settings, ident: Identity, environ: Optional[dic
         settings.ollama_url = check_ollama_url(env["USH_OLLAMA_URL"])
     if env.get("USH_MODEL"):
         settings.set_model(env["USH_MODEL"].strip())
+    if env.get("USH_CHECKER"):
+        settings.set_checker(env["USH_CHECKER"])
 
 
 def load_settings(ident: Identity) -> Settings:
