@@ -10,6 +10,7 @@ from typing import Optional
 
 from . import __version__, execute
 from .agent import Agent, Options
+from .check import Checker
 from .config import (EFFORTS, PROVIDERS, ConfigError, Identity, KeyStore, Settings,
                      apply_environment, check_ollama_url, identity, load_settings, mask,
                      save_settings)
@@ -40,13 +41,16 @@ options:
   -v, --verbose      show complete command output
   -m, --model MODEL  model for this run (default from `ush ai configure`)
   -e, --effort LEVEL low, medium, high, xhigh, or max
+  -k, --checker P:M  checker model for this run, e.g. ollama:qwen3:4b, or off
 
 In a session or follow-up, `// TEXT` asks, any other line runs as a command, and
 an empty line (follow-up) or `exit` ends it. Commands that ush cannot verify as
 read-only are shown and run only after you approve them. Requests and command
 output (with secrets redacted) are sent to the configured AI provider; with a
-local Ollama model they stay on this machine. USH_PROVIDER, USH_MODEL, and
-USH_OLLAMA_URL override the settings (not as root).
+local Ollama model they stay on this machine. A checker model, if configured,
+judges each proposed command against your requests only; what it flags needs
+your approval. USH_PROVIDER, USH_MODEL, USH_CHECKER, and USH_OLLAMA_URL override
+the settings (not as root).
 
 With the zsh plugin, `ush //...` and `// ...` need no quoting:
   source ush/shell/ush.plugin.zsh
@@ -84,14 +88,14 @@ class ProviderFactory:
         return self.settings.provider == "ollama"
 
     def secrets(self) -> tuple[str, ...]:
-        """Check that the provider can be used and return the secrets to redact. Fails before
-        any command runs."""
-        if self.ollama:
-            if not self.settings.ollama_model:
-                raise ConfigError("no Ollama model; run `ush ai configure` or set USH_MODEL "
-                                  "(see `ollama list`)")
-            return ()
-        return (self.resolve_key(),)
+        """Check that the provider and the checker can be used and return the secrets to
+        redact. Fails before any command runs."""
+        if self.ollama and not self.settings.ollama_model:
+            raise ConfigError("no Ollama model; run `ush ai configure` or set USH_MODEL "
+                              "(see `ollama list`)")
+        if not self.ollama or self.settings.checker_provider == "anthropic":
+            return (self.resolve_key(),)
+        return ()
 
     def resolve_key(self) -> str:
         if self.key is None:
@@ -110,6 +114,20 @@ class ProviderFactory:
         base_url = API_URL if self.ident.is_root else os.environ.get("USH_BASE_URL") or None
         return AnthropicProvider(self.resolve_key(), self.settings.model, self.settings.effort,
                                  base_url=base_url)
+
+    def checker(self) -> Optional[Checker]:
+        """The checker model, if one is configured; its client is created on first use."""
+        provider, model = self.settings.checker_provider, self.settings.checker_model
+        if not provider:
+            return None
+
+        def create() -> AnthropicProvider:
+            if provider == "ollama":
+                return OllamaProvider(model, self.settings.ollama_url)
+            base_url = API_URL if self.ident.is_root else os.environ.get("USH_BASE_URL") or None
+            return AnthropicProvider(self.resolve_key(), model, "", base_url=base_url)
+
+        return Checker(create, model)
 
 
 def main(argv: Optional[list[str]] = None) -> int:
@@ -140,6 +158,8 @@ def _main(argv: list[str], ui: Terminal) -> int:
         settings.set_model(overrides["model"])
     if "effort" in overrides:
         settings.effort = overrides["effort"]
+    if "checker" in overrides:
+        settings.set_checker(overrides["checker"])
     keys = KeyStore(ident)
     history = History(ident.state_dir())
 
@@ -165,7 +185,8 @@ def _main(argv: list[str], ui: Terminal) -> int:
     secrets = ()
     if request:
         secrets = factory.secrets()  # fail early, before any command runs
-    agent = Agent(LazyProvider(factory), ui, settings, ident, history, options, secrets)
+    agent = Agent(LazyProvider(factory), ui, settings, ident, history, options, secrets,
+                  factory.checker())
     _banner(ui, ident, settings, options)
     if piped:
         agent.add_context("Input piped to ush on stdin:", piped)
@@ -194,12 +215,14 @@ def _parse_options(argv: list[str]) -> tuple[Options, dict, list[str]]:
             options.verbose = True
         elif a in ("-1", "--once"):
             options.once = True
-        elif a in ("-m", "--model", "-e", "--effort") and i + 1 < len(argv):
+        elif a in ("-m", "--model", "-e", "--effort", "-k", "--checker") and i + 1 < len(argv):
             value = argv[i + 1]
             if a in ("-e", "--effort"):
                 if value not in EFFORTS:
                     raise ConfigError(f"effort must be one of {', '.join(EFFORTS)}")
                 overrides["effort"] = value
+            elif a in ("-k", "--checker"):
+                overrides["checker"] = value
             else:
                 overrides["model"] = value
             i += 1
@@ -217,6 +240,8 @@ def _banner(ui: Terminal, ident: Identity, settings: Settings, options: Options)
         parts.append("dry run")
     parts.append(disclosure(settings))
     ui.info(" · ".join(parts))
+    if settings.checker:
+        ui.info(checker_disclosure(settings))
 
 
 def disclosure(settings: Settings) -> str:
@@ -228,6 +253,18 @@ def disclosure(settings: Settings) -> str:
         return (f"cloud model: requests and command output go to {remote} via Ollama, "
                 "secrets redacted")
     return f"local Ollama ({settings.ollama_url}): requests and command output stay on this machine"
+
+
+def checker_disclosure(settings: Settings) -> str:
+    """Where the checker sends your requests and the proposed commands (never command output)."""
+    model = settings.checker_model
+    if settings.checker_provider == "anthropic":
+        where = "go to Anthropic"
+    else:
+        remote = ollama_remote_host(settings.ollama_url, model)
+        where = f"go to {remote} via Ollama" if remote else "stay on this machine"
+    return (f"checker {model}: your requests and the proposed commands {where}, secrets "
+            "redacted; command output is not sent to it")
 
 
 def _session(agent: Agent, ui: Terminal, factory: ProviderFactory, follow_up: bool) -> None:
@@ -299,6 +336,9 @@ def _ai(args: list[str], ui: Terminal, ident: Identity, settings: Settings,
                 if effort not in EFFORTS:
                     raise ConfigError(f"effort must be one of {', '.join(EFFORTS)}")
                 settings.effort = effort
+        checker = input(f"checker provider:model, or off [{settings.checker or 'off'}]: ").strip()
+        if checker:
+            settings.set_checker(checker)
         ui.info(f"settings saved to {save_settings(ident, settings)}")
         return 0
     if action == "status":
@@ -312,6 +352,7 @@ def _ai(args: list[str], ui: Terminal, ident: Identity, settings: Settings,
             print(f"provider:  Anthropic ({API_URL})")
             print(f"model:     {settings.model} (effort {settings.effort})")
             print(f"key:       {mask(key) + ' from ' + source if key else 'not configured'}")
+        print(f"checker:   {checker_disclosure(settings) if settings.checker else 'off'}")
         print(f"user:      {ident.name}" + (f" (key and settings of {ident.owner_name})"
                                               if ident.via_sudo else ""))
         print(f"settings:  {os.path.join(ident.config_dir(), 'config.json')}")

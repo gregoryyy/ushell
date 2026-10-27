@@ -33,6 +33,7 @@ zsh ── ush.plugin.zsh ── quotes `ush //…`, `sudo ush //…`, `// …` 
      ├─ agent.py ──── request loop: provider turn → tool_use → policy → approval → execute
      │   ├─ policy.py ─── read-only classifier (zsh-aware tokenizer, command table, secret paths)
      │   ├─ execute.py ── bounded execution: zsh -f -o pipefail, timeouts, process groups, scrubbed env
+     │   ├─ check.py ──── optional checker model: requests + proposal → OK or FLAG
      │   ├─ redact.py ─── secret redaction for provider input and history
      │   └─ ui.py ─────── terminal status/approval (via /dev/tty when stdin is a pipe)
      ├─ provider.py ── Anthropic SDK adapter (streaming, eager tool input, fallbacks);
@@ -41,7 +42,7 @@ zsh ── ush.plugin.zsh ── quotes `ush //…`, `sudo ush //…`, `// …` 
      └─ history.py ─── append-only JSONL history for `history` and `replay`
 ```
 
-`policy`, `execute`, `redact`, and `history` do not depend on the provider. `agent`
+`policy`, `execute`, `redact`, `check`, and `history` do not depend on the provider. `agent`
 sees only the `Provider` protocol (`turn(...) -> Turn`), so tests drive it with a
 scripted fake.
 
@@ -57,8 +58,8 @@ scripted fake.
    `run_script`. Each call declares `effect: read|change` and a timeout.
 4. Every `tool_use` input is validated against the schema; eager input streaming
    leaves validation to the client. A command runs automatically only if the
-   policy classifies it as read-only, the model marked it `read`, and `--confirm` is
-   off. Otherwise the user approves, declines (with an optional reason sent to the
+   policy classifies it as read-only, the model marked it `read`, `--confirm` is
+   off, and the checker model, if one is configured, answers OK. Otherwise the user approves, declines (with an optional reason sent to the
    model), edits, or aborts. Scripts always need approval.
 5. Execution uses `zsh -f -o pipefail -c`: no rc files, so the user's aliases cannot
    change meaning. Commands get stdin from `/dev/null` and their own process group,
@@ -119,6 +120,18 @@ holding a file named `-delete` becomes `find -delete`, and `$VAR` may hold an op
   detected through `remote_host` in `/api/tags` and disclosed. Settings select the
   provider; `USH_PROVIDER`, `USH_MODEL`, and `USH_OLLAMA_URL` override them except as
   root. ush never reads `.env` files itself; `just ush` passes `.env` for development.
+- **An independent checker model** (TODO 2.13, 2026-10-27). The user asked for "an
+  adversarial model to check the proposed implementation that takes independent sources; it can be
+  a small model" (interpretation in [GAPS](GAPS.md) A5). A second model judges each proposed command
+  or script against the user's requests only: it never sees command output, piped input, files, or
+  the main model's reasoning, which is where injected instructions live. Its prompt marks the
+  requests and the proposal with a random tag, so a proposal can't close them, and gives five
+  worked examples, which took llama3.2:3b from 3 to 6 of 7 cases. It can only add friction: a flag,
+  an unclear reply, or an error makes the command need approval (declined without a terminal), and
+  OK changes nothing. It runs on any provider (`provider:model`), through a plain non-streaming
+  request without tools or thinking (`complete`), and is disclosed in the banner. Dry runs and
+  `replay` don't call it. Why not more: letting the checker approve, or show its reason to the main
+  model, would give an injection a target to optimise against.
 - **Name:** `wsh` (Wave Terminal's CLI) and `zish` (an active Zig shell) were taken.
   `ush`, "the you shell", collides only with small, unrelated npm/PyPI packages.
 

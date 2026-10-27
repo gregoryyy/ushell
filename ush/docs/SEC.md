@@ -1,8 +1,8 @@
 # ush security model
 
-Status: applies to ush 0.1.0 (2026-10-26) and the local Ollama provider (TODO 2.8,
-2026-10-27). Design: [ARCH.md](ARCH.md). Security tests and open findings:
-[SECTEST.md](SECTEST.md).
+Status: applies to ush 0.1.0 (2026-10-26), the local Ollama provider (TODO 2.8,
+2026-10-27), and the checker model (TODO 2.13, 2026-10-27). Design: [ARCH.md](ARCH.md).
+Security tests and open findings: [SECTEST.md](SECTEST.md).
 
 ush lets an AI model run commands on the user's machine, possibly as root.
 The protections are the user's approval, a conservative read-only policy, bounded
@@ -25,6 +25,7 @@ execution, and limited disclosure. ush is not a sandbox.
 | Command output, piped input, file contents | Untrusted data | May carry prompt injection; never grants anything |
 | Environment (`USH_BASE_URL`, `USH_PROVIDER`, `USH_MODEL`, `USH_OLLAMA_URL`, `XDG_*`) under root | Untrusted | Ignored as root |
 | Ollama endpoint and its model list | Trusted for local models only | Must be a loopback address; cloud models are disclosed |
+| Checker model verdicts | Untrusted | A flag or no verdict adds an approval prompt; OK changes nothing |
 | Files ush executes under sudo | Must be root-owned | Root-owned install path documented |
 
 ## Threats and mitigations
@@ -41,6 +42,8 @@ execution, and limited disclosure. ush is not a sandbox.
 | Requests sent elsewhere while ush says they stay local (Ollama) | The Ollama URL must be http(s) to a loopback address without credentials or path, from settings or environment; requests ignore proxy variables and do not follow redirects | `test_config` URL cases; `test_provider` bogus proxies; `test_cli` misconfiguration |
 | Ollama cloud models (`…:cloud`) forward requests to ollama.com | The banner and `ai status` name the remote host from Ollama's model list; a `cloud` tag counts as remote even if Ollama can't be asked | `test_provider` remote-host cases; `test_cli` cloud disclosure |
 | Anthropic key sent to Ollama | The Ollama client uses a fixed placeholder key | `test_provider` (key absent from the request) |
+| Prompt injection steers the model to an auto-approved command that leaks or harms (e.g. DNS exfiltration, F2) | Optional checker model (`check.py`) judges each proposal against the user's requests only, never output or piped input; flag, unclear reply, or error → approval needed; its input is redacted and tagged with random markers | `test_check`: flag gates a read-only command, no verdict fails closed, OK never approves, no output/piped input/secrets in its input, marker tags; `test_cli` end to end |
+| The checker sends data to a provider the user didn't expect | `provider:model` named in the banner and `ai status` (Anthropic, local, or an Ollama cloud host); as root only the settings file counts | `test_cli` checker disclosure; `test_config` checker settings |
 | Runaway or hanging commands | stdin `/dev/null`, per-command timeout (≤ `max_timeout`), process-group kill, output limit, step limit per request | `test_execute`, `test_agent` step limit |
 | Aborted or interrupted requests leave a broken conversation | Every `tool_use` answered; Ctrl-C kills the process group | `test_agent` abort/truncation/refusal |
 | Root running user-writable code | `install.sh --prefix /usr/local` for root-owned installs; launcher uses `python -I` (ignores `PYTHON*`, user site, cwd) | Manual; documented |
@@ -67,6 +70,10 @@ execution, and limited disclosure. ush is not a sandbox.
   which an injection can use to leak data through DNS names (SECTEST F2).
 - **Terminal output is not filtered** (SECTEST F1): escape sequences in a command or its
   output can change what the approval prompt shows. Fix planned in TODO 2.9.
+- **The checker is a model too.** It judges the proposal text, which an injection controls, so
+  a proposal can be shaped to look harmless or carry text aimed at the checker. Small models miss
+  attacks (qwen2.5:1.5b let 3 of 4 pass, SECTEST) and raise false alarms. It narrows what runs
+  unasked; it doesn't replace the policy or the approval prompt.
 - **Small local models** follow injected instructions more readily and call tools less
   reliably. The policy and approval prompt contain them the same way, but answers are
   less trustworthy.

@@ -11,6 +11,9 @@ from typing import Any, Callable, Optional, Protocol
 API_URL = "https://api.anthropic.com"
 OLLAMA_KEY = "ollama"  # Ollama ignores the key; the SDK requires one
 MAX_TOKENS = 64000
+# The checker's answer is one line; local thinking models need room to think first.
+CHECK_MAX_TOKENS = 2048
+CHECK_TIMEOUT = 60.0
 # Models that accept server-side refusal fallbacks and between-tool progress notes.
 FALLBACK_MODELS = {"claude-opus-5-5", "claude-opus-5", "claude-sonnet-5-5", "claude-fable-5-1",
                    "claude-fable-5"}
@@ -117,6 +120,16 @@ class AnthropicProvider:
             refusal = message.stop_details.explanation or message.stop_details.category or ""
         usage = message.usage.to_dict() if message.usage else {}
         return Turn(content, message.stop_reason or "", refusal, usage)
+
+    def complete(self, system: str, text: str) -> str:
+        """One short answer without tools, thinking, or streaming: the checker's request."""
+        try:
+            message = self.client.with_options(timeout=CHECK_TIMEOUT).messages.create(
+                model=self.model, max_tokens=CHECK_MAX_TOKENS, system=system,
+                messages=[{"role": "user", "content": text}])
+        except self._anthropic.APIError as exc:
+            raise self._error(exc) from None
+        return "".join(b.text for b in message.content if b.type == "text")
 
     def _error(self, exc: Any) -> ProviderError:
         a = self._anthropic

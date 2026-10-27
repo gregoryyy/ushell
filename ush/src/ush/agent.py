@@ -14,6 +14,7 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 from . import execute
+from .check import Checker
 from .config import Identity, Settings
 from .history import Entry, History, Step
 from .policy import classify
@@ -114,7 +115,9 @@ class Agent:
     history: History
     options: Options = field(default_factory=Options)
     secrets: tuple[str, ...] = ()
+    checker: Optional[Checker] = None
     messages: list[dict] = field(default_factory=list)
+    requests: list[str] = field(default_factory=list)   # what the user asked, for the checker
     pending: list[dict] = field(default_factory=list)
     pending_steps: list[Step] = field(default_factory=list)
     steps: int = 0          # commands run for the current request
@@ -168,6 +171,7 @@ class Agent:
         self.messages.append({"role": "user",
                               "content": [*self.pending, {"type": "text", "text": request}]})
         self.pending = []
+        self.requests.append(request)
         self.steps = 0
         try:
             entry.outcome, entry.answer = self._loop(entry)
@@ -260,6 +264,17 @@ class Agent:
         if self.options.dry_run:
             step.decision = "dry-run"
             return _result(block, "Not run: dry-run mode; the user wants to see the plan only.")
+        if self.checker is not None:
+            verdict = self.checker.check([self._clean(r) for r in self.requests],
+                                         args.get("language") or "command", self._clean(command),
+                                         self._clean(purpose), args["effect"])
+            step.check = verdict.summary()
+            self.ui.show_check(self.checker.model, verdict)
+            if not verdict.ok:
+                auto = False
+                flagged = (f"the checker flagged it: {verdict.reason}" if verdict.status == "flag"
+                           else f"the checker gave no verdict: {verdict.reason}")
+                reason = f"{reason}; {flagged}" if reason else flagged
         edited = ""
         if not auto:
             if not self.ui.can_prompt:
