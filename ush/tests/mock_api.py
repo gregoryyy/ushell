@@ -1,4 +1,5 @@
-"""A local stand-in for the Anthropic Messages API that streams scripted replies."""
+"""A local stand-in for the Anthropic Messages API (and Ollama's compatible one) that streams
+scripted replies."""
 
 from __future__ import annotations
 
@@ -48,14 +49,26 @@ def sse(blocks: list[dict], stop_reason: str) -> bytes:
 class MockAPI:
     """Serve `replies` in order: (blocks, stop_reason) or (status, error_json)."""
 
-    def __init__(self, replies: list):
+    def __init__(self, replies: list, tags: list | None = None):
         self.replies = list(replies)
         self.requests: list[dict] = []
+        self.tags = tags  # Ollama's /api/tags model list; None answers 404
         api = self
 
         class Handler(BaseHTTPRequestHandler):
             def log_message(self, *args):
                 pass
+
+            def do_GET(self):
+                if self.path != "/api/tags" or api.tags is None:
+                    self.send_error(404)
+                    return
+                payload = json.dumps({"models": api.tags}).encode()
+                self.send_response(200)
+                self.send_header("content-type", "application/json")
+                self.send_header("content-length", str(len(payload)))
+                self.end_headers()
+                self.wfile.write(payload)
 
             def do_POST(self):
                 body = self.rfile.read(int(self.headers.get("content-length", 0)))

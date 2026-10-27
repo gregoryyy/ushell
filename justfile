@@ -33,3 +33,21 @@ ci *ARGS:
     unset VIRTUAL_ENV
     uv run --quiet --script tools/ci/run.py {{ARGS}}
     case " {{ARGS}} " in *" --job"*) ;; *) just pdfs ;; esac
+
+# Run ush from the source tree with the settings in .env (see .env.template), e.g.
+# `just ush '//why is my disk full?'`. Variables already set in the shell win over .env; the file is
+# read as KEY=value lines, not executed. Needs ush/.venv (created by `just ush-test`).
+[positional-arguments]
+ush *args:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    root={{quote(justfile_directory())}}
+    [ -x "$root/ush/.venv/bin/python" ] || { echo "ush/.venv is missing; run: just ush-test" >&2; exit 1; }
+    if [ -f "$root/.env" ]; then
+        while IFS='=' read -r key value || [ -n "$key" ]; do
+            [[ $key =~ ^[A-Z_][A-Z0-9_]*$ ]] || continue
+            [ -n "${!key+set}" ] || export "$key=$value"
+        done < "$root/.env"
+    fi
+    cd {{quote(invocation_directory())}}
+    PYTHONPATH="$root/ush/src" exec "$root/ush/.venv/bin/python" -m ush "$@"

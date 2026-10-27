@@ -2,11 +2,13 @@
 
 Under sudo, ush runs as root but uses the invoking user's key and settings
 (found through SUDO_USER), while history is written to root's own state
-directory. Environment overrides of the provider endpoint are ignored as root.
+directory. Environment overrides of the provider, model, and endpoints are ignored
+as root. An Ollama endpoint must be on this machine.
 """
 
 from __future__ import annotations
 
+import ipaddress
 import json
 import os
 import pwd
@@ -14,11 +16,16 @@ import re
 import stat
 import subprocess
 import sys
+import urllib.parse
 from dataclasses import dataclass, field
 from typing import Callable, Optional
 
 DEFAULT_MODEL = "claude-opus-5-5"
 EFFORTS = ("low", "medium", "high", "xhigh", "max")
+PROVIDERS = ("anthropic", "ollama")
+OLLAMA_URL = "http://127.0.0.1:11434"
+ANTHROPIC_MODEL = re.compile(r"^[a-z0-9.\-]{3,64}$")
+OLLAMA_MODEL = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/\-]{0,127}$")
 KEY_ENV = ("USH_API_KEY", "ANTHROPIC_API_KEY")
 KEYCHAIN_SERVICE = "ush"
 KEYCHAIN_ACCOUNT = "anthropic"
@@ -76,8 +83,11 @@ def identity(environ: Optional[dict] = None) -> Identity:
 
 @dataclass
 class Settings:
-    model: str = DEFAULT_MODEL
+    provider: str = "anthropic"
+    model: str = DEFAULT_MODEL     # the Anthropic model
     effort: str = "medium"
+    ollama_url: str = OLLAMA_URL
+    ollama_model: str = ""         # no default: it must be a model the user has pulled
     max_steps: int = 30
     command_timeout: int = 120     # default seconds per command
     max_timeout: int = 900         # upper bound a request may ask for
@@ -88,10 +98,16 @@ class Settings:
     @classmethod
     def from_dict(cls, data: dict) -> "Settings":
         s = cls()
-        if isinstance(data.get("model"), str) and re.match(r"^[a-z0-9.\-]{3,64}$", data["model"]):
+        if data.get("provider") in PROVIDERS:
+            s.provider = data["provider"]
+        if isinstance(data.get("model"), str) and ANTHROPIC_MODEL.match(data["model"]):
             s.model = data["model"]
         if data.get("effort") in EFFORTS:
             s.effort = data["effort"]
+        if isinstance(data.get("ollama_url"), str):
+            s.ollama_url = check_ollama_url(data["ollama_url"])
+        if isinstance(data.get("ollama_model"), str) and OLLAMA_MODEL.match(data["ollama_model"]):
+            s.ollama_model = data["ollama_model"]
         for name, low, high in (("max_steps", 1, 200), ("command_timeout", 1, 3600),
                                 ("max_timeout", 1, 7200), ("output_limit", 1000, 500_000),
                                 ("show_lines", 0, 10_000)):
@@ -101,9 +117,66 @@ class Settings:
         return s
 
     def to_dict(self) -> dict:
-        return {"model": self.model, "effort": self.effort, "max_steps": self.max_steps,
+        return {"provider": self.provider, "model": self.model, "effort": self.effort,
+                "ollama_url": self.ollama_url, "ollama_model": self.ollama_model,
+                "max_steps": self.max_steps,
                 "command_timeout": self.command_timeout, "max_timeout": self.max_timeout,
                 "output_limit": self.output_limit, "show_lines": self.show_lines}
+
+    @property
+    def active_model(self) -> str:
+        return self.ollama_model if self.provider == "ollama" else self.model
+
+    def set_provider(self, provider: str) -> None:
+        if provider not in PROVIDERS:
+            raise ConfigError(f"provider must be one of {', '.join(PROVIDERS)}")
+        self.provider = provider
+
+    def set_model(self, model: str) -> None:
+        """Set the model of the active provider."""
+        if self.provider == "ollama":
+            if not OLLAMA_MODEL.match(model):
+                raise ConfigError(f"{model!r} is not an Ollama model name")
+            self.ollama_model = model
+        else:
+            if not ANTHROPIC_MODEL.match(model):
+                raise ConfigError(f"{model!r} is not an Anthropic model name")
+            self.model = model
+
+
+def check_ollama_url(url: str) -> str:
+    """The Ollama endpoint, which must be on this machine: http(s) to a loopback address.
+
+    Anything else would send requests and command output elsewhere while ush says they stay
+    local, and a settings file or environment could otherwise redirect a root session.
+    """
+    parts = urllib.parse.urlsplit(url.strip())
+    host = parts.hostname or ""
+    try:
+        loopback = host == "localhost" or ipaddress.ip_address(host).is_loopback
+        parts.port  # noqa: B018 - raises ValueError for an invalid port
+    except ValueError:
+        loopback = False
+    if (parts.scheme not in ("http", "https") or not loopback or parts.username is not None
+            or parts.password is not None or parts.path not in ("", "/") or parts.query
+            or parts.fragment):
+        raise ConfigError(f"Ollama URL {url!r} is not on this machine; ush only uses a local "
+                          f"Ollama, e.g. {OLLAMA_URL}")
+    return f"{parts.scheme}://{parts.netloc}"
+
+
+def apply_environment(settings: Settings, ident: Identity, environ: Optional[dict] = None) -> None:
+    """USH_PROVIDER, USH_OLLAMA_URL, and USH_MODEL override the settings file, except as root:
+    a root session uses only the invoking user's settings file (as for USH_BASE_URL)."""
+    if ident.is_root:
+        return
+    env = os.environ if environ is None else environ
+    if env.get("USH_PROVIDER"):
+        settings.set_provider(env["USH_PROVIDER"].strip())
+    if env.get("USH_OLLAMA_URL"):
+        settings.ollama_url = check_ollama_url(env["USH_OLLAMA_URL"])
+    if env.get("USH_MODEL"):
+        settings.set_model(env["USH_MODEL"].strip())
 
 
 def load_settings(ident: Identity) -> Settings:

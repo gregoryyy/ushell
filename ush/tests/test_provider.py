@@ -16,7 +16,11 @@ except ImportError:
 from ush.agent import Agent
 from ush.config import Settings
 from ush.history import History
-from ush.provider import FALLBACK_BETA, UPDATES_BETA, AnthropicProvider, ProviderError
+from unittest import mock
+
+from ush.agent import TOOLS
+from ush.provider import (FALLBACK_BETA, UPDATES_BETA, AnthropicProvider, OllamaProvider,
+                          ProviderError, ollama_remote_host)
 
 COMMAND = {"command": "echo mock-output", "purpose": "check", "effect": "read",
            "timeout_seconds": 20}
@@ -96,6 +100,67 @@ class ProviderTest(TempDirTest):
             turn = self.provider(api.url).turn("s", [], [{"role": "user", "content": "x"}],
                                                lambda t: None, lambda t: None)
         self.assertEqual(turn.stop_reason, "refusal")
+
+
+
+def ask(provider):
+    return provider.turn("sys", TOOLS, [{"role": "user", "content": "x"}],
+                         lambda t: None, lambda t: None)
+
+
+@unittest.skipUnless(HAVE_SDK, "anthropic SDK not installed (pip install -r requirements.lock)")
+class OllamaProviderTest(TempDirTest):
+    def test_requests_carry_no_anthropic_options_and_no_real_key(self):
+        reply = ([{"type": "tool_use", "id": "call_1", "name": "run_command", "input": COMMAND}],
+                 "tool_use")
+        # A key or a proxy in the environment must not reach a local Ollama request.
+        env = {"ANTHROPIC_API_KEY": SYNTHETIC_KEY, "HTTP_PROXY": "http://127.0.0.1:9",
+               "HTTPS_PROXY": "http://127.0.0.1:9", "ALL_PROXY": "http://127.0.0.1:9"}
+        with mock.patch.dict(os.environ, env), MockAPI([reply]) as api:
+            turn = ask(OllamaProvider("qwen3:8b", api.url, max_retries=0))
+        self.assertEqual(turn.content[0]["input"], COMMAND)
+        (request,) = api.requests
+        self.assertEqual(request["path"], "/v1/messages")
+        body = request["body"]
+        self.assertEqual(body["model"], "qwen3:8b")
+        self.assertEqual({t["name"] for t in body["tools"]}, {"run_command", "run_script"})
+        for option in ("fallbacks", "thinking", "output_config", "cache_control"):
+            self.assertNotIn(option, body)
+        headers = {k.lower(): v for k, v in request["headers"].items()}
+        self.assertNotIn("anthropic-beta", headers)
+        self.assertNotIn(SYNTHETIC_KEY, json.dumps(request))
+
+    def test_errors_name_the_ollama_fix(self):
+        cases = [((404, {"type": "not_found_error"}), "ollama pull qwen3:8b"),
+                 ((410, {"message": "model retired"}), "Ollama error 410: model retired"),
+                 ((401, {"type": "authentication_error"}), "ollama signin")]
+        for reply, expected in cases:
+            with self.subTest(expected=expected), MockAPI([reply]) as api:
+                with self.assertRaisesRegex(ProviderError, expected):
+                    ask(OllamaProvider("qwen3:8b", api.url, max_retries=0))
+        with MockAPI([]) as api:
+            closed = api.url
+        with self.assertRaisesRegex(ProviderError, "cannot reach Ollama at .*ollama serve"):
+            ask(OllamaProvider("qwen3:8b", closed, max_retries=0))
+
+
+class OllamaRemoteHostTest(TempDirTest):
+    TAGS = [{"name": "llama3.2:latest"}, {"name": "qwen3:8b"},
+            {"name": "gemma4:31b-cloud", "remote_host": "https://ollama.com:443"},
+            {"name": "renamed:latest", "remote_host": "https://ollama.com:443"}]
+
+    def test_cloud_models_are_never_reported_as_local(self):
+        with MockAPI([], tags=self.TAGS) as api:
+            self.assertIsNone(ollama_remote_host(api.url, "qwen3:8b"))
+            self.assertIsNone(ollama_remote_host(api.url, "llama3.2"))
+            self.assertEqual(ollama_remote_host(api.url, "gemma4:31b-cloud"),
+                             "https://ollama.com:443")
+            self.assertEqual(ollama_remote_host(api.url, "renamed"), "https://ollama.com:443")
+            self.assertEqual(ollama_remote_host(api.url, "other:cloud"), "https://ollama.com")
+        with MockAPI([]) as api:
+            closed = api.url
+        self.assertEqual(ollama_remote_host(closed, "x:cloud", timeout=0.5), "https://ollama.com")
+        self.assertIsNone(ollama_remote_host(closed, "qwen3:8b", timeout=0.5))
 
 
 if __name__ == "__main__":

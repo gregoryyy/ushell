@@ -51,6 +51,25 @@ records the implementation, validation, deviations, and learnings.
   auto-approved command fails; update SEC.
 - [ ] 2.7 Align the `//` contract and policy semantics with wish once wish's shell
   integration (wish 2.1/6.2) exists.
+- [x] 2.8 Local models through Ollama's Anthropic-compatible API: provider setting
+  and `USH_PROVIDER`/`USH_MODEL`/`USH_OLLAMA_URL` (not as root), loopback-only
+  endpoint, no proxies or redirects, cloud-model disclosure, no key; `.env.template`
+  and `just ush` for development. Acceptance: mock-API request shape, misconfiguration
+  and remote-URL refusals before any request, honest banner; live run against a local
+  Ollama; SEC updated.
+- [ ] 2.9 Neutralise control characters (C0/C1, ANSI/OSC, bidi overrides, zero-width)
+  in everything ush writes to the terminal: commands and scripts in the approval
+  prompt, command output, and answers (SECTEST F1). Acceptance: rendered-bytes tests
+  and a pty test show a `\r`/escape-sequence command visibly; no raw sequence reaches
+  the terminal.
+- [ ] 2.10 Close DNS exfiltration through auto-approved `dig`/`host`/`nslookup`
+  (SECTEST F2), e.g. approval for names the model chose. Acceptance: negative policy
+  tests; SEC residual risk updated.
+- [ ] 2.11 Fill the remaining gaps in [SECTEST.md](docs/SECTEST.md): injection corpus
+  and opt-in model-in-the-loop evals (free on a local Ollama model), tokenizer
+  differential fuzzing against zsh, a GTFOBins sweep, redaction vectors, redirect,
+  `USH_BASE_URL` under root, planted symlinks, binary output, and oversized stdin.
+  Acceptance: each listed gap has a committed test or a documented reason.
 
 ## 3. Release
 

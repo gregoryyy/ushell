@@ -10,11 +10,13 @@ from typing import Optional
 
 from . import __version__, execute
 from .agent import Agent, Options
-from .config import (EFFORTS, ConfigError, Identity, KeyStore, Settings, identity, load_settings,
-                     mask, save_settings)
+from .config import (EFFORTS, PROVIDERS, ConfigError, Identity, KeyStore, Settings,
+                     apply_environment, check_ollama_url, identity, load_settings, mask,
+                     save_settings)
 from .history import History, Step
 from .policy import classify
-from .provider import API_URL, AnthropicProvider, Provider, Turn
+from .provider import (API_URL, AnthropicProvider, OllamaProvider, Provider, Turn,
+                       ollama_remote_host)
 from .ui import Terminal
 
 USAGE = """\
@@ -23,7 +25,8 @@ ush, the you shell: ask in natural language, get answers from real commands.
 usage:
   ush [OPTIONS] //REQUEST...   investigate and answer; then follow-up questions
   ush [OPTIONS]                start a session
-  ush ai configure [--file]    set the API key (keychain on macOS), model, and effort
+  ush ai configure [--file]    set the provider (Anthropic or a local Ollama), API key
+                               (keychain on macOS), model, and effort
   ush ai status                show provider, model, key source, and paths
   ush ai clear-key             remove the stored API key
   ush history [-n N]           list recent requests and the commands they ran
@@ -41,7 +44,9 @@ options:
 In a session or follow-up, `// TEXT` asks, any other line runs as a command, and
 an empty line (follow-up) or `exit` ends it. Commands that ush cannot verify as
 read-only are shown and run only after you approve them. Requests and command
-output (with secrets redacted) are sent to the configured AI provider.
+output (with secrets redacted) are sent to the configured AI provider; with a
+local Ollama model they stay on this machine. USH_PROVIDER, USH_MODEL, and
+USH_OLLAMA_URL override the settings (not as root).
 
 With the zsh plugin, `ush //...` and `// ...` need no quoting:
   source ush/shell/ush.plugin.zsh
@@ -56,7 +61,7 @@ class LazyProvider:
     def __init__(self, factory):
         self._factory = factory
         self._provider: Optional[Provider] = None
-        self.name = "Anthropic"
+        self.name = "Ollama" if factory.settings.provider == "ollama" else "Anthropic"
 
     @property
     def model(self) -> str:
@@ -71,8 +76,22 @@ class LazyProvider:
 class ProviderFactory:
     def __init__(self, ident: Identity, settings: Settings, keys: KeyStore):
         self.ident, self.settings, self.keys = ident, settings, keys
-        self.model = settings.model
+        self.model = settings.active_model
         self.key: Optional[str] = None
+
+    @property
+    def ollama(self) -> bool:
+        return self.settings.provider == "ollama"
+
+    def secrets(self) -> tuple[str, ...]:
+        """Check that the provider can be used and return the secrets to redact. Fails before
+        any command runs."""
+        if self.ollama:
+            if not self.settings.ollama_model:
+                raise ConfigError("no Ollama model; run `ush ai configure` or set USH_MODEL "
+                                  "(see `ollama list`)")
+            return ()
+        return (self.resolve_key(),)
 
     def resolve_key(self) -> str:
         if self.key is None:
@@ -85,6 +104,8 @@ class ProviderFactory:
         return self.key
 
     def __call__(self) -> Provider:
+        if self.ollama:
+            return OllamaProvider(self.settings.ollama_model, self.settings.ollama_url)
         # As root, ignore environment overrides of the endpoint (sudo -E).
         base_url = API_URL if self.ident.is_root else os.environ.get("USH_BASE_URL") or None
         return AnthropicProvider(self.resolve_key(), self.settings.model, self.settings.effort,
@@ -114,8 +135,11 @@ def _main(argv: list[str], ui: Terminal) -> int:
         return 0
     ident = identity()
     settings = load_settings(ident)
-    for name, value in overrides.items():
-        setattr(settings, name, value)
+    apply_environment(settings, ident)
+    if "model" in overrides:
+        settings.set_model(overrides["model"])
+    if "effort" in overrides:
+        settings.effort = overrides["effort"]
     keys = KeyStore(ident)
     history = History(ident.state_dir())
 
@@ -140,7 +164,7 @@ def _main(argv: list[str], ui: Terminal) -> int:
     factory = ProviderFactory(ident, settings, keys)
     secrets = ()
     if request:
-        secrets = (factory.resolve_key(),)  # fail early, before any command runs
+        secrets = factory.secrets()  # fail early, before any command runs
     agent = Agent(LazyProvider(factory), ui, settings, ident, history, options, secrets)
     _banner(ui, ident, settings, options)
     if piped:
@@ -186,13 +210,24 @@ def _parse_options(argv: list[str]) -> tuple[Options, dict, list[str]]:
 
 
 def _banner(ui: Terminal, ident: Identity, settings: Settings, options: Options) -> None:
-    parts = [f"ush · {settings.model}"]
+    parts = [f"ush · {settings.active_model}"]
     if ident.is_root:
         parts.append("as root" + (f" (for {ident.owner_name})" if ident.via_sudo else ""))
     if options.dry_run:
         parts.append("dry run")
-    parts.append("requests and command output go to Anthropic, secrets redacted")
+    parts.append(disclosure(settings))
     ui.info(" · ".join(parts))
+
+
+def disclosure(settings: Settings) -> str:
+    """Where requests and command output go, as shown before every session."""
+    if settings.provider != "ollama":
+        return "requests and command output go to Anthropic, secrets redacted"
+    remote = ollama_remote_host(settings.ollama_url, settings.ollama_model)
+    if remote:
+        return (f"cloud model: requests and command output go to {remote} via Ollama, "
+                "secrets redacted")
+    return f"local Ollama ({settings.ollama_url}): requests and command output stay on this machine"
 
 
 def _session(agent: Agent, ui: Terminal, factory: ProviderFactory, follow_up: bool) -> None:
@@ -221,7 +256,7 @@ def _session(agent: Agent, ui: Terminal, factory: ProviderFactory, follow_up: bo
             if not request:
                 continue
             try:
-                agent.secrets = (factory.resolve_key(),)
+                agent.secrets = factory.secrets()
             except ConfigError as exc:
                 ui.error(str(exc))
                 continue
@@ -238,26 +273,45 @@ def _ai(args: list[str], ui: Terminal, ident: Identity, settings: Settings,
         keys: KeyStore) -> int:
     action = args[0] if args else "status"
     if action == "configure":
-        prefer_keychain = "--file" not in args
-        key = getpass.getpass("API key (hidden; Enter keeps the current key): ").strip()
-        if key:
-            where = keys.store(key, prefer_keychain=prefer_keychain)
-            ui.info(f"key stored in {where}")
-        model = input(f"model [{settings.model}]: ").strip()
+        settings = load_settings(ident)  # environment overrides are not saved
+        provider = input(f"provider {'/'.join(PROVIDERS)} [{settings.provider}]: ").strip()
+        if provider:
+            settings.set_provider(provider)
+        if settings.provider == "ollama":
+            url = input(f"Ollama URL [{settings.ollama_url}]: ").strip()
+            if url:
+                settings.ollama_url = check_ollama_url(url)
+            pulled = _ollama_models(settings.ollama_url)
+            if pulled:
+                ui.info("pulled models: " + ", ".join(pulled))
+        else:
+            prefer_keychain = "--file" not in args
+            key = getpass.getpass("API key (hidden; Enter keeps the current key): ").strip()
+            if key:
+                where = keys.store(key, prefer_keychain=prefer_keychain)
+                ui.info(f"key stored in {where}")
+        model = input(f"model [{settings.active_model}]: ").strip()
         if model:
-            settings.model = model
-        effort = input(f"effort {'/'.join(EFFORTS)} [{settings.effort}]: ").strip()
-        if effort:
-            if effort not in EFFORTS:
-                raise ConfigError(f"effort must be one of {', '.join(EFFORTS)}")
-            settings.effort = effort
+            settings.set_model(model)
+        if settings.provider == "anthropic":
+            effort = input(f"effort {'/'.join(EFFORTS)} [{settings.effort}]: ").strip()
+            if effort:
+                if effort not in EFFORTS:
+                    raise ConfigError(f"effort must be one of {', '.join(EFFORTS)}")
+                settings.effort = effort
         ui.info(f"settings saved to {save_settings(ident, settings)}")
         return 0
     if action == "status":
-        key, source = keys.resolve()
-        print(f"provider:  Anthropic ({API_URL})")
-        print(f"model:     {settings.model} (effort {settings.effort})")
-        print(f"key:       {mask(key) + ' from ' + source if key else 'not configured'}")
+        if settings.provider == "ollama":
+            print(f"provider:  Ollama ({settings.ollama_url})")
+            print(f"model:     {settings.ollama_model or 'not configured'}")
+            print(f"data:      {disclosure(settings)}")
+            print("key:       not needed")
+        else:
+            key, source = keys.resolve()
+            print(f"provider:  Anthropic ({API_URL})")
+            print(f"model:     {settings.model} (effort {settings.effort})")
+            print(f"key:       {mask(key) + ' from ' + source if key else 'not configured'}")
         print(f"user:      {ident.name}" + (f" (key and settings of {ident.owner_name})"
                                               if ident.via_sudo else ""))
         print(f"settings:  {os.path.join(ident.config_dir(), 'config.json')}")
@@ -269,6 +323,19 @@ def _ai(args: list[str], ui: Terminal, ident: Identity, settings: Settings,
         ui.info("removed key from " + ", ".join(removed) if removed else "no stored key found")
         return 0
     raise ConfigError(f"unknown ai command {action!r}; use configure, status, or clear-key")
+
+
+def _ollama_models(url: str) -> list[str]:
+    """Names of the models a local Ollama has, for `ush ai configure`; empty if unreachable."""
+    import json
+    import urllib.request
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+    try:
+        with opener.open(f"{url}/api/tags", timeout=2) as response:
+            models = json.load(response).get("models", [])
+        return [m["name"] for m in models if isinstance(m, dict) and isinstance(m.get("name"), str)]
+    except (OSError, ValueError, AttributeError, TypeError):
+        return []
 
 
 def _history(args: list[str], history: History) -> int:

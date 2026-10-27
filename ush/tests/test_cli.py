@@ -93,6 +93,44 @@ class CliTest(TempDirTest):
 
 
     @unittest.skipUnless(HAVE_SDK, "anthropic SDK not installed")
+    def test_local_ollama_needs_no_key_and_says_data_stays_here(self):
+        replies = [([{"type": "text", "text": "Plenty of space."}], "end_turn")]
+        with MockAPI(replies, tags=[{"name": "qwen3:8b"}]) as api:
+            env = {"USH_PROVIDER": "ollama", "USH_MODEL": "qwen3:8b", "USH_OLLAMA_URL": api.url}
+            result = self.ush("//is my disk full?", env=env)
+            status = self.ush("ai", "status", env=env)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("Plenty of space.", result.stdout)
+        self.assertIn("stay on this machine", result.stderr)
+        self.assertNotIn("Anthropic", result.stderr)
+        self.assertEqual(api.requests[0]["body"]["model"], "qwen3:8b")
+        self.assertIn("key:       not needed", status.stdout)
+        self.assertIn("ush · qwen3:8b", self.ush("history").stdout + result.stderr)
+
+    @unittest.skipUnless(HAVE_SDK, "anthropic SDK not installed")
+    def test_ollama_cloud_model_is_disclosed(self):
+        replies = [([{"type": "text", "text": "ok"}], "end_turn")]
+        tags = [{"name": "gemma4:31b-cloud", "remote_host": "https://ollama.com:443"}]
+        with MockAPI(replies, tags=tags) as api:
+            result = self.ush("//x", env={"USH_PROVIDER": "ollama", "USH_MODEL": "gemma4:31b-cloud",
+                                          "USH_OLLAMA_URL": api.url})
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("go to https://ollama.com:443 via Ollama", result.stderr)
+        self.assertNotIn("stay on this machine", result.stderr)
+
+    def test_ollama_misconfiguration_fails_before_any_request(self):
+        with MockAPI([]) as api:
+            no_model = self.ush("//x", env={"USH_PROVIDER": "ollama", "USH_OLLAMA_URL": api.url})
+            remote = self.ush("//x", env={"USH_PROVIDER": "ollama", "USH_MODEL": "qwen3:8b",
+                                          "USH_OLLAMA_URL": "http://203.0.113.7:11434"})
+            unknown = self.ush("//x", env={"USH_PROVIDER": "openai"})
+        self.assertEqual(api.requests, [])
+        self.assertEqual((no_model.returncode, remote.returncode, unknown.returncode), (2, 2, 2))
+        self.assertIn("no Ollama model", no_model.stderr)
+        self.assertIn("not on this machine", remote.stderr)
+        self.assertIn("provider must be one of", unknown.stderr)
+
+    @unittest.skipUnless(HAVE_SDK, "anthropic SDK not installed")
     def test_terminal_approval_and_follow_up(self):
         import pty
         import select

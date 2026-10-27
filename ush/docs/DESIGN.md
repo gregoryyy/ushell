@@ -35,7 +35,8 @@ zsh ── ush.plugin.zsh ── quotes `ush //…`, `sudo ush //…`, `// …` 
      │   ├─ execute.py ── bounded execution: zsh -f -o pipefail, timeouts, process groups, scrubbed env
      │   ├─ redact.py ─── secret redaction for provider input and history
      │   └─ ui.py ─────── terminal status/approval (via /dev/tty when stdin is a pipe)
-     ├─ provider.py ── Anthropic SDK adapter (streaming, eager tool input, fallbacks)
+     ├─ provider.py ── Anthropic SDK adapter (streaming, eager tool input, fallbacks);
+     │                 Ollama through the same SDK and its Anthropic-compatible API
      ├─ config.py ──── identity under sudo, settings, key storage (keychain / 0600 file)
      └─ history.py ─── append-only JSONL history for `history` and `replay`
 ```
@@ -108,6 +109,16 @@ holding a file named `-delete` becomes `find -delete`, and `$VAR` may hold an op
   tool calls, ush shows progress updates (`display: "updates"`), and refusals fall
   back server-side (`fallbacks: "default"`). Both features are sent only to models
   that support them.
+- **Local models through Ollama's Anthropic-compatible API** (TODO 2.8) rather than
+  a second adapter for Ollama's native or OpenAI-style API. A probe on 2026-10-27
+  (Ollama 0.40.7) showed that `/v1/messages` accepts ush's request, strict tools
+  included, and returns `tool_use` blocks, so the agent loop and SDK stay the same.
+  The Ollama adapter sends only model, limits, system prompt, tools, and messages. Its
+  endpoint must be a loopback address, and its HTTP client ignores proxy variables and
+  redirects, so "stays on this machine" is true by construction. Cloud models are
+  detected through `remote_host` in `/api/tags` and disclosed. Settings select the
+  provider; `USH_PROVIDER`, `USH_MODEL`, and `USH_OLLAMA_URL` override them except as
+  root. ush never reads `.env` files itself; `just ush` passes `.env` for development.
 - **Name:** `wsh` (Wave Terminal's CLI) and `zish` (an active Zig shell) were taken.
   `ush`, "the you shell", collides only with small, unrelated npm/PyPI packages.
 

@@ -6,8 +6,9 @@ import unittest
 from unittest import mock
 
 from helpers import SYNTHETIC_KEY, TempDirTest, fake_identity
-from ush.config import (ConfigError, Identity, KeyStore, Settings, identity, load_settings,
-                        mask, read_private, save_settings)
+from ush.config import (ConfigError, Identity, KeyStore, Settings, apply_environment,
+                        check_ollama_url, identity, load_settings, mask, read_private,
+                        save_settings)
 
 
 class FakeSecurity:
@@ -150,3 +151,56 @@ class SettingsTest(TempDirTest):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class OllamaSettingsTest(TempDirTest):
+    def test_ollama_urls_must_be_on_this_machine(self):
+        for url, expected in (("http://127.0.0.1:11434", "http://127.0.0.1:11434"),
+                              ("http://localhost:11434/", "http://localhost:11434"),
+                              ("http://[::1]:11434", "http://[::1]:11434"),
+                              ("https://127.0.0.2:8443", "https://127.0.0.2:8443")):
+            self.assertEqual(check_ollama_url(url), expected)
+        for url in ("http://192.168.1.5:11434", "http://ollama.example.com:11434",
+                    "http://127.0.0.1.evil.example", "http://localhost.evil.example",
+                    "http://user:pw@127.0.0.1:11434", "http://127.0.0.1:11434/v1",
+                    "http://127.0.0.1:11434/?next=http://evil.example", "http://127.0.0.1:99999",
+                    "file:///tmp/ollama.sock", "ftp://127.0.0.1", "127.0.0.1:11434", ""):
+            with self.subTest(url=url), self.assertRaises(ConfigError):
+                check_ollama_url(url)
+
+    def test_settings_round_trip_and_a_remote_url_in_the_file_is_refused(self):
+        s = Settings(provider="ollama", ollama_model="qwen3:8b")
+        again = Settings.from_dict(s.to_dict())
+        self.assertEqual((again.provider, again.ollama_model, again.active_model),
+                         ("ollama", "qwen3:8b", "qwen3:8b"))
+        self.assertEqual(Settings.from_dict({"provider": "openai"}).provider, "anthropic")
+        self.assertEqual(Settings.from_dict({"ollama_model": "bad name!"}).ollama_model, "")
+        with self.assertRaises(ConfigError):
+            Settings.from_dict({"ollama_url": "http://10.0.0.8:11434"})
+
+    def test_model_names_are_checked_per_provider(self):
+        s = Settings()
+        s.set_model("claude-sonnet-5-5")
+        with self.assertRaises(ConfigError):
+            s.set_model("hf.co/org/Model:Q4")
+        s.set_provider("ollama")
+        s.set_model("hf.co/org/Model:Q4")
+        self.assertEqual((s.model, s.ollama_model), ("claude-sonnet-5-5", "hf.co/org/Model:Q4"))
+        with self.assertRaises(ConfigError):
+            s.set_model("x; rm -rf /")
+        with self.assertRaises(ConfigError):
+            s.set_provider("openai")
+
+    def test_environment_overrides_apply_to_users_but_not_to_root(self):
+        env = {"USH_PROVIDER": "ollama", "USH_MODEL": "llama3.2:3b",
+               "USH_OLLAMA_URL": "http://localhost:11500"}
+        user = Settings()
+        apply_environment(user, fake_identity(self.tmp), env)
+        self.assertEqual((user.provider, user.ollama_model, user.ollama_url, user.model),
+                         ("ollama", "llama3.2:3b", "http://localhost:11500", "claude-opus-5-5"))
+        root = Settings()
+        apply_environment(root, fake_identity(self.tmp, uid=0), env)
+        self.assertEqual(root, Settings())
+        with self.assertRaises(ConfigError):
+            apply_environment(Settings(), fake_identity(self.tmp),
+                              {"USH_PROVIDER": "ollama", "USH_OLLAMA_URL": "http://evil.example"})

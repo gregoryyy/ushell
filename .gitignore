@@ -13,3 +13,8 @@ __pycache__/
 .ci/
 .ruff_cache/
 .pytest_cache/
+
+# Local settings and keys (.env.template documents them).
+.env
+.env.*
+!.env.template

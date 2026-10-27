@@ -46,6 +46,7 @@ just                      # list recipes
 just ush-test             # ush unit, integration, and zsh tests
 just links                # check relative links in all Markdown files
 just ci                   # the CI workflow, locally, on a clean checkout of HEAD
+just ush '//…'            # ush from source with the settings in .env (.env.template)
 ```
 
 CI ([ci.yml](.github/workflows/ci.yml)) runs the link check, the ush suite on

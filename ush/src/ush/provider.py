@@ -1,11 +1,15 @@
-"""Anthropic provider adapter. The rest of ush sees only `Turn` and `ProviderError`."""
+"""Provider adapters: Anthropic, and a local Ollama through the same Messages API.
+The rest of ush sees only `Turn` and `ProviderError`."""
 
 from __future__ import annotations
 
+import json
+import urllib.request
 from dataclasses import dataclass, field
-from typing import Callable, Optional, Protocol
+from typing import Any, Callable, Optional, Protocol
 
 API_URL = "https://api.anthropic.com"
+OLLAMA_KEY = "ollama"  # Ollama ignores the key; the SDK requires one
 MAX_TOKENS = 64000
 # Models that accept server-side refusal fallbacks and between-tool progress notes.
 FALLBACK_MODELS = {"claude-opus-5-5", "claude-opus-5", "claude-sonnet-5-5", "claude-fable-5-1",
@@ -39,7 +43,7 @@ class AnthropicProvider:
     name = "Anthropic"
 
     def __init__(self, api_key: Optional[str], model: str, effort: str,
-                 base_url: Optional[str] = None, max_retries: int = 2):
+                 base_url: Optional[str] = None, max_retries: int = 2, trust_env: bool = True):
         import anthropic  # imported lazily: commands without AI do not need the SDK
 
         self._anthropic = anthropic
@@ -48,6 +52,14 @@ class AnthropicProvider:
             kwargs["api_key"] = api_key
         if base_url:
             kwargs["base_url"] = base_url
+        if not trust_env:
+            # No proxies from the environment and no redirects. The SDK's default client adds
+            # environment proxies even with trust_env=False, so use its HTTP library directly.
+            import httpx2
+
+            kwargs["http_client"] = httpx2.Client(
+                trust_env=False, follow_redirects=False, timeout=anthropic.DEFAULT_TIMEOUT,
+                limits=anthropic.DEFAULT_CONNECTION_LIMITS)
         self.client = anthropic.Anthropic(**kwargs)
         self.model = model
         self.effort = effort
@@ -95,20 +107,8 @@ class AnthropicProvider:
                 # Tool input the SDK could not parse at all (eager streaming); there is
                 # no tool_use id to answer, so re-issue the turn. API errors propagate.
                 continue
-            except anthropic.AuthenticationError:
-                raise ProviderError("the API key was rejected; run `ush ai configure`") from None
-            except anthropic.PermissionDeniedError as exc:
-                raise ProviderError(f"the API key may not use {self.model}: {exc.message}") from None
-            except anthropic.NotFoundError:
-                raise ProviderError(f"unknown model {self.model!r}; run `ush ai configure`") from None
-            except anthropic.RateLimitError:
-                raise ProviderError("rate limited by the provider; try again shortly") from None
-            except anthropic.BadRequestError as exc:
-                raise ProviderError(f"the provider rejected the request: {exc.message}") from None
-            except anthropic.APIStatusError as exc:
-                raise ProviderError(f"provider error {exc.status_code}: {exc.message}") from None
-            except anthropic.APIConnectionError:
-                raise ProviderError("cannot reach the provider; check the network") from None
+            except anthropic.APIError as exc:
+                raise self._error(exc) from None
         if message is None:
             raise ProviderError("the model produced unreadable tool input three times")
         content = [b.to_dict() for b in message.content]
@@ -117,6 +117,82 @@ class AnthropicProvider:
             refusal = message.stop_details.explanation or message.stop_details.category or ""
         usage = message.usage.to_dict() if message.usage else {}
         return Turn(content, message.stop_reason or "", refusal, usage)
+
+    def _error(self, exc: Any) -> ProviderError:
+        a = self._anthropic
+        if isinstance(exc, a.AuthenticationError):
+            return ProviderError("the API key was rejected; run `ush ai configure`")
+        if isinstance(exc, a.PermissionDeniedError):
+            return ProviderError(f"the API key may not use {self.model}: {exc.message}")
+        if isinstance(exc, a.NotFoundError):
+            return ProviderError(f"unknown model {self.model!r}; run `ush ai configure`")
+        if isinstance(exc, a.RateLimitError):
+            return ProviderError("rate limited by the provider; try again shortly")
+        if isinstance(exc, a.BadRequestError):
+            return ProviderError(f"the provider rejected the request: {exc.message}")
+        if isinstance(exc, a.APIStatusError):
+            return ProviderError(f"provider error {exc.status_code}: {exc.message}")
+        if isinstance(exc, a.APIConnectionError):
+            return ProviderError("cannot reach the provider; check the network")
+        return ProviderError(f"provider error: {exc}")
+
+
+class OllamaProvider(AnthropicProvider):
+    """A local Ollama through its Anthropic-compatible Messages API (`/v1/messages`).
+
+    Ollama needs no key and has none of Anthropic's server features, so requests carry only
+    the model, limits, system prompt, tools, and messages. Proxy variables and redirects are
+    not followed: the endpoint is on this machine (config.check_ollama_url) and requests must
+    stay there.
+    """
+
+    name = "Ollama"
+
+    def __init__(self, model: str, base_url: str, max_retries: int = 2):
+        super().__init__(OLLAMA_KEY, model, "", base_url=base_url, max_retries=max_retries,
+                         trust_env=False)
+        self.base_url = base_url
+
+    def _params(self, system: str, tools: list[dict], messages: list[dict]) -> dict:
+        return {"model": self.model, "max_tokens": MAX_TOKENS, "system": system, "tools": tools,
+                "messages": messages}
+
+    def _error(self, exc: Any) -> ProviderError:
+        a = self._anthropic
+        if isinstance(exc, a.NotFoundError):
+            return ProviderError(f"Ollama has no model {self.model!r}; run `ollama pull "
+                                 f"{self.model}` or choose one from `ollama list`")
+        if isinstance(exc, a.APIConnectionError):
+            return ProviderError(f"cannot reach Ollama at {self.base_url}; start it with "
+                                 "`ollama serve`")
+        if isinstance(exc, a.AuthenticationError):
+            return ProviderError(f"Ollama refused {self.model!r}; cloud models need `ollama signin`")
+        if isinstance(exc, a.APIStatusError):
+            body = exc.body if isinstance(exc.body, dict) else {}
+            error = body.get("error") if isinstance(body.get("error"), dict) else {}
+            return ProviderError(f"Ollama error {exc.status_code}: "
+                                 f"{error.get('message') or exc.message}")
+        return super()._error(exc)
+
+
+def ollama_remote_host(base_url: str, model: str, timeout: float = 2.0) -> Optional[str]:
+    """Where Ollama sends requests for `model`: its cloud host, or None for a local model.
+
+    Ollama lists cloud models with a `remote_host`. A `cloud` tag counts as remote even if the
+    list says otherwise or Ollama can't be asked, so ush never claims a cloud model is local.
+    """
+    name, _, tag = model.partition(":")
+    guess = "https://ollama.com" if "cloud" in tag or name.endswith("-cloud") else None
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+    try:
+        with opener.open(f"{base_url}/api/tags", timeout=timeout) as response:
+            models = json.load(response).get("models", [])
+    except (OSError, ValueError, AttributeError):
+        return guess
+    for entry in models if isinstance(models, list) else []:
+        if isinstance(entry, dict) and entry.get("name") in (model, f"{model}:latest"):
+            return entry.get("remote_host") or guess
+    return guess
 
 
 def echo_content(content: list[dict]) -> list[dict]:

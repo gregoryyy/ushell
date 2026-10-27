@@ -81,3 +81,61 @@ Status (2026-10-26): committed as `de2a5b4` (`feat(ush): add ush 0.1, the local 
 shell for zsh`) on `feature/split-wish-ush` and opened as
 [PR #1](https://github.com/gregoryyy/ushell/pull/1). Before committing, `just ush-test` was rerun
 on this revision: 63 tests OK. The PR's CI run is the first one (TODO 2.3). Not merged.
+
+## 2026-10-27 — 2.8 Local models through Ollama; security test plan
+
+Branch: `feature/ush-2.8-ollama`, stacked on `feature/local-ci` (PR #2, open).
+
+Question from the user: can ush run on a local Ollama? A probe with ush's own provider
+class against Ollama 0.40.7 (`/v1/messages`, Anthropic-compatible) returned a correct
+`run_command` tool call from `llama3.2:3b`. Pointing `USH_BASE_URL` at Ollama already
+worked end to end, but the banner said "go to Anthropic", a dummy key was needed, and
+it couldn't work under sudo. This milestone makes it a supported provider.
+
+Implemented:
+
+- `config.py`: `provider` (`anthropic`/`ollama`), `ollama_url`, `ollama_model`;
+  `set_provider`/`set_model` validate per provider (the configure prompt didn't
+  validate model names before); `check_ollama_url` accepts only http(s) to a loopback
+  address without credentials, path, query, or fragment; `apply_environment` applies
+  `USH_PROVIDER`/`USH_MODEL`/`USH_OLLAMA_URL` except as root.
+- `provider.py`: error mapping moved into `_error`; `OllamaProvider` sends only model,
+  limits, system, tools, and messages, uses a placeholder key, and a plain `httpx2`
+  client with `trust_env=False` and no redirects. `ollama_remote_host` reads
+  `remote_host` from `/api/tags`; a `cloud` tag counts as remote regardless.
+- `cli.py`: provider-aware banner (`disclosure`), `ai status`, `ai configure`
+  (provider first; lists pulled models; saves settings without environment overrides);
+  no key needed for Ollama; a missing Ollama model fails before anything runs.
+- `.env.template` (from `../kibitz/.env.example`, reduced to ush's variables), `.env`
+  git-ignored; `.env` created locally with the Anthropic key copied from
+  `../kibitz/.env` (mode 600, not committed). `just ush` runs ush from source with
+  `.env`, reading it as KEY=value lines; shell variables win.
+- Tests (+10, 73 total): URL acceptance/refusal cases, settings round trip and remote
+  URL refusal, per-provider model names, environment vs. root; Ollama request shape
+  with a synthetic Anthropic key and bogus proxy variables in the environment, error
+  mapping (404, 410, 401, connection refused); remote-host detection; CLI end to end
+  without a key, cloud disclosure, misconfiguration before any request.
+- Docs: `docs/SECTEST.md` (new security test plan: levels, eight test classes with
+  status, findings, release gate); SEC (trust boundaries, threats, residual risks),
+  DESIGN decision, README Ollama section; TODO 2.8 done, 2.9–2.11 added.
+
+Validation (macOS 26, arm64):
+
+- `just ush-test`: 73 tests OK (Python 3.11.12).
+- Live, local Ollama 0.40.7: banner "stay on this machine" for `llama3.2:3b`; a missing
+  model reports `ollama pull`; a non-loopback URL exits 2 before any request; with
+  `HTTP_PROXY`/`ALL_PROXY` pointing at a closed port the request still reached Ollama.
+  The cloud-model banner check sent one benign request ("how much free disk space is
+  on /? use df", no command output) through Ollama to ollama.com, which refused it
+  (model retired, 410).
+- `just ush ai status` with and without `USH_PROVIDER=ollama` in the shell.
+
+Learnings:
+
+- The SDK's `DefaultHttpxClient` mounts environment proxies even with
+  `trust_env=False`; the bogus-proxy test caught it.
+- `llama3.2:3b` sometimes answers without running commands or prints tool calls as
+  text; the README recommends a model with reliable tool calling.
+- Writing the test plan found two gaps, recorded as SECTEST F1 (unfiltered terminal
+  output can spoof the approval prompt; TODO 2.9) and F2 (DNS exfiltration through
+  auto-approved `dig`/`host`/`nslookup`; TODO 2.10).
