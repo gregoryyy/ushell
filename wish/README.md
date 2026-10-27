@@ -11,12 +11,13 @@ shell candidate to evaluate. Phase 2 adds tools and remote resources where usefu
 typed pipelines and public resource handles remain deferred.
 
 - [IDEA.md](docs/IDEA.md): product definition and command examples.
-- [PHASES.md](docs/PHASES.md): lean phase 1 and optional phase 2 ideas.
+- [ROAD.md](docs/ROAD.md): lean phase 1 and optional phase 2 ideas.
 - [ARCH.md](docs/ARCH.md): technical architecture.
 - [SEC.md](docs/SEC.md): security profile and browser obstacles.
 - [SOTA.md](docs/SOTA.md): research and comparisons with existing tools.
-- [TODO.md](TODO.md): numbered implementation milestones and acceptance criteria.
-- [DONE.md](DONE.md): implementation notes, validation, deviations, and learnings.
+- [TODO.md](docs/TODO.md): numbered implementation milestones and acceptance criteria.
+- [GAPS.md](docs/GAPS.md): questions for the user and assumptions to check.
+- [DONE.md](docs/DONE.md): progress log, newest first.
 
 The local command-line counterpart, [ush](../ush/README.md), applies the same `//`
 paradigm to a zsh session on the user's own machine.

@@ -1,9 +1,20 @@
-# ush implementation plan
+# TODO
 
-Read with [CLAUDE.md](../CLAUDE.md), [DESIGN.md](docs/DESIGN.md), and
-[SEC.md](docs/SEC.md). IDs are stable ush task numbers, independent of wish's.
-Mark an item complete only after its acceptance checks pass and a DONE entry
-records the implementation, validation, deviations, and learnings.
+Plan for ush, the local `//` shell for zsh: what is built in [ARCH](ARCH.md), checked against
+[SEC](SEC.md) and [SECTEST](SECTEST.md). Phases after the current work are in [ROAD](ROAD.md), open
+questions in [GAPS](GAPS.md), and progress is logged in [DONE](DONE.md). The process is
+[SDLC](../../docs/SDLC.md); the rules in [CLAUDE.md](../../CLAUDE.md) take precedence. IDs are ush's
+own, independent of wish's. Status: 2026-10-27 14:52.
+
+Status: `[ ]` open, `[x]` done. Tags:
+- *(decision)*: a choice to make and record in DONE before the dependent work starts.
+- *(variant)*: an alternative built next to the main design so the two can be compared.
+- *(skipped)*: set aside by the user, with date; stays open as a record.
+
+An item is done when its acceptance criteria pass, its tests and documents are in the same PR, and
+DONE has an entry for it.
+
+---
 
 ## 1. Version 0.1: the local `//` shell
 
@@ -65,7 +76,7 @@ records the implementation, validation, deviations, and learnings.
 - [ ] 2.10 Close DNS exfiltration through auto-approved `dig`/`host`/`nslookup`
   (SECTEST F2), e.g. approval for names the model chose. Acceptance: negative policy
   tests; SEC residual risk updated.
-- [ ] 2.11 Fill the remaining gaps in [SECTEST.md](docs/SECTEST.md): injection corpus
+- [ ] 2.11 Fill the remaining gaps in [SECTEST.md](SECTEST.md): injection corpus
   and opt-in model-in-the-loop evals (free on a local Ollama model), tokenizer
   differential fuzzing against zsh, a GTFOBins sweep, redaction vectors, redirect,
   `USH_BASE_URL` under root, planted symlinks, binary output, and oversized stdin.
@@ -73,5 +84,5 @@ records the implementation, validation, deviations, and learnings.
 
 ## 3. Release
 
-- [ ] 3.1 Release 0.1 gate per [CLAUDE.md](../CLAUDE.md): fresh suite on the exact
+- [ ] 3.1 Release 0.1 gate per [CLAUDE.md](../../CLAUDE.md): fresh suite on the exact
   candidate on each supported OS/Python, dependency audit, release notes, human merge.

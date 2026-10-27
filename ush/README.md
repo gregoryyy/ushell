@@ -165,9 +165,10 @@ just ush-test        # from the repository root; or ush/scripts/test.sh
 The tests use fake providers, a local mock of the Messages API driven through the
 real SDK, temporary directories, and a pseudo-terminal for the zsh plugin and the
 approval prompt. They never call a paid provider. Design notes are in
-[DESIGN.md](docs/DESIGN.md), the security model in [SEC.md](docs/SEC.md), the security
-test plan in [SECTEST.md](docs/SECTEST.md), and the plan in [TODO.md](TODO.md) and
-[DONE.md](DONE.md).
+[ARCH.md](docs/ARCH.md), the security model in [SEC.md](docs/SEC.md), the security
+test plan in [SECTEST.md](docs/SECTEST.md), the plan in [TODO.md](docs/TODO.md) and
+[ROAD.md](docs/ROAD.md), open questions in [GAPS.md](docs/GAPS.md), and the progress log in
+[DONE.md](docs/DONE.md).
 
 From the repository root, `just ush '//…'` runs ush from the source tree with the
 variables in `.env` (see [.env.template](../.env.template)); variables already set in

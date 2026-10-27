@@ -1,9 +1,45 @@
-# ush implementation notes
+# DONE
 
-Append a dated entry for every completed TODO milestone, using its ush `x.x` ID.
-Record what actually exists, exact validation, deviations, learnings, and branch,
-commit, and PR status. Do not rewrite earlier entries; append corrections and
-merge/release outcomes as new entries. All work follows [CLAUDE.md](../CLAUDE.md).
+Progress log for [TODO](TODO.md), newest first. Each entry starts with the date and time of day
+(local time) and a title, then the TODO items and the PR, then the agent that did the work as
+`Agent: <model>, reasoning: <level>, subagents: <none or which>.` (or `Agent: human`), then:
+- **Implementation notes:** what was built and where, with the exact validation and its results.
+- **Deviations:** what differs from the plan, and why.
+- **Insights:** what we learned that matters for later work.
+
+Entries are never rewritten; corrections and later outcomes (merges, releases) are new entries on
+top. The format is defined in [SDLC](../../docs/SDLC.md#done-entries).
+
+---
+
+## 2026-10-27 14:52 — Documents moved to the shared regime
+
+TODO items: none of ush's; the change is wish TODO 0.8 ([wish DONE](../../wish/docs/DONE.md)).
+PR: [#4](https://github.com/gregoryyy/ushell/pull/4).
+
+Agent: Opus 5.5, reasoning: not exposed, subagents: none.
+
+### Implementation notes
+
+- `ush/TODO.md` and `ush/DONE.md` moved to `ush/docs/`, `docs/DESIGN.md` renamed to
+  [ARCH.md](ARCH.md), and [ROAD.md](ROAD.md) and [GAPS.md](GAPS.md) added, following
+  [SDLC](../../docs/SDLC.md). TODO IDs and their status are unchanged.
+- This log is now newest first. The entries below the marker use the earlier, oldest-first format
+  and are kept as they were, except for one path-only link fix in the 1.1–1.9 entry (its links to
+  `README.md`, `docs/DESIGN.md` and `docs/SEC.md` point to the moved files).
+
+### Deviations
+
+None.
+
+### Insights
+
+- The earlier entries' acceptance and validation details carry over to the new format unchanged:
+  the new format names the same content (validation, deviations, learnings) under fixed headings.
+
+---
+
+## Earlier entries (oldest first, earlier format)
 
 ## 2026-10-26 — 1.1–1.9 ush 0.1: the local `//` shell for zsh
 
@@ -30,7 +66,7 @@ Implemented:
   provider), provider (real SDK against `tests/mock_api.py`), CLI end-to-end
   without a terminal and in a pty, and the zsh plugin in a pty with fake
   `ush`/`sudo`.
-- Docs: [README.md](README.md), [DESIGN.md](docs/DESIGN.md), [SEC.md](docs/SEC.md),
+- Docs: [README.md](../README.md), [DESIGN.md](ARCH.md), [SEC.md](SEC.md),
   [TODO.md](TODO.md). Repository CI: `.github/workflows/checks.yml` (links; ush on
   Ubuntu/macOS × Python 3.10/3.13; actions pinned by commit SHA).
 

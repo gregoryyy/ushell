@@ -9,7 +9,7 @@ default:
 pdf file:
     @cd {{quote(invocation_directory())}} && {{quote(justfile_directory() + "/tools/pdf.sh")}} "$@"
 
-# Build PDFs under PATHS (default README.md, wish/, and ush/), skipping unchanged documents
+# Build PDFs under PATHS (default README.md, docs/, ush/, and wish/), skipping unchanged documents
 [positional-arguments]
 pdfs *paths:
     @cd {{quote(invocation_directory())}} && {{quote(justfile_directory() + "/tools/pdfs.sh")}} "$@"

@@ -1,13 +1,63 @@
-# wish implementation notes
+# DONE
 
-Append a dated entry for every implemented TODO milestone using the same `x.x`
-identifier. Record what actually exists, exact validation performed, deviations,
-learnings, and commit/PR status. Do not replace earlier entries or describe proposed
-features as implemented. Append corrections or later outcomes as new entries.
+Progress log for [TODO](TODO.md), newest first. Each entry starts with the date and time of day
+(local time) and a title, then the TODO items and the PR, then the agent that did the work as
+`Agent: <model>, reasoning: <level>, subagents: <none or which>.` (or `Agent: human`), then:
+- **Implementation notes:** what exists and where, with the exact validation and its results.
+- **Deviations:** what differs from the plan, and why.
+- **Insights:** what we learned that matters for later work.
 
-Implementation completion does not imply a PR was merged or a release shipped.
-When a PR is opened, a human merges, or a release is published, append the reference
-and outcome. All future work follows [CLAUDE.md](../CLAUDE.md).
+Entries are never rewritten, and proposed features are never described as implemented.
+Implementation completion doesn't imply a merged PR or a release; corrections and later outcomes
+(PRs, merges, releases) are new entries on top. The format is defined in
+[SDLC](../../docs/SDLC.md#done-entries); all work follows [CLAUDE.md](../../CLAUDE.md).
+
+---
+
+## 2026-10-27 14:55 — Propeller's document regime for ush and wish
+
+TODO items: 0.8. PR: [#4](https://github.com/gregoryyy/ushell/pull/4) (stacked on #3).
+
+Agent: Opus 5.5, reasoning: not exposed, subagents: none.
+
+### Implementation notes
+
+- **Process:** [docs/SDLC.md](../../docs/SDLC.md) at the repository root, adapted from
+  `../propeller/docs/SDLC.md`: lifecycle, the document set per project, work items and tags, GAPS
+  rules, the DONE entry format, branches and `Refs:` trailers, CI, definition of done, TODO mode,
+  decisions, releases. [CLAUDE.md](../../CLAUDE.md) points to it and keeps precedence (human merges,
+  security, release gate); its TODO/DONE section now describes newest-first entries and GAPS.
+- **Moves (`git mv`, IDs and status unchanged):** `wish/TODO.md` and `wish/DONE.md` to
+  `wish/docs/`, `wish/docs/PHASES.md` to [ROAD.md](ROAD.md); `ush/TODO.md` and `ush/DONE.md` to
+  `ush/docs/`, `ush/docs/DESIGN.md` to [ARCH.md](../../ush/docs/ARCH.md).
+- **New:** [GAPS](GAPS.md) for wish (Q1 start, Q2 browsers, Q3 providers, Q4 licence; A1–A3) and
+  for ush ([GAPS](../../ush/docs/GAPS.md): Q1 licence and Q2 distribution, both blocking the 0.1
+  release, Q3 platforms; A1–A4); [ush ROAD](../../ush/docs/ROAD.md) with four phases and gates; a
+  phase table with gates on top of wish's ROAD; `.github/pull_request_template.md` with the
+  definition of done.
+- **TODO and DONE headers** in the new form: status legend and tags, newest-first logs. The earlier
+  entries stay below an "Earlier entries" marker, unchanged except for path-only link fixes after
+  the move (ush DONE's 1.1–1.9 entry).
+- **Root README:** ush first, with its quick start and document map, then wish, then how the work is
+  organised. `just pdfs` without paths now also builds `docs/`.
+- **Validation:** `python3 tools/check-links.py`: no broken links. `just ci` and `just pdfs`: see
+  the PR.
+
+### Deviations
+
+- Propeller keeps one TODO for one project; here each project keeps its own documents, and the
+  shared process sits in the root `docs/`, as propeller's BOOT allows for subprojects.
+- Propeller merges PRs once CI passes; here a human reviews and merges every PR, as before.
+- Repository-wide process work stays in wish's milestone 0, where 0.2, 0.4, 0.6 and 0.7 already are.
+
+### Insights
+
+- The old DONE preambles asked for "append-only"; newest first keeps that guarantee (no entry is
+  rewritten) while putting the current state where readers look first.
+
+---
+
+## Earlier entries (oldest first, earlier format)
 
 ## 2026-10-13 — 0.1 Design and initial research
 

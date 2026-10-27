@@ -1,19 +1,24 @@
-# wish implementation plan
+# TODO
 
-Read this plan before implementation, alongside [CLAUDE.md](../CLAUDE.md),
-[PHASES.md](docs/PHASES.md), [IDEA.md](docs/IDEA.md), [ARCH.md](docs/ARCH.md),
-[SEC.md](docs/SEC.md), and [SOTA.md](docs/SOTA.md). Implement the next requested,
-ready milestone. A planning task does not authorize executing the entire backlog.
+Plan for wish, the browser workspace shell: the product is in [IDEA](IDEA.md), the architecture in
+[ARCH](ARCH.md), the security profile in [SEC](SEC.md), and the research in [SOTA](SOTA.md).
+[ROAD](ROAD.md) defines the lean phase 1 and the conditional phase 2 that the milestones below
+implement; open questions are in [GAPS](GAPS.md), and progress is logged in [DONE](DONE.md). The
+process is [SDLC](../../docs/SDLC.md); the rules in [CLAUDE.md](../../CLAUDE.md) take precedence.
+Implement the next requested, ready milestone; a planning task does not authorize executing the
+entire backlog. Status: 2026-10-27 14:52.
 
-Milestones have stable `x.x` IDs and `[ ]` / `[x]` checkboxes. The IDs are task
-numbers, not phase numbers. Mark an item complete only after its acceptance checks
-pass and its implementation, validation, deviations, and learnings are appended to
-[DONE.md](DONE.md). Record PR merge and release outcomes separately.
+Status: `[ ]` open, `[x]` done. Tags:
+- *(decision)*: a choice to make and record in DONE before the dependent work starts.
+- *(variant)*: an alternative built next to the main design so the two can be compared.
+- *(skipped)*: set aside by the user, with date; stays open as a record.
 
-Every feature includes automated behavioral and relevant failure/security tests;
-bug fixes include regression tests. Documentation gets syntax/link and applicable
-rendering checks. All work is on feature branches, merges use GitHub PRs, and AI
-never merges. Security tests run against every release candidate.
+IDs are stable task numbers, not phase numbers, and independent of ush's. An item is done when its
+acceptance checks pass, with behavioural and relevant failure/security tests, and DONE has an entry
+for it. Repository-wide tooling and process work is tracked in milestone 0. Security tests run
+against every release candidate.
+
+---
 
 ## 0. Completed planning and tooling
 
@@ -38,6 +43,11 @@ never merges. Security tests run against every release candidate.
   lakeshore's design (`just ci`, `--post` commit statuses). Acceptance: the workflow
   maps completely or fails before running; matrix entries run per platform; tests
   for the mapping; a full run passes on a commit; a failing step fails the run.
+- [x] 0.8 Move both projects to propeller's document regime: shared process in
+  [SDLC](../../docs/SDLC.md); TODO, DONE, ARCH, ROAD, SEC, and GAPS in each project's
+  `docs/`; DONE newest first with the agent line; GAPS for the user's questions; a PR
+  template with the definition of done; root README with ush first. Acceptance: IDs and
+  status unchanged, earlier DONE entries kept, links and PDFs build.
 
 ## Phase 1: a lean browser workspace
 
@@ -127,7 +137,7 @@ byte/text pipes, and JSON/CSV. Evaluate just-bash before writing shell machinery
   recovery, AI/manual equivalence, and replay. Acceptance: failure, conflict,
   cancellation, denial, and secret-handling cases accompany the success path;
   record browser compatibility, startup, responsiveness, and memory observations.
-- [ ] 9.2 Implement the recurring release security gate in [CLAUDE.md](../CLAUDE.md).
+- [ ] 9.2 Implement the recurring release security gate in [CLAUDE.md](../../CLAUDE.md).
   Acceptance: run hostile-output/runtime, file-access/bridge, AI disclosure, egress,
   and applicable server tests against every exact release candidate; include secret
   and dependency scans. Earlier passing releases never waive the gate.

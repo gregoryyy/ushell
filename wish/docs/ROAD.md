@@ -1,8 +1,16 @@
-# wish: phase 1 and phase 2
+# Roadmap
 
-Decision: 2026-10-14. Status: implementation plan; neither runtime phase is
-implemented. [TODO.md](../TODO.md) tracks the work, [DONE.md](../DONE.md) records
-completed work, and [ARCH.md](ARCH.md) defines the current architecture.
+Where wish goes, phase by phase. Each phase ends with a gate: a tested result that decides whether
+the next work starts. The milestones that implement a phase are in [TODO](TODO.md), completed work
+in [DONE](DONE.md), the architecture in [ARCH](ARCH.md), and open questions in [GAPS](GAPS.md).
+Decision: 2026-10-14 (this document was `PHASES.md` until 2026-10-27). Status: implementation plan;
+neither runtime phase is implemented.
+
+| Phase | Goal | TODO | Gate to the next phase |
+| --- | --- | --- | --- |
+| 1. Lean browser workspace | One local workflow: CSV import, shell transformation, Python notebook and plot, save and reload, the same with `//` and replay | Groups 1–4, 6, 9.1–9.4 | The acceptance below passes, and the release gate in [CLAUDE.md](../../CLAUDE.md) on the candidate |
+| 2. Selected extensions | Extensions with a demonstrated workload, one at a time | Groups 5, 7, selected 8, 9.5 | Per extension: the evidence in the phase 2 table, plus its behavioural and security tests |
+| Not scheduled | Typed pipelines, public resource handles, transparent local/remote placement | 8.5 evaluates them | An acceptance example that files, JSON, names and explicit commands can't express |
 
 Start with a useful browser shell built around files. Add broader integrations
 after the first workflow works. Types and object IDs remain normal implementation
@@ -118,5 +126,5 @@ Phase 1 uses TODO groups 1–4 and 6, then the local acceptance/release checks i
 9. Phase 2 uses groups 5, 7, and selected items in group 8, with additional acceptance
 in 9.5. Milestone numbers are stable task IDs, not phase numbers.
 
-All implementation happens on feature branches, includes tests, and appends DONE
+All implementation happens on feature branches, includes tests, and adds DONE
 entries. Merges happen through human-reviewed GitHub PRs; AI never merges.

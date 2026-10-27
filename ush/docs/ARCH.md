@@ -1,6 +1,6 @@
-# ush design
+# ush architecture
 
-Status: implemented as version 0.1.0 on 2026-10-26; see [DONE.md](../DONE.md).
+Status: implemented as version 0.1.0 on 2026-10-26; see [DONE.md](DONE.md).
 Security model: [SEC.md](SEC.md). Shared paradigm: [wish IDEA.md](../../wish/docs/IDEA.md).
 
 ## Relationship to wish
@@ -124,7 +124,7 @@ holding a file named `-delete` becomes `find -delete`, and `$VAR` may hold an op
 
 ## Future work
 
-See [TODO.md](../TODO.md). The main candidates:
+See [TODO.md](TODO.md). The main candidates:
 
 - An OS sandbox for auto-approved commands (macOS `sandbox-exec` profiles, Linux
   namespaces/Landlock), so that "read-only" is enforced rather than inferred.

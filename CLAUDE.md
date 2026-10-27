@@ -1,25 +1,28 @@
-# wish and ush development process
+# ush and wish development process
 
 These instructions apply to human and AI contributors throughout this repository.
-It holds two projects that share the `//` command paradigm:
+It holds projects that share the `//` command paradigm:
 
+- **ush** ([ush/](ush/)), the local command-line shell extension for zsh. It runs
+  real commands on the user's machine, possibly as root.
 - **wish** ([wish/](wish/)), the browser workspace shell. It is still a design
   project; commands described in `wish/docs/` are proposed behavior until
   implemented and tested.
-- **ush** ([ush/](ush/)), the local command-line shell extension for zsh. It runs
-  real commands on the user's machine, possibly as root.
 
-Each project has its own TODO and DONE files with independent `x.x` IDs. Refer to
-milestones as "wish 2.1" or "ush 1.3" where the project is not obvious.
+The workflow, the document set (TODO, DONE, ARCH, ROAD, SEC, GAPS in each project's
+`docs/`), and the DONE entry format are defined in [docs/SDLC.md](docs/SDLC.md). The
+rules below take precedence over it. Each project has independent `x.x` IDs; refer
+to them as "ush TODO 1.3" or "wish GAPS Q2" where the project is not obvious.
 
 ## Start each task
 
-1. Read the project's TODO and DONE files and the relevant design documents.
-   wish: [TODO.md](wish/TODO.md), [DONE.md](wish/DONE.md), [IDEA.md](wish/docs/IDEA.md),
-   [ARCH.md](wish/docs/ARCH.md), [SEC.md](wish/docs/SEC.md), and
-   [SOTA.md](wish/docs/SOTA.md); [PHASES.md](wish/docs/PHASES.md) defines the active
-   phase 1 scope and conditional phase 2 extensions. ush: [TODO.md](ush/TODO.md),
-   [DONE.md](ush/DONE.md), [DESIGN.md](ush/docs/DESIGN.md), and [SEC.md](ush/docs/SEC.md).
+1. Read the project's TODO, DONE, GAPS, and the relevant design documents.
+   ush: [TODO](ush/docs/TODO.md), [DONE](ush/docs/DONE.md), [GAPS](ush/docs/GAPS.md),
+   [ARCH](ush/docs/ARCH.md), [SEC](ush/docs/SEC.md), [SECTEST](ush/docs/SECTEST.md),
+   and [ROAD](ush/docs/ROAD.md). wish: [TODO](wish/docs/TODO.md),
+   [DONE](wish/docs/DONE.md), [GAPS](wish/docs/GAPS.md), [IDEA](wish/docs/IDEA.md),
+   [ARCH](wish/docs/ARCH.md), [SEC](wish/docs/SEC.md), and [SOTA](wish/docs/SOTA.md);
+   [ROAD](wish/docs/ROAD.md) defines the active phase 1 scope and conditional phase 2.
 2. Check the branch, working-tree changes, and applicable repository instructions.
    Preserve unrelated work. If on `main`, create/switch to a feature branch before
    editing; carry existing changes only when their ownership and scope are clear.
@@ -32,7 +35,7 @@ milestones as "wish 2.1" or "ush 1.3" where the project is not obvious.
 ## Branches, commits, and GitHub PRs
 
 - All work happens on feature branches, including documentation, tests, and fixes.
-  Use descriptive names such as `feature/2.1-shell-parser` or `fix/job-cancellation`.
+  Name them `feat/…`, `fix/…`, `chore/…`, or `docs/…`, e.g. `feat/ush-2.9-escapes`.
 - No feature commits on `main`; never push changes directly to `main`.
 - Merge changes only through a GitHub PR with passing required checks and human
   review. Configure protected-branch checks/review requirements when repository
@@ -40,8 +43,9 @@ milestones as "wish 2.1" or "ush 1.3" where the project is not obvious.
 - **AI never merges.** AI must not merge PRs, run local Git merges, enable auto-merge,
   approve its own changes, or bypass required review/checks. A human performs the
   GitHub merge. AI may prepare code, tests, commits, and PRs within the requested scope.
-- Keep commits focused and reviewable. Stage explicit files; inspect the staged
-  diff and check for secrets/generated artifacts before committing.
+- Keep commits focused and reviewable, with a `Refs:` trailer naming the TODO items
+  or GAPS entries they serve. Stage explicit files; inspect the staged diff and check
+  for secrets/generated artifacts before committing.
 - Do not rewrite shared history, force-push, delete others' branches, reset unrelated
   work, or run destructive operations without explicit authorization.
 - CI is [.github/workflows/ci.yml](.github/workflows/ci.yml). While GitHub Actions
@@ -62,12 +66,14 @@ milestones as "wish 2.1" or "ush 1.3" where the project is not obvious.
 - Keep an item unchecked while acceptance criteria, tests, or necessary
   documentation remain incomplete. Do not mark a feature complete for scaffolding
   alone, or because only its happy path works.
-- For each completed milestone, append a dated DONE entry containing the ID,
-  actual changes, validation commands/results, deviations, learnings, and branch,
-  commit, and PR references when available.
-- DONE is append-only. Append corrections, follow-up findings, and merge/release
-  outcomes; do not rewrite earlier history to make it match a later implementation.
-- Update TODO and append DONE in the same feature branch/PR as the implementation.
+- For each completed item, add a DONE entry on top (newest first, format in
+  [SDLC](docs/SDLC.md#done-entries)): time from `date`, TODO items, PR, `Agent:` line,
+  implementation notes with exact validation commands/results, deviations, insights.
+- Never rewrite earlier DONE entries. Add corrections, follow-up findings, and
+  merge/release outcomes as new entries on top.
+- Questions only the user can answer go into the project's GAPS with a proposal;
+  never act on a blocking question's proposed answer without the user's reply.
+- Update TODO, DONE, and GAPS in the same feature branch/PR as the implementation.
   Implementation completion is distinct from human merge and release approval.
 
 ## Implementation and tests

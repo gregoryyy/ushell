@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # Adapted from ../orgfab.ai/tools/pdfs.sh. Explicit paths use the calling directory;
-# without paths, build README.md, wish/, and ush/ from the repository root.
+# without paths, build README.md, docs/, ush/, and wish/ from the repository root.
 set -euo pipefail
 
 here="$(cd "$(dirname "$0")" && pwd)"
 paths=("$@")
 if [ "${#paths[@]}" -eq 0 ]; then
     cd "$(dirname "$here")"
-    paths=(README.md wish ush)
+    paths=(README.md docs ush wish)
 fi
 command -v git >/dev/null || { echo "ERROR: git is required" >&2; exit 1; }
 filelist="$(mktemp)"

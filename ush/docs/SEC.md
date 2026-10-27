@@ -1,7 +1,7 @@
 # ush security model
 
 Status: applies to ush 0.1.0 (2026-10-26) and the local Ollama provider (TODO 2.8,
-2026-10-27). Design: [DESIGN.md](DESIGN.md). Security tests and open findings:
+2026-10-27). Design: [ARCH.md](ARCH.md). Security tests and open findings:
 [SECTEST.md](SECTEST.md).
 
 ush lets an AI model run commands on the user's machine, possibly as root.
