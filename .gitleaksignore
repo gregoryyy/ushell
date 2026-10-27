@@ -1,0 +1,5 @@
+# Synthetic tokens in the redaction tests (ush/tests/test_redact.py), not real credentials.
+# Add a fingerprint here only after checking the finding is a test fixture.
+de2a5b48d54ed5640d8c2a339a9cdfb8216f91b2:ush/tests/test_redact.py:gitlab-pat:18
+de2a5b48d54ed5640d8c2a339a9cdfb8216f91b2:ush/tests/test_redact.py:jwt:19
+de2a5b48d54ed5640d8c2a339a9cdfb8216f91b2:ush/tests/test_redact.py:aws-access-token:14

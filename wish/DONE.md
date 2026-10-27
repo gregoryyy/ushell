@@ -195,3 +195,54 @@ Status (2026-10-26): committed as `03b2d10` (`docs: split repository into wish a
 ush projects`) on `feature/split-wish-ush` and opened as
 [PR #1](https://github.com/gregoryyy/ushell/pull/1) against the remote default
 branch `feature/wish-planning-process`, since the remote has no `main`. Not merged.
+
+## 2026-10-26 — 0.7 Local CI
+
+Branch: `feature/local-ci`, based on `feature/wish-planning-process` after PR #1 was
+merged. Implementation commit `36c31f0`.
+
+GitHub refused to start the Actions jobs of PR #1 ("recent account payments have
+failed or your spending limit needs to be increased"). At the user's request, CI now
+runs locally, following `../lakeshore/utils/ci/` and its `docs/ci/README.md`.
+
+Implemented:
+
+- `.github/workflows/checks.yml` renamed to `ci.yml` and restructured so the local
+  runner can read it: the zsh install is an unconditional, guarded step instead of
+  `if: runner.os == 'Linux'`; new `tools` job (ruff, format, pyright and pytest for
+  `tools/ci/`, pinned as in lakeshore) and `secrets` job (gitleaks action v3.0.0).
+- `tools/ci/workflow.py` (pure): maps the workflow to local steps and rejects anything
+  it can't run. Unlike lakeshore's, it expands `strategy.matrix` (lists only), fills
+  `${{ matrix.KEY }}` in names, `runs-on` and `with`, and runs only this platform's
+  entries when the matrix chooses the runner. No service containers or ports.
+- `tools/ci/run.py`: clean worktree per commit, `bash -eo pipefail` steps, reduced
+  environment, failing `claude`/`codex`/`sudo` shims, `setup-python` mapped to an
+  installed interpreter found by `uv python find` (the real executable, not a pyenv
+  shim), one run at a time, `--post` for `local / <job>` commit statuses, logs and
+  `summary.md` in `.ci/`.
+- `just ci`; `.ci/`, `.ruff_cache/`, `.pytest_cache/` ignored; `.gitleaksignore` with
+  the fingerprints of the three synthetic tokens in `ush/tests/test_redact.py` that
+  gitleaks 8.30.1 flagged (gitlab-pat, jwt, aws-access-token); checked to be fixtures.
+- Docs: `tools/ci/README.md`; root README checks and layout; CLAUDE.md PR rule (push,
+  `just ci --post`, PR line); ush TODO 2.3 now names `ci.yml`.
+
+Validation (macOS 26, arm64):
+
+- `tools/ci`: `uvx ruff@0.17.2 check .` and `format --check .` clean; pyright 1.1.414:
+  0 errors; pytest: 20 passed.
+- `just ci` on `36c31f0`: links, ush (macos-latest, 3.10) with Python 3.10.18,
+  ush (macos-latest, 3.13) with Python 3.13.7 (63 tests OK each), tools and secrets
+  passed; both ubuntu-latest entries listed as not run here; `just pdfs` then built.
+- A probe workflow on a throwaway detached commit: `ANTHROPIC_API_KEY` set in the
+  caller's shell was absent from the step; `sudo` failed via the shim; a failing step
+  failed the job, skipped the next step, still ran an `always()` step; the runner
+  exited 1. `just ci --job nope` names the valid jobs and fails.
+- `python3 tools/check-links.py`: no broken links.
+
+Deviations: the Linux matrix entries of `ush` aren't checked locally on a Mac; they
+run when Actions returns or when `just ci` runs on Linux. Local statuses are
+self-reported by the developer's machine.
+
+Status (2026-10-26): `just ci --post` passed on `8bba1af`; opened as
+[PR #2](https://github.com/gregoryyy/ushell/pull/2) against `feature/wish-planning-process`.
+Not merged.

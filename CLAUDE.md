@@ -44,6 +44,11 @@ milestones as "wish 2.1" or "ush 1.3" where the project is not obvious.
   diff and check for secrets/generated artifacts before committing.
 - Do not rewrite shared history, force-push, delete others' branches, reset unrelated
   work, or run destructive operations without explicit authorization.
+- CI is [.github/workflows/ci.yml](.github/workflows/ci.yml). While GitHub Actions
+  doesn't start jobs, run it locally ([tools/ci/README.md](tools/ci/README.md)): push,
+  run `just ci --post` on the pushed head commit, then open or update the PR. Repeat
+  after every push. The PR states which commit local CI ran on and that its macOS-only
+  run leaves the Linux matrix entries unchecked.
 - PR descriptions state the problem, resulting behavior, TODO IDs, tests/results,
   deviations, security implications, and remaining limitations. Do not claim a test
   passed if it was skipped, unavailable, or run against a different revision.

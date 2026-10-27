@@ -1,0 +1,10 @@
+# Rules for the local CI's own code (adapted from ../lakeshore/utils/ci/ruff.toml).
+line-length = 100
+target-version = "py313"
+
+[lint]
+select = ["E", "F", "B", "I", "UP", "S", "ASYNC"]
+
+[lint.per-file-ignores]
+"run.py" = ["S603", "S607"]  # running the workflow's commands, git, uv, gh is its job
+"test_*.py" = ["S101"]  # asserts
