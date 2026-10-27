@@ -4,7 +4,7 @@ Plan for ush, the local `//` shell for zsh: what is built in [ARCH](ARCH.md), ch
 [SEC](SEC.md) and [SECTEST](SECTEST.md). Phases after the current work are in [ROAD](ROAD.md), open
 questions in [GAPS](GAPS.md), and progress is logged in [DONE](DONE.md). The process is
 [SDLC](../../docs/SDLC.md); the rules in [CLAUDE.md](../../CLAUDE.md) take precedence. IDs are ush's
-own, independent of wish's. Status: 2026-10-27 14:52.
+own, independent of ushgo's and wish's. Status: 2026-10-27 14:52.
 
 Status: `[ ]` open, `[x]` done. Tags:
 - *(decision)*: a choice to make and record in DONE before the dependent work starts.

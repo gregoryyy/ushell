@@ -1,8 +1,8 @@
 # Development process
 
 How work moves from an idea to merged, documented, tested code in this repository. It applies to
-people and coding agents alike, and to every project in it: [ush](../ush/README.md) and
-[wish](../wish/README.md). [CLAUDE.md](../CLAUDE.md) holds the
+people and coding agents alike, and to every project in it: [ush](../ush/README.md),
+[ushgo](../ushgo/README.md) and [wish](../wish/README.md). [CLAUDE.md](../CLAUDE.md) holds the
 rules that override everything else (human merges, security, release gate); this document describes
 the documents and the workflow. The regime follows `../propeller/docs/SDLC.md`. Status:
 2026-10-27 14:52.

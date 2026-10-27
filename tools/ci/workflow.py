@@ -16,7 +16,7 @@ from typing import Any, Literal
 import yaml
 
 Condition = Literal["success", "failure", "always"]
-Kind = Literal["shell", "checkout", "setup-uv", "setup-python", "secrets"]
+Kind = Literal["shell", "checkout", "setup-uv", "setup-python", "setup-go", "secrets"]
 
 # Allowed keys. `permissions`, `concurrency` and `runs-on` concern GitHub's runners and token only;
 # a matrix of runners decides which entries run locally (`runs_here`).
@@ -54,6 +54,8 @@ class LocalStep:
     env: dict[str, str] = field(default_factory=dict[str, str])
     # setup-uv and setup-python: the Python version the workflow asks for.
     python: str | None = None
+    # setup-go: the Go version the workflow asks for.
+    go: str | None = None
 
 
 @dataclass(frozen=True)
@@ -185,6 +187,9 @@ def _step(raw: Any, where: str, workdir: str, values: dict[str, str]) -> LocalSt
         # A Python of that version found by uv, first on PATH as python and python3.
         case "actions/setup-python":
             return LocalStep(label, "setup-python", when, python=with_.get("python-version"))
+        # The machine's Go, if its version is the one the workflow asks for.
+        case "actions/setup-go":
+            return LocalStep(label, "setup-go", when, go=with_.get("go-version"))
         # The gitleaks binary over the history up to the commit.
         case "gitleaks/gitleaks-action":
             return LocalStep(label, "secrets", when)
@@ -251,3 +256,10 @@ def runs_here(job: Job, system: str) -> bool:
     if family not in PLATFORMS:
         raise WorkflowError(f"jobs.{job.id}: unknown runner {job.runs_on!r}")
     return PLATFORMS[family] == system
+
+
+def go_matches(wanted: str | None, goversion: str) -> bool:
+    """Whether an installed Go (`go env GOVERSION`, e.g. `go1.27.3`) satisfies a setup-go
+    `go-version` given as an exact version or a prefix (`1.27`). No version asks for any Go."""
+    installed = goversion.removeprefix("go")
+    return not wanted or installed == wanted or installed.startswith(wanted + ".")

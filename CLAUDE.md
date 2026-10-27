@@ -5,6 +5,8 @@ It holds projects that share the `//` command paradigm:
 
 - **ush** ([ush/](ush/)), the local command-line shell extension for zsh. It runs
   real commands on the user's machine, possibly as root.
+- **ushgo** ([ushgo/](ushgo/)), the Go port of ush. ush stays the reference until
+  ushgo passes ush's black-box tests.
 - **wish** ([wish/](wish/)), the browser workspace shell. It is still a design
   project; commands described in `wish/docs/` are proposed behavior until
   implemented and tested.
@@ -23,6 +25,8 @@ to them as "ush TODO 1.3" or "wish GAPS Q2" where the project is not obvious.
    [DONE](wish/docs/DONE.md), [GAPS](wish/docs/GAPS.md), [IDEA](wish/docs/IDEA.md),
    [ARCH](wish/docs/ARCH.md), [SEC](wish/docs/SEC.md), and [SOTA](wish/docs/SOTA.md);
    [ROAD](wish/docs/ROAD.md) defines the active phase 1 scope and conditional phase 2.
+   ushgo: [TODO](ushgo/docs/TODO.md), [GAPS](ushgo/docs/GAPS.md),
+   [ARCH](ushgo/docs/ARCH.md), [SEC](ushgo/docs/SEC.md), and ush's documents above.
 2. Check the branch, working-tree changes, and applicable repository instructions.
    Preserve unrelated work. If on `main`, create/switch to a feature branch before
    editing; carry existing changes only when their ownership and scope are clear.

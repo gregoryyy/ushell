@@ -9,7 +9,7 @@ default:
 pdf file:
     @cd {{quote(invocation_directory())}} && {{quote(justfile_directory() + "/tools/pdf.sh")}} "$@"
 
-# Build PDFs under PATHS (default README.md, docs/, ush/, and wish/), skipping unchanged documents
+# Build PDFs under PATHS (default README.md, docs/, ush/, ushgo/, and wish/), skipping unchanged documents
 [positional-arguments]
 pdfs *paths:
     @cd {{quote(invocation_directory())}} && {{quote(justfile_directory() + "/tools/pdfs.sh")}} "$@"
@@ -17,6 +17,10 @@ pdfs *paths:
 # Run the ush test suite (unit, mock-provider integration, and zsh plugin tests)
 ush-test:
     @cd ush && ./scripts/test.sh
+
+# Format-check, vet and test ushgo (Go 1.27: brew install go)
+ushgo-test:
+    @ushgo/scripts/test.sh
 
 # Check relative links and images in all Markdown files
 links:

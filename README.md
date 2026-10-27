@@ -7,6 +7,7 @@ checked, and executed. Both use the user's own AI API key, or a local model.
 | Project | Where it runs | Status |
 | --- | --- | --- |
 | [ush](ush/README.md) | zsh on the user's machine, optionally under `sudo` | Version 0.1 implemented; not yet released |
+| [ushgo](ushgo/README.md) | The same as ush, as one static Go binary | Port set up; answers no requests yet |
 | [wish](wish/README.md) | Browser workspace: files, notebooks, live tools | Design documents; not implemented |
 
 ## ush
@@ -26,6 +27,10 @@ Read-only commands run immediately; anything else is shown for approval first. S
 provider. Its plan and records are in [ush/docs/](ush/docs/): [TODO](ush/docs/TODO.md),
 [ROAD](ush/docs/ROAD.md), [ARCH](ush/docs/ARCH.md), [SEC](ush/docs/SEC.md),
 [GAPS](ush/docs/GAPS.md), and [DONE](ush/docs/DONE.md).
+
+[ushgo](ushgo/README.md) ports ush to Go, module by module, for a single static binary without an
+interpreter for root to trust and without the two-second start. ush stays the reference until ushgo
+passes ush's black-box tests ([ushgo TODO](ushgo/docs/TODO.md)).
 
 ## wish
 
@@ -48,6 +53,7 @@ needs tests, and every release needs fresh security checks.
 CLAUDE.md                 rules for contributors and agents: human merges, tests, security, releases
 docs/SDLC.md              the development process shared by all projects
 ush/                      zsh tool: README, docs/, src/, tests/, shell/
+ushgo/                    Go port of ush: README, docs/, cmd/, scripts/
 wish/                     browser workspace: README, docs/
 tools/                    PDF build scripts, the Markdown link checker, local CI (ci/)
 .github/                  CI workflow (ci.yml), PR template
@@ -58,6 +64,7 @@ tools/                    PDF build scripts, the Markdown link checker, local CI
 ```sh
 just                      # list recipes
 just ush-test             # ush unit, integration, and zsh tests
+just ushgo-test           # ushgo: gofmt, go vet, go test
 just links                # check relative links in all Markdown files
 just ci                   # the CI workflow, locally, on a clean checkout of HEAD
 just ush '//…'            # ush from source with the settings in .env (.env.template)
@@ -79,7 +86,7 @@ Set `CHROME_BIN` to select a different browser executable.
 
 ```sh
 just pdf wish/docs/IDEA.md  # write wish/docs/IDEA.md.pdf
-just pdfs                 # build README.md and all Markdown documents in docs/, ush/, and wish/
+just pdfs                 # build README.md and all Markdown documents in docs/, ush/, ushgo/, and wish/
 just pdfs wish/docs       # build only wish/docs/
 just pdfs 'path with spaces'
 ```
