@@ -6,7 +6,7 @@ import getpass
 import os
 import sys
 import time
-from typing import Optional
+from typing import Callable, Optional
 
 from . import __version__, execute
 from .agent import Agent, Options
@@ -43,7 +43,7 @@ options:
   -v, --verbose      show complete command output
   -m, --model MODEL  model for this run (default from `ush ai configure`)
   -e, --effort LEVEL low, medium, high, xhigh, or max
-  -k, --checker P:M  checker model for this run, e.g. ollama:qwen3:4b, or off
+  -k, --checker MODEL checker for this run: claude-haiku-5-5, qwen3.5:4b, or off
 
 In a session or follow-up, `// TEXT` asks, any other line runs as a command, and
 an empty line (follow-up) or `exit` ends it. Commands that ush cannot verify as
@@ -310,18 +310,29 @@ def _session(agent: Agent, ui: Terminal, factory: ProviderFactory, follow_up: bo
 # Subcommands
 
 
+def _ask(ui: Terminal, prompt: str, apply: Callable[[str], None]) -> None:
+    """Ask until the answer is empty (keep the current value) or `apply` accepts it."""
+    while True:
+        answer = input(prompt).strip()
+        if not answer:
+            return
+        try:
+            apply(answer)
+            return
+        except ConfigError as exc:
+            ui.error(str(exc))
+
+
 def _ai(args: list[str], ui: Terminal, ident: Identity, settings: Settings,
         keys: KeyStore) -> int:
     action = args[0] if args else "status"
     if action == "configure":
         settings = load_settings(ident)  # environment overrides are not saved
-        provider = input(f"provider {'/'.join(PROVIDERS)} [{settings.provider}]: ").strip()
-        if provider:
-            settings.set_provider(provider)
+        _ask(ui, f"provider {'/'.join(PROVIDERS)} [{settings.provider}]: ", settings.set_provider)
         if settings.provider == "ollama":
-            url = input(f"Ollama URL [{settings.ollama_url}]: ").strip()
-            if url:
+            def set_url(url: str) -> None:
                 settings.ollama_url = check_ollama_url(url)
+            _ask(ui, f"Ollama URL [{settings.ollama_url}]: ", set_url)
             pulled = _ollama_models(settings.ollama_url)
             if pulled:
                 ui.info("pulled models: " + ", ".join(pulled))
@@ -331,18 +342,16 @@ def _ai(args: list[str], ui: Terminal, ident: Identity, settings: Settings,
             if key:
                 where = keys.store(key, prefer_keychain=prefer_keychain)
                 ui.info(f"key stored in {where}")
-        model = input(f"model [{settings.active_model}]: ").strip()
-        if model:
-            settings.set_model(model)
+        _ask(ui, f"model [{settings.active_model}]: ", settings.set_model)
         if settings.provider == "anthropic":
-            effort = input(f"effort {'/'.join(EFFORTS)} [{settings.effort}]: ").strip()
-            if effort:
+            def set_effort(effort: str) -> None:
                 if effort not in EFFORTS:
                     raise ConfigError(f"effort must be one of {', '.join(EFFORTS)}")
                 settings.effort = effort
-        checker = input(f"checker provider:model, or off [{settings.checker or 'off'}]: ").strip()
-        if checker:
-            settings.set_checker(checker)
+            _ask(ui, f"effort {'/'.join(EFFORTS)} [{settings.effort}]: ", set_effort)
+        _ask(ui, f"checker model, or off [{settings.checker or 'off'}]: ", settings.set_checker)
+        if settings.checker:
+            ui.info(f"checker: {settings.checker_model} through {settings.checker_provider}")
         ui.info(f"settings saved to {save_settings(ident, settings)}")
         return 0
     if action == "status":

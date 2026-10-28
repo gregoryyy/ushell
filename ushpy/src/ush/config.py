@@ -153,16 +153,20 @@ class Settings:
             self.model = model
 
     def set_checker(self, value: str) -> None:
-        """Set the checker as `provider:model` (`ollama:qwen3:4b`); empty or `off` turns it off."""
+        """Set the checker as `provider:model` (`ollama:qwen3:4b`) or a bare model name, which is
+        Anthropic's if it starts with `claude-` and Ollama's otherwise; empty or `off` turns it
+        off. It is stored as `provider:model`."""
         value = value.strip()
         if value in ("", "off"):
             self.checker = ""
             return
         provider, _, model = value.partition(":")
+        if provider not in PROVIDERS:
+            provider, model = ("anthropic" if value.startswith("claude-") else "ollama"), value
         pattern = OLLAMA_MODEL if provider == "ollama" else ANTHROPIC_MODEL
-        if provider not in PROVIDERS or not pattern.match(model):
-            raise ConfigError(f"checker {value!r} is not provider:model, e.g. ollama:qwen3:4b or "
-                              "anthropic:claude-haiku-5-5")
+        if not pattern.match(model):
+            raise ConfigError(f"checker {value!r} is not a model name, e.g. claude-haiku-5-5, "
+                              "qwen3.5:4b, or provider:model")
         self.checker = f"{provider}:{model}"
 
     def add_rule(self, text: str) -> str:
