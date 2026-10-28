@@ -56,7 +56,9 @@ cd ushgo && go build -o ush ./cmd/ush            # writes ./ush
 ./ush --version                                  # ush 0.0.0-dev (go)
 ```
 
-See [ushgo/README.md](ushgo/README.md) and its plan in [ushgo/docs/](ushgo/docs/):
+The [user guide](ushgo/docs/USER.md) and the [admin guide](ushgo/docs/ADMIN.md) describe the `ush`
+command; ushpy has the same guides ([USER](ushpy/docs/USER.md), [ADMIN](ushpy/docs/ADMIN.md)). See [ushgo/README.md](ushgo/README.md) and its plan in
+[ushgo/docs/](ushgo/docs/):
 [TODO](ushgo/docs/TODO.md), [ROAD](ushgo/docs/ROAD.md), [ARCH](ushgo/docs/ARCH.md),
 [SEC](ushgo/docs/SEC.md), [GAPS](ushgo/docs/GAPS.md), and [DONE](ushgo/docs/DONE.md).
 

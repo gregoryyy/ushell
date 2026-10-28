@@ -38,6 +38,10 @@ install from an archive: `tar -xzf ush-….tar.gz && ush-…/install.sh` (or `su
 
 ## Documents
 
+- [USER](docs/USER.md): the user guide: asking, approving, the allowlist, the checker, what leaves
+  the machine, troubleshooting.
+- [ADMIN](docs/ADMIN.md): the admin guide: install and verify releases, root-owned installs for
+  `sudo`, settings and files, network, upgrade and removal.
 - [ARCH](docs/ARCH.md): how the port maps ush's modules to Go packages, and why Go.
 - [SEC](docs/SEC.md): what changes from [ush's threat model](../ushpy/docs/SEC.md) with a compiled binary.
 - [TODO](docs/TODO.md) and [ROAD](docs/ROAD.md): the port's plan and phases.

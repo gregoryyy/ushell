@@ -108,6 +108,9 @@ DONE has an entry for it.
   shell syntax; not used as root; history and the prompt name the rule. No blacklist mode (ARCH,
   GAPS Q5). Ported by ushgo TODO 1.11. Acceptance: policy, settings, agent and CLI tests,
   including refusals and root; SEC and SECTEST updated.
+- [x] 2.16 User and admin guides for ushpy ([USER](USER.md), [ADMIN](ADMIN.md)), sharing their
+  command sections with ushgo's (ushgo TODO 0.4). Acceptance: `test_docs` fails if a shared
+  section differs between the two, or if an option or subcommand in `ush help` is missing.
 
 ## 3. Release
 

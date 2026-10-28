@@ -9,6 +9,47 @@ defined in [SDLC](../../docs/SDLC.md#done-entries).
 
 ---
 
+## 2026-10-28 10:23 — User and admin guides
+
+TODO items: 0.4; ushpy TODO 2.16. PR: [#12](https://github.com/gregoryyy/ushell/pull/12) (stacked on #11).
+
+Agent: Opus 5.5, reasoning: not exposed, subagents: none.
+
+### Implementation notes
+
+- [USER](USER.md): what ush does, first steps, asking (forms, quoting, piped input), approving
+  (when a command runs unasked, the four answers), the allowlist, the checker, options, other
+  commands, what leaves the machine, sudo, use without a terminal and exit statuses,
+  troubleshooting.
+- [ADMIN](ADMIN.md): requirements per implementation, install from a release archive (checksums,
+  `install.sh`, macOS quarantine), from source (deterministic build), Python, root-owned installs
+  for `sudo`; configuration (files, every setting with default and range, environment variables);
+  behaviour under sudo; network destinations; verifying with `ush ai status` and the smoke test;
+  upgrade, rollback, switching implementation, removal; security notes (F1, F2, `PATH`).
+- Both open with what the Go implementation does today (`--version`, `--help`) and that the rest is
+  the command's behaviour as ushpy implements it and ushgo will. Linked from ushgo's and the root
+  README.
+- The same guides for ushpy (ushpy TODO 2.16): the sections about the command are marked
+  `shared:begin`/`shared:end` and identical in `ushpy/docs/` and `ushgo/docs/`, with links that
+  work from both; each copy has its own banner, and ADMIN its own install and upgrade sections.
+  `ushpy/tests/test_docs.py` fails if a shared section differs or an option or subcommand from
+  `ush help` is missing from the user guide.
+- **Validation:** facts checked against `ushpy/src/ush` (options and subcommands in `cli.py`,
+  settings ranges and file checks in `config.py`, exit statuses, `SECRET_ENV_PREFIXES`, the plugin
+  and installer paths); `python3 tools/check-links.py`: no broken links.
+
+### Deviations
+
+- The guides live in `ushgo/docs/` because ushgo is the deliverable, but describe behaviour only the
+  Python implementation has today; they say so at the top rather than describing a stub.
+
+### Insights
+
+- Writing the admin guide surfaced no system-wide configuration: every setting is per user. For
+  managed machines that may become a question (e.g. a fixed provider or a policy-wide allowlist).
+
+---
+
 ## 2026-10-28 10:17 — Deterministic release build
 
 TODO items: 2.1.1 (2.1 stays open for 2.1.2, a second machine, and 2.1.3, macOS distribution). New:

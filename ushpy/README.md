@@ -196,6 +196,13 @@ their environment.
   command can look different in the approval prompt; see
   [SECTEST.md](docs/SECTEST.md) (F1, TODO 2.9).
 
+## Guides
+
+The [user guide](docs/USER.md) covers asking, approving, the allowlist, the checker, and
+troubleshooting; the [admin guide](docs/ADMIN.md) covers installing (also root-owned for `sudo`),
+settings and files, the network, upgrades, and removal. The same guides are in `ushgo/docs/`; the
+sections about the command are identical in both (checked by `test_docs`).
+
 ## Smoke test
 
 To check an installed `ush` (either implementation) on your machine, run

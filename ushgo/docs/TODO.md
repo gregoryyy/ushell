@@ -29,6 +29,10 @@ Each port item is done when the package reproduces the ush module's behaviour, i
   ([SDLC](../../docs/SDLC.md#ush-one-command-two-implementations)). Acceptance: tests for the
   name and version; the user smoke test (`ushpy/scripts/smoke.sh --bin`) runs against the Go binary
   and reports the checks it doesn't pass yet.
+- [x] 0.4 User and admin documentation for the `ush` command as shipped by ushgo:
+  [USER](USER.md) and [ADMIN](ADMIN.md), each saying what the Go implementation does today.
+  Acceptance: every option, subcommand, setting, path, variable and exit status checked against
+  ushpy's code; links pass.
 
 ## 1. Port
 
