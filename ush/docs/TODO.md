@@ -4,7 +4,7 @@ Plan for ush, the local `//` shell for zsh: what is built in [ARCH](ARCH.md), ch
 [SEC](SEC.md) and [SECTEST](SECTEST.md). Phases after the current work are in [ROAD](ROAD.md), open
 questions in [GAPS](GAPS.md), and progress is logged in [DONE](DONE.md). The process is
 [SDLC](../../docs/SDLC.md); the rules in [CLAUDE.md](../../CLAUDE.md) take precedence. IDs are ush's
-own, independent of ushgo's and wish's. Status: 2026-10-27 14:52.
+own, independent of ushgo's and wish's. Status: 2026-10-28 09:59.
 
 Status: `[ ]` open, `[x]` done. Tags:
 - *(decision)*: a choice to make and record in DONE before the dependent work starts.
@@ -48,8 +48,14 @@ DONE has an entry for it.
 
 ## 2. Follow-up work
 
-- [ ] 2.1 Opt-in live smoke test against the real API (`USH_LIVE_TEST=1`, costs
-  money). Acceptance: a human runs it with their key; result recorded in DONE.
+- [ ] 2.1 User smoke test against a real model ([SMOKE](SMOKE.md)).
+  - [x] 2.1.1 `scripts/smoke.sh` for any `ush` (`--bin`; Python or Go): offline checks, model
+    checks without a terminal (read-only request, disclosure, declined change, injected
+    instructions, piped input, dry run, replay), `--paid` for Anthropic, a report; manual checks
+    M1–M10 in SMOKE. Acceptance: tests against the mock API, including a failing implementation
+    and failing requests; a local Ollama run.
+  - [ ] 2.1.2 A human runs it with their Anthropic key (`--paid`) and the manual checks, and records
+    `smoke-report.md` in DONE.
 - [ ] 2.2 Verify macOS keychain access under `sudo` and document the outcome.
   Acceptance: manual run of `sudo ush ai status` with a keychain-stored key.
 - [ ] 2.3 First green run of `.github/workflows/ci.yml` on a PR (Linux and macOS,

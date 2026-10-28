@@ -32,6 +32,8 @@ class CliTest(TempDirTest):
 
     def test_help_and_usage_errors(self):
         self.assertIn("usage:", self.ush("help").stdout)
+        # Both implementations are the command `ush`; --version says which one this is.
+        self.assertRegex(self.ush("--version").stdout, r"^ush \d+\.\d+\.\d+\S* \(python\)\n$")
         result = self.ush("frobnicate")
         self.assertEqual(result.returncode, 2)
         self.assertIn("requests start with //", result.stderr)

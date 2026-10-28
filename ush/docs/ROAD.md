@@ -9,7 +9,7 @@ Status: 2026-10-27 14:52.
 | --- | --- | --- | --- |
 | 1. Release 0.1 | The local `//` shell, safe to hand to others | 1 (done), 2.9–2.11, 3.1 | The release gate in [CLAUDE.md](../../CLAUDE.md) and [SECTEST](SECTEST.md): no open High finding, the suite on macOS and Linux, model-in-the-loop results recorded; licence and distribution decided (GAPS Q1, Q2) |
 | 2. Daily use | Fewer approvals for harmless commands, enforced read-only, long sessions | 2.1–2.6 | A few weeks of daily use without a policy bypass; approvals per request measured and falling |
-| 3. Compiled port | A single static binary with the same behaviour | [ushgo TODO](../../ushgo/docs/TODO.md) | The port passes ush's black-box tests as a conformance suite; then decide which implementation is maintained |
+| 3. Compiled port | The same `ush` as a single static Go binary, the deliverable | [ushgo TODO](../../ushgo/docs/TODO.md) | The Go binary passes ush's black-box tests and the smoke test; releases then ship it |
 | 4. Shared paradigm with wish | One `//` contract and policy semantics for both shells | 2.7 | wish's shell integration (wish TODO 2.1, 6.2) exists |
 
 ## 1. Release 0.1
@@ -27,10 +27,12 @@ API (2.1) and the keychain check under sudo (2.2) are manual steps for the user.
 
 ## 3. Compiled port
 
-A port to Go, [ushgo](../../ushgo/README.md): one static binary, no interpreter or installed
-packages for root to trust, and no two-second SDK start. The Python implementation stays the
-reference until the port passes the same black-box tests. Rust was considered: stronger guarantees for the command parser, but no official
-Anthropic SDK and more effort for the process and terminal work.
+The same `ush` in Go, [ushgo](../../ushgo/README.md): one static binary, no interpreter or
+installed packages for root to trust, and no two-second SDK start. Python is the experimental
+implementation, where features are tried first; Go is the deliverable, and both must behave the same
+(decided 2026-10-28, [SDLC](../../docs/SDLC.md#ush-one-command-two-implementations)). Rust was
+considered: stronger guarantees for the command parser, but no official Anthropic SDK and more
+effort for the process and terminal work.
 
 ## 4. Shared paradigm with wish
 

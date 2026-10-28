@@ -2,7 +2,7 @@
 
 How ush is ported to Go: the package layout, how behaviour is kept equal, and the decisions behind
 it. ush's own architecture, which this port reproduces, is in [ush ARCH](../../ush/docs/ARCH.md).
-Status: 2026-10-27 15:03, project set up; no module ported yet.
+Status: 2026-10-28 09:59, project set up; no module ported yet.
 
 ## Why a port, and why Go
 
@@ -38,10 +38,10 @@ ush. Rust's stronger guarantees matter most for the command parser, and Go's bui
 
 ## Packages
 
-Each ush module becomes one internal package; `cmd/ushgo` is the CLI.
+Each ush module becomes one internal package; `cmd/ush` is the CLI.
 
 ```text
-cmd/ushgo ───────── CLI: //requests, sessions, ai/history/replay subcommands     (cli.py)
+cmd/ush ─────────── CLI: //requests, sessions, ai/history/replay subcommands     (cli.py)
 internal/agent ──── provider turn → tool_use → policy → approval → execute        (agent.py)
 internal/policy ─── zsh-aware tokenizer, command table, validators, secret paths  (policy.py)
 internal/execute ── zsh -f -o pipefail, process groups, timeouts, bounded output   (execute.py)
@@ -52,14 +52,19 @@ internal/config ─── identity under sudo, settings, keychain / 0600 key fil
 internal/history ── append-only JSONL history and replay                           (history.py)
 ```
 
-Only `cmd/ushgo` exists today. The zsh plugin (`ush/shell/ush.plugin.zsh`) is shared; it needs a
-setting for the binary's name once ushgo answers requests (TODO 1.9).
+Only `cmd/ush` exists today. The zsh plugin (`ush/shell/ush.plugin.zsh`) is shared unchanged: both
+implementations are the command `ush`.
 
 ## Decisions
 
-- **2026-10-27: Go, binary `ushgo`, in `ushgo/` of this repository.** The user left the choice
-  between `ushrs` and `ushgo` open (GAPS Q1). The distinct name lets both be installed side by side
-  during the port; whether `ushgo` becomes `ush` is GAPS Q2.
+- **2026-10-27: Go, in `ushgo/` of this repository.** The user left the choice between `ushrs`
+  and `ushgo` open (GAPS Q1).
+- **2026-10-28: the command is `ush`, and Go is the deliverable** (GAPS Q2). Both implementations
+  build the command `ush`; `ush --version` names the implementation (`(go)`, `(python)`). Python is
+  the experimental implementation where features are tried first; Go is what users install; both
+  must behave the same. This replaces the binary name `ushgo` of 2026-10-27, which existed so both
+  could be installed side by side: to compare them, install one and pass the other's path to the
+  tests (`--bin`, conformance).
 - **2026-10-27: Go 1.27, no dependencies until a package needs one.** Each dependency is pinned in
   `go.sum`, with its licence and maturity recorded here when it is added: the Anthropic SDK with
   the provider (TODO 1.6), `golang.org/x/term` with the approval prompt (TODO 1.8).

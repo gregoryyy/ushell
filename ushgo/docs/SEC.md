@@ -26,6 +26,6 @@ effect.
 
 ## Release gate
 
-Every ushgo release runs ush's release gate on the ushgo binary: the conformance suite on each
+Every release of the Go binary runs ush's release gate on it: the conformance suite on each
 supported OS, the adversarial tests in ush SECTEST (levels 1 and 2), `govulncheck`, a secret scan,
 and the policy corpus against both implementations.

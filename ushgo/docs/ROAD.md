@@ -2,13 +2,13 @@
 
 Where the Go port goes. Each phase ends with a gate that decides whether the next one starts; the
 work is in [TODO](TODO.md). The port is phase 3 of [ush's roadmap](../../ush/docs/ROAD.md).
-Status: 2026-10-27 15:03.
+Status: 2026-10-28 09:59.
 
 | Phase | Goal | TODO | Gate to the next phase |
 | --- | --- | --- | --- |
 | 1. Set up | A Go project that builds and tests in CI | 0 (done) | — |
 | 2. Parity | Every ush module ported, the conformance suite passing | 1 | ush's black-box tests and the policy corpus pass against both binaries on macOS and Linux |
-| 3. Release | Static binaries people can install | 2 | The release gate on the binaries; GAPS Q2 answered |
+| 3. Release | Static `ush` binaries people install, instead of the Python one | 2 | The release gate and the smoke test on the binaries |
 
 ## When to start phase 2
 

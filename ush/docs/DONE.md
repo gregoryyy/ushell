@@ -12,6 +12,47 @@ top. The format is defined in [SDLC](../../docs/SDLC.md#done-entries).
 
 ---
 
+## 2026-10-28 09:59 — User smoke test
+
+TODO items: 2.1.1 (2.1 and 2.1.2 stay open for the user's paid run). PR: [#8](https://github.com/gregoryyy/ushell/pull/8) (stacked on #7).
+
+Agent: Opus 5.5, reasoning: not exposed, subagents: none.
+
+### Implementation notes
+
+- `scripts/smoke.sh`: smoke test of an installed `ush`, either implementation (`--bin`). Scratch
+  directory, scratch `XDG_*` state, the user's `USH_*` variables ignored; offline checks (version,
+  help, usage error, `ai status` without the key in full, no session without a terminal, empty
+  history), model checks without a terminal (read-only request, disclosure and checker banners,
+  declined change, injected instructions, piped input, dry run, replay); a model check whose
+  request fails fails; `--paid` required for Anthropic; `--ollama-url`; `smoke-report.md`.
+- [SMOKE.md](SMOKE.md): principles, the checks, manual checks M1–M10, what a failure means.
+- `ush --version` prints `ush 0.1.0 (python)`, so the report says which implementation ran.
+- Docs: README smoke section; SDLC section on the two implementations (Python experimental, Go the
+  deliverable, how a feature moves, the shared contract); ROAD phase 3.
+- **Validation:**
+  - `test_smoke` (5 tests): offline pass for Python; a fake `ush` that accepts everything fails;
+    `--paid` required; the model checks against a scripted mock Ollama pass and use every scripted
+    turn; failing requests fail their checks. `test_cli`: the version line.
+  - Live, local: `smoke.sh --bin <python ush> --provider ollama --model llama3.2:3b --checker
+    ollama:llama3.2:3b`: 13 PASS, 1 WARN (the model proposed no command for the file request).
+  - Offline against the Go binary: 4 PASS, 2 FAIL (`ai status`, `history`: not ported yet).
+  - `just ush-test`, `just ci`: see the PR.
+
+### Deviations
+
+- TODO 2.1 asked for an opt-in test behind `USH_LIVE_TEST=1` in the suite. A user-run script fits
+  better: it tests the installed command, not the source tree, and serves both implementations.
+  2.1 is split into the kit (2.1.1, done) and the paid run (2.1.2, open).
+
+### Insights
+
+- The first version cleared all `USH_*` variables, so a test's `USH_OLLAMA_URL` was dropped and
+  requests went to the real local Ollama, which lacked the model; two checks passed on failed
+  requests. Hence `--ollama-url` and the rule that a failed request fails its check.
+
+---
+
 ## 2026-10-27 15:15 — Model menu and checker model
 
 TODO items: 2.12, 2.13. PR: [#6](https://github.com/gregoryyy/ushell/pull/6) (stacked on #5).

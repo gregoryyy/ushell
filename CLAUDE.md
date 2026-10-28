@@ -3,10 +3,11 @@
 These instructions apply to human and AI contributors throughout this repository.
 It holds projects that share the `//` command paradigm:
 
-- **ush** ([ush/](ush/)), the local command-line shell extension for zsh. It runs
-  real commands on the user's machine, possibly as root.
-- **ushgo** ([ushgo/](ushgo/)), the Go port of ush. ush stays the reference until
-  ushgo passes ush's black-box tests.
+- **ush**, the local command-line shell extension for zsh. It runs real commands on
+  the user's machine, possibly as root. One command, two implementations with
+  equivalent functionality ([SDLC](docs/SDLC.md#ush-one-command-two-implementations)):
+  Python in [ush/](ush/), the experimental one where features are tried first, and
+  Go in [ushgo/](ushgo/), the compiled deliverable.
 - **wish** ([wish/](wish/)), the browser workspace shell. It is still a design
   project; commands described in `wish/docs/` are proposed behavior until
   implemented and tested.

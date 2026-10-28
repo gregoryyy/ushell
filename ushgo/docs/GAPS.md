@@ -3,7 +3,7 @@
 Open questions and explicit assumptions for ushgo. **Questions** are for the user to answer.
 **Assumptions** are what the documents currently take for granted; check them and correct any
 that are wrong. The rules for this file are in [SDLC](../../docs/SDLC.md#work-items). Status:
-2026-10-27 15:03.
+2026-10-28 09:59.
 
 ## Questions
 
@@ -19,13 +19,19 @@ A compiled port of ush, as `ushrs` (Rust) or `ushgo` (Go). The comparison is in
 - **Resolved** (2026-10-27 15:03, agent): Go, as `ushgo/`; [ARCH](ARCH.md#decisions). A different
   answer would mean a new `ushrs/` project; nothing beyond the skeleton depends on the choice yet.
 
-### Q2. Does ushgo replace ush once it reaches parity? — blocking for TODO 2.2
+### Q2. Does ushgo replace ush once it reaches parity?
 
 Two implementations of a security-critical policy double the review work and can drift apart.
 
-- **Proposed:** yes. ushgo takes over the name `ush` and the install, after one release in which
-  both are available and the conformance suite passes for both. The Python implementation then
-  stays only as the conformance reference, or is retired.
+- **Proposed** (2026-10-27, agent): yes. ushgo takes over the name `ush` and the install, after one
+  release in which both are available and the conformance suite passes for both. The Python
+  implementation then stays only as the conformance reference, or is retired.
+- **Answer** (2026-10-28 09:59, Gregor Heinrich): "the command for ushgo is ush as well, it's just
+  another implementation." And: "ush and ushgo should have equivalent functionality. py is the
+  experimental version, go the compiled deliverable."
+- **Resolved** (2026-10-28 09:59, agent): both are maintained; the command is `ush` in both; Python
+  is experimental, Go the deliverable, with equivalent functionality. [ARCH](ARCH.md#decisions),
+  [SDLC](../../docs/SDLC.md#ush-one-command-two-implementations), TODO 0.3 and 2.2.
 
 ## Assumptions
 

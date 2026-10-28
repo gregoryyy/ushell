@@ -149,7 +149,7 @@ def _main(argv: list[str], ui: Terminal) -> int:
         print(USAGE, end="")
         return 0
     if rest and rest[0] == "--version":
-        print(f"ush {__version__}")
+        print(f"ush {__version__} (python)")
         return 0
     ident = identity()
     settings = load_settings(ident)

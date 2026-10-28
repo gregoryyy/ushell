@@ -5,7 +5,7 @@ people and coding agents alike, and to every project in it: [ush](../ush/README.
 [ushgo](../ushgo/README.md) and [wish](../wish/README.md). [CLAUDE.md](../CLAUDE.md) holds the
 rules that override everything else (human merges, security, release gate); this document describes
 the documents and the workflow. The regime follows `../propeller/docs/SDLC.md`. Status:
-2026-10-27 14:52.
+2026-10-28 09:59.
 
 ## The lifecycle
 
@@ -156,6 +156,43 @@ project in TODO order:
 - Decisions that change architecture, security or dependencies: in ARCH or SEC with a dated status
   line, plus the DONE entry.
 - Decisions only the user can make: through GAPS.
+
+## ush: one command, two implementations
+
+`ush` is one command with two implementations that must behave the same (decided 2026-10-28,
+[ushgo GAPS](../ushgo/docs/GAPS.md) Q2):
+
+| | Python, [ush/](../ush/README.md) | Go, [ushgo/](../ushgo/README.md) |
+| --- | --- | --- |
+| Role | Experimental: features are designed and tried here first | The compiled deliverable: what users install |
+| Tests | `just ush-test` (unittest; fake providers, mock API, pty) | `just ushgo-test` (gofmt, vet, `go test`) |
+| `ush --version` | `ush X.Y.Z (python)` | `ush X.Y.Z (go)` |
+
+**How a feature moves:**
+
+1. **Design** in ush's ARCH and SEC, with a ush TODO item.
+2. **Build and test it in Python**, with negative tests for anything that touches the policy,
+   execution, credentials or egress. Behaviour that users see is specified by tests that drive the
+   command from outside (CLI, pty, mock API), because those tests also run against Go.
+3. **In the same PR, add the ushgo TODO item** that ports it, naming the Python tests that define
+   it. A feature is in ush's DONE when Python has it; it reaches users when ushgo has it.
+4. **Port it to Go** in a separate PR, with the Python tests ported or run as conformance tests
+   against the Go binary (ushgo TODO 1.10). A difference in behaviour is a bug in one of the two
+   unless ARCH records it.
+5. **Smoke-test both** as a user, with the same script ([SMOKE](../ush/docs/SMOKE.md)):
+   `ush/scripts/smoke.sh --bin <either ush>`.
+
+**Shared contract:** settings (`~/.config/ush/config.json`), key store, history format, exit
+statuses, environment variables (`USH_*`) and the zsh plugin are the same for both; a change to any
+of them is made in both, or in Python with the ushgo item that follows.
+
+**Security-relevant code first in both:** fixes for findings in [SECTEST](../ush/docs/SECTEST.md)
+go into Python and get their ushgo item in the same PR; the ushgo port of the policy (TODO 1.1)
+starts from the fixed version.
+
+**Releases:** a ush release ships the Go binary once ushgo passes the conformance suite (ushgo
+ROAD); until then, the Python implementation. Either way, the release gate in
+[CLAUDE.md](../CLAUDE.md) and the smoke test run on what ships.
 
 ## Releases
 

@@ -9,6 +9,35 @@ defined in [SDLC](../../docs/SDLC.md#done-entries).
 
 ---
 
+## 2026-10-28 09:59 — The command is `ush`; Go is the deliverable
+
+TODO items: 0.3, 2.2. GAPS Q2 resolved. PR: [#8](https://github.com/gregoryyy/ushell/pull/8) (stacked on #7).
+
+Agent: Opus 5.5, reasoning: not exposed, subagents: none.
+
+### Implementation notes
+
+- `cmd/ushgo` moved to `cmd/ush`; `ush --version` prints `ush 0.0.0-dev (go)`, `help` works as in
+  Python; the usage text says this implementation doesn't answer requests yet.
+- The user's answers (GAPS Q2): the command is `ush` in both implementations; Python is the
+  experimental one, Go the compiled deliverable, with equivalent functionality. Recorded in ARCH
+  (decision, replacing the binary name `ushgo`), ROAD (releases ship the Go binary), README, and
+  the repository's SDLC ("ush: one command, two implementations").
+- **Validation:** `scripts/test.sh`: ok (3 tests, now asserting the `ush` name, the `(go)` version
+  line, and `help`). `../ush/scripts/smoke.sh --bin <go build>`: version, help, usage error and
+  no-session PASS; `ai status` and `history` FAIL, as expected before TODO 1.9.
+
+### Deviations
+
+- None.
+
+### Insights
+
+- One name for both implementations means they can't be installed side by side under it; the
+  tests and the smoke test take the binary's path instead (`--bin`).
+
+---
+
 ## 2026-10-27 15:03 — ushgo set up: documents, Go module, CI
 
 TODO items: 0.1, 0.2. PR: [#5](https://github.com/gregoryyy/ushell/pull/5) (stacked on #4).

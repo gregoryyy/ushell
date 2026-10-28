@@ -183,6 +183,13 @@ their environment.
   command can look different in the approval prompt; see
   [SECTEST.md](docs/SECTEST.md) (F1, TODO 2.9).
 
+## Smoke test
+
+To check an installed `ush` (either implementation) on your machine, run
+`scripts/smoke.sh`: offline first, then `--provider ollama --model …` on a local model. It keeps
+your settings and history out and writes a report. [SMOKE.md](docs/SMOKE.md) has the checks and the
+manual steps that need a terminal, sudo, or the plugin.
+
 ## Development
 
 ```sh

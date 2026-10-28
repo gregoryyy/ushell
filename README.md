@@ -6,8 +6,8 @@ checked, and executed. Both use the user's own AI API key, or a local model.
 
 | Project | Where it runs | Status |
 | --- | --- | --- |
-| [ush](ush/README.md) | zsh on the user's machine, optionally under `sudo` | Version 0.1 implemented; not yet released |
-| [ushgo](ushgo/README.md) | The same as ush, as one static Go binary | Port set up; answers no requests yet |
+| [ush](ush/README.md) | zsh on the user's machine, optionally under `sudo`; Python, the experimental implementation | Version 0.1 implemented; not yet released |
+| [ushgo](ushgo/README.md) | The same `ush` command, compiled in Go: the deliverable | Set up; answers no requests yet |
 | [wish](wish/README.md) | Browser workspace: files, notebooks, live tools | Design documents; not implemented |
 
 ## ush
@@ -28,9 +28,27 @@ provider. Its plan and records are in [ush/docs/](ush/docs/): [TODO](ush/docs/TO
 [ROAD](ush/docs/ROAD.md), [ARCH](ush/docs/ARCH.md), [SEC](ush/docs/SEC.md),
 [GAPS](ush/docs/GAPS.md), and [DONE](ush/docs/DONE.md).
 
-[ushgo](ushgo/README.md) ports ush to Go, module by module, for a single static binary without an
-interpreter for root to trust and without the two-second start. ush stays the reference until ushgo
-passes ush's black-box tests ([ushgo TODO](ushgo/docs/TODO.md)).
+To check an installed `ush`, run the user smoke test ([SMOKE](ush/docs/SMOKE.md)):
+`ush/scripts/smoke.sh` offline, then with `--provider ollama --model …` on a local model.
+
+## ushgo
+
+ushgo is the same `ush` command implemented in Go, and the version users will install: one static
+binary, with no interpreter or installed packages for root to trust under `sudo`, and no two-second
+start while a Python SDK loads. The Python implementation is where features are tried first; ushgo
+then gets each one, so both behave the same, checked by the same black-box tests and the same smoke
+test ([docs/SDLC.md](docs/SDLC.md#ush-one-command-two-implementations)).
+
+```sh
+just ushgo-test                                  # gofmt, go vet, go test (Go 1.27: brew install go)
+cd ushgo && go build -o ush ./cmd/ush            # writes ./ush
+./ush --version                                  # ush 0.0.0-dev (go)
+```
+
+Today it answers `--version` and `--help` only; the port goes module by module, policy first. See
+[ushgo/README.md](ushgo/README.md) and its plan in [ushgo/docs/](ushgo/docs/):
+[TODO](ushgo/docs/TODO.md), [ROAD](ushgo/docs/ROAD.md), [ARCH](ushgo/docs/ARCH.md),
+[SEC](ushgo/docs/SEC.md), [GAPS](ushgo/docs/GAPS.md), and [DONE](ushgo/docs/DONE.md).
 
 ## wish
 
@@ -53,7 +71,7 @@ needs tests, and every release needs fresh security checks.
 CLAUDE.md                 rules for contributors and agents: human merges, tests, security, releases
 docs/SDLC.md              the development process shared by all projects
 ush/                      zsh tool: README, docs/, src/, tests/, shell/
-ushgo/                    Go port of ush: README, docs/, cmd/, scripts/
+ushgo/                    ush in Go, the deliverable: README, docs/, cmd/ush/, scripts/
 wish/                     browser workspace: README, docs/
 tools/                    PDF build scripts, the Markdown link checker, local CI (ci/)
 .github/                  CI workflow (ci.yml), PR template
