@@ -84,11 +84,12 @@ _ush() {
 # its exit status, and, unless ush marked the proposal interactive, its output. The output
 # goes through tee, so while that one command runs its stdout and stderr are a pipe.
 # Not as root: root doesn't get proposals on its command line.
-typeset -g _ush_dir= _ush_state= _ush_mode= _ush_line= _ush_tee= _ush_out= _ush_err=
+typeset -g _ush_dir= _ush_state= _ush_mode= _ush_line= _ush_tee= _ush_out= _ush_err= _ush_esc=
 zmodload -F zsh/zselect b:zselect 2>/dev/null
 
 _ush_precmd() {
   local st=$? content
+  _ush_esc_restore
   if [[ $_ush_state == running ]]; then
     _ush_end_capture
     print -r -- "$st"$'\n'"$_ush_line" >| $_ush_dir/ran
@@ -100,9 +101,11 @@ _ush_precmd() {
   _ush_mode=${content%%$'\n'*}
   print -rz -- "${content#*$'\n'}"
   _ush_state=offered
+  _ush_esc_bind
 }
 
 _ush_preexec() {
+  _ush_esc_restore
   [[ $_ush_state == offered ]] || return 0
   _ush_state=
   # A new request instead of the proposal: nothing of it ran.
@@ -129,7 +132,32 @@ _ush_end_capture() {
   _ush_tee=
 }
 
+# Esc removes the proposal from the command line, to start from scratch; `//` then hears that
+# it didn't run. Esc is bound only while a proposal is on the line, and only in the emacs keymap
+# (in vi mode Esc switches to command mode; Ctrl-U clears the line there). Its own binding comes
+# back as soon as the line is run, cleared, or abandoned.
+_ush_discard() {
+  _ush_state=
+  BUFFER= CURSOR=0
+  _ush_esc_restore
+  zle -M "ush: proposal removed"
+}
+
+_ush_esc_bind() {
+  [[ -z $_ush_esc ]] || return 0
+  _ush_esc=$(bindkey -M emacs -L '^[')
+  bindkey -M emacs '^[' _ush_discard
+}
+
+_ush_esc_restore() {
+  [[ -n $_ush_esc ]] || return 0
+  bindkey -M emacs -r '^['
+  eval "$_ush_esc"
+  _ush_esc=
+}
+
 _ush_exit() {
+  _ush_esc_restore
   _ush_end_capture
   [[ -n $_ush_dir ]] && command rm -rf -- $_ush_dir
 }
@@ -141,4 +169,5 @@ then
   autoload -Uz add-zsh-hook
   add-zsh-hook preexec _ush_preexec
   add-zsh-hook zshexit _ush_exit
+  zle -N _ush_discard
 fi

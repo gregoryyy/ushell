@@ -109,7 +109,7 @@ func TestBuildIsReproducibleAndRuns(t *testing.T) {
 	if output, err := exec.Command("tar", "-xzf", tarball, "-C", out).CombinedOutput(); err != nil {
 		t.Fatalf("tar: %v %s", err, output)
 	}
-	for _, name := range []string{"ush", "install.sh", "README.txt", "ush.plugin.zsh"} {
+	for _, name := range []string{"ush", "install.sh", "README.txt", "ush.plugin.zsh", "zshrc.sh"} {
 		if _, err := os.Stat(filepath.Join(out, host, name)); err != nil {
 			t.Error(err)
 		}
@@ -121,6 +121,7 @@ func TestBuildIsReproducibleAndRuns(t *testing.T) {
 	// The installer puts the binary and the plugin where ushpy's installer does.
 	prefix := t.TempDir()
 	install := exec.Command("sh", filepath.Join(out, host, "install.sh"), "--prefix", prefix)
+	install.Env = append(os.Environ(), "HOME="+t.TempDir(), "ZDOTDIR=") // never the real ~/.zshrc
 	if output, err := install.CombinedOutput(); err != nil {
 		t.Fatalf("install.sh: %v %s", err, output)
 	}

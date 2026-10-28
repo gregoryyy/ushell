@@ -145,6 +145,7 @@ class CliTest(TempDirTest):
         self.assertEqual(first.returncode, 0, first.stderr)
         self.assertIn("→ df -h /", first.stderr)
         self.assertIn("ush ran nothing: copy the command", first.stderr)
+        self.assertIn("add the zsh plugin to ~/.zshrc", first.stderr)
         self.assertEqual(second.returncode, 0, second.stderr)
         self.assertEqual(len(api.requests[1]["body"]["messages"]), 1)  # --new: no old context
 

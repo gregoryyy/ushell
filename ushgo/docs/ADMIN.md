@@ -38,8 +38,10 @@ ush-0.1.0-darwin-arm64/install.sh                 # for you: ~/.local/bin/ush
 ```
 
 `install.sh` copies the binary to `PREFIX/bin/ush` (replacing it atomically) and the zsh plugin to
-`~/.local/share/ush/` (per user) or `PREFIX/lib/ush/` (with `--prefix`), and prints the line for
-`~/.zshrc`. These are the Python installer's places, so the plugin line stays valid when you switch.
+`~/.local/share/ush/` (per user) or `PREFIX/lib/ush/` (with `--prefix`). Run from a terminal, it
+offers to add the plugin line to `~/.zshrc` (`--zshrc` adds it without asking, `--no-zshrc` only
+prints it); it never adds it twice or as root. These are the Python installer's places, so the
+plugin line stays valid when you switch.
 
 **macOS:** the binary is not signed. Archives downloaded with a browser get a quarantine attribute,
 and macOS then refuses to run the binary; download with `curl`, or remove the attribute after

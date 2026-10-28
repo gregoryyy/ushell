@@ -46,8 +46,9 @@ read-only commands itself and asks before anything else ([Agent mode](#agent-mod
      in `~/.config/ush/credentials`, mode 0600, with `ush ai configure --file`).
    - **Ollama on this machine:** no key, and nothing leaves the machine. Pull a model that supports
      tools first, e.g. `ollama pull qwen3.5:9b` on a 16 GB machine.
-3. **Add the zsh plugin** to `~/.zshrc`, so you can type requests without quotes. The installer
-   prints the line, e.g. `source ~/.local/share/ush/ush.plugin.zsh`.
+3. **The zsh plugin** puts proposals on your command line and lets you type requests without
+   quotes. The installer offers to add it to `~/.zshrc`; otherwise add the line it prints, e.g.
+   `source ~/.local/share/ush/ush.plugin.zsh`. Open a new terminal afterwards.
 4. **Check it:** `ush ai status` shows the provider, model, where the key comes from (never the
    key), and the paths ush uses.
 
@@ -76,8 +77,9 @@ objected. With the zsh plugin it then waits on your command line:
 - **Enter** runs it in your shell, as if you had typed it: `cd` and variables persist, and it lands
   in your shell history. ush records the exit status and the output for the next `//`.
 - **Edit** it first; ush sees the command that actually ran.
-- **Ignore** it: clear the line (Ctrl-U) or type something else. A new `// …` tells ush you didn't
-  run it.
+- **Esc** removes it, so you can start from scratch; ush then knows you didn't run it. Esc does
+  this only while a proposal is on the line; otherwise it keeps its usual meaning. (In vi mode,
+  use Ctrl-U.) Typing a new `// …` over it also tells ush you didn't run it.
 
 While a proposed command runs, ush records its output through a pipe, so colours and pagers are off
 for that one command. Commands that need the terminal (`less`, `top`, editors) are proposed as

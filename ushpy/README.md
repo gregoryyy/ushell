@@ -72,7 +72,8 @@ cd ushpy
 ush ai configure                 # key goes to the macOS keychain (or a 0600 file)
 ```
 
-Add the zsh plugin to `~/.zshrc` (the installer prints the exact line):
+The installer offers to add the zsh plugin to `~/.zshrc`, which puts proposals on your
+command line (Esc removes one) and lets requests go unquoted. Or add it yourself:
 
 ```sh
 source ~/.local/share/ush/ush.plugin.zsh

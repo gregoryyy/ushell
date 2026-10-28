@@ -113,8 +113,8 @@ func Build(version string, epoch int64, out string) (string, error) {
 	return sums.String(), os.WriteFile(filepath.Join(out, "SHA256SUMS"), []byte(sums.String()), 0o644)
 }
 
-// sharedFiles are the members every archive has besides the binary. The zsh plugin is ushpy's:
-// one plugin for both implementations of the command.
+// sharedFiles are the members every archive has besides the binary. The zsh plugin and the script
+// that adds it to ~/.zshrc are ushpy's: one plugin for both implementations of the command.
 func sharedFiles(root string) ([]File, error) {
 	var files []File
 	for _, f := range []struct {
@@ -124,6 +124,7 @@ func sharedFiles(root string) ([]File, error) {
 		{"install.sh", "packaging/install.sh", 0o755},
 		{"README.txt", "packaging/README.txt", 0o644},
 		{"ush.plugin.zsh", "../ushpy/shell/ush.plugin.zsh", 0o644},
+		{"zshrc.sh", "../ushpy/shell/zshrc.sh", 0o755},
 	} {
 		data, err := os.ReadFile(filepath.Join(root, f.path))
 		if err != nil {

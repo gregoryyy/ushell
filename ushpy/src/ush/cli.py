@@ -258,10 +258,20 @@ def _propose(agent: Agent, ui: Terminal, ident: Identity, settings: Settings, op
             return 0
         except OSError as exc:
             ui.warn(f"could not put it on your command line: {exc}")
-    hint = " as root" if ident.is_root else ""
-    ui.info(f"ush ran nothing: copy the command to run it{hint} · then `ush //` continues "
-            "(the zsh plugin puts it on your command line)")
+    if ident.is_root:
+        ui.info("ush ran nothing: copy the command to run it as root · then `ush //` continues")
+        return 0
+    ui.info("ush ran nothing: copy the command to run it · then `ush //` continues")
+    plugin = _plugin_path()
+    ui.info("to get it on your command line, add the zsh plugin to ~/.zshrc and open a new "
+            "terminal" + (f":\n  source '{plugin}'" if plugin else " (see `ush help`)"))
     return 0
+
+
+def _plugin_path() -> str:
+    """The installed zsh plugin, next to the venv the installer made (install.sh)."""
+    path = os.path.join(os.path.dirname(sys.prefix), "ush.plugin.zsh")
+    return path if os.path.isfile(path) and "'" not in path else ""
 
 
 def _parse_options(argv: list[str]) -> tuple[Options, dict, list[str]]:

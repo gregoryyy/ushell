@@ -6,13 +6,17 @@
 #
 # The same places as the Python installer (ushpy/install.sh), so the zsh plugin line in ~/.zshrc
 # stays valid when you switch implementations. Use the root-owned install for `sudo ush`.
+# --zshrc adds the zsh plugin to ~/.zshrc without asking, --no-zshrc leaves it alone; by default
+# the installer asks when run from a terminal (zshrc.sh).
 set -eu
 
-prefix="$HOME/.local"
+prefix="$HOME/.local" zshrc=ask
 while [ $# -gt 0 ]; do
     case "$1" in
         --prefix) prefix=${2:?--prefix needs a directory}; shift 2 ;;
-        -h|--help) sed -n '2,8p' "$0"; exit 0 ;;
+        --zshrc) zshrc=yes; shift ;;
+        --no-zshrc) zshrc=no; shift ;;
+        -h|--help) sed -n '2,10p' "$0"; exit 0 ;;
         *) echo "install.sh: unknown option $1" >&2; exit 2 ;;
     esac
 done
@@ -30,5 +34,4 @@ chmod 644 "$lib/ush.plugin.zsh"
 
 echo "installed $prefix/bin/ush ($("$prefix/bin/ush" --version))"
 case ":$PATH:" in *":$prefix/bin:"*) ;; *) echo "add $prefix/bin to PATH" ;; esac
-echo "for unquoted // requests, add to ~/.zshrc:"
-echo "  source '$lib/ush.plugin.zsh'"
+sh "$here/zshrc.sh" "$lib/ush.plugin.zsh" "$zshrc"

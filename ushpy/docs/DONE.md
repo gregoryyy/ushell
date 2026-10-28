@@ -12,6 +12,59 @@ top. The format is defined in [SDLC](../../docs/SDLC.md#done-entries).
 
 ---
 
+## 2026-10-28 19:28 — The plugin on install; Esc removes a proposal
+
+TODO items: 2.18. PR: see below.
+
+Agent: Opus 5.5, reasoning: not exposed, subagents: none.
+
+### Implementation notes
+
+- **The report:** "there's no way to get the proposed command directly on the commandline.
+  pre-fill the commandline with the command, esc to remove it and start from scratch". The cause
+  was that the plugin wasn't in the user's `~/.zshrc`. The installer only printed the line, and
+  without the plugin ush can only print a proposal: a child process can't fill its shell's
+  command line.
+- **`shell/zshrc.sh`, used by both installers:**
+  - It adds `source '…/ush.plugin.zsh'` to `${ZDOTDIR:-$HOME}/.zshrc`.
+  - `ask` (the default) asks only when stdin and stdout are a terminal, with yes as the default
+    answer.
+  - `--zshrc` adds the line without asking; `--no-zshrc` and runs without a terminal only print it.
+  - It never adds the line twice (any `ush.plugin.zsh` line counts) or as root, and refuses a
+    path with a quote.
+  - The Go release archive carries the script.
+- **Esc:**
+  - The binding: the user's follow-up, "esc should only be used within the context of a command
+    proposed after //, everything else stays". So `precmd` binds Esc in the emacs keymap only
+    when it puts a proposal on the line. It saves the old binding as `bindkey -L` prints it,
+    and restores it in `preexec`, in the next `precmd` (a line abandoned with Ctrl-C), and when Esc
+    is used.
+  - What Esc does: it clears the line and the offered state, so `//` hears that nothing ran.
+  - Vi mode is left alone; Ctrl-U clears the line there.
+- **Without the plugin**, ush now prints the exact `source` line for the installed plugin (next to
+  the venv).
+- **Docs:** the guides' shared "First steps" and "Proposals"; both ADMIN install sections; the
+  ushpy README.
+- **Validation:**
+  - `just ush-test`: ushpy OK; ushgo ok, including the release build, which now unpacks
+    `zshrc.sh` and runs `install.sh` with a temporary `HOME`.
+  - New `test_install`, 5 tests: each mode, an existing line, `ZDOTDIR`, a quote, and the
+    question answered in a real terminal with Enter and with `n`.
+  - Two new plugin tests in a real zsh: Esc clears the line and nothing counts as run. A custom
+    Esc binding (`backward-word`) is still there after a proposal ran, was removed with Esc, and
+    was abandoned with Ctrl-C.
+
+### Deviations
+
+- None.
+
+### Insights
+
+- Binding Esc only around a proposal keeps zsh's own handling of Esc as the start of Alt-key and
+  arrow-key sequences everywhere else, and keeps any binding the user made.
+
+---
+
 ## 2026-10-28 19:13 — Propose mode: ush proposes, the user runs
 
 TODO items: 2.17.1 (2.17.2, the manual checks, stays open); ushgo TODO 1.12 ports it. GAPS Q6

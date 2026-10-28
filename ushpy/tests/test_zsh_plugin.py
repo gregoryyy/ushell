@@ -187,6 +187,33 @@ class ZshProposeTest(TempDirTest):
         ])
         self.assertEqual(self.records(out[1]), [None, None])
 
+    def test_esc_removes_the_proposal(self):
+        out = self.session([
+            ("// capture echo one\r", "PROMPT> echo one"),
+            ("\x1b", "proposal removed"),
+            ("echo other\r", "PROMPT> "),
+            ("//\r", "PROMPT> "),
+        ])
+        self.assertNotIn("oneecho", out[2])  # the line was empty before typing
+        self.assertIn("other", out[2])
+        self.assertEqual(self.records(out[3]), [None, None])  # nothing counts as the proposal
+
+    def test_esc_keeps_its_own_binding_outside_a_proposal(self):
+        out = self.session([
+            ("bindkey -M emacs '^[' backward-word\r", "PROMPT> "),
+            ("// capture echo one\r", "PROMPT> echo one"),
+            ("\r", "PROMPT> "),                                   # ran it
+            ("bindkey -M emacs '^['\r", "PROMPT> "),
+            ("// capture echo two\r", "PROMPT> echo two"),
+            ("\x1b", "proposal removed"),                          # removed it
+            ("bindkey -M emacs '^['\r", "PROMPT> "),
+            ("// capture echo three\r", "PROMPT> echo three"),
+            ("\x03", "PROMPT> "),                                 # abandoned it (Ctrl-C)
+            ("bindkey -M emacs '^['\r", "PROMPT> "),
+        ])
+        for i in (3, 6, 9):
+            self.assertIn('"^[" backward-word', out[i])
+
     def test_no_handoff_as_root_or_twice(self):
         with open(PLUGIN) as f:
             source = f.read()
