@@ -133,6 +133,14 @@ DONE has an entry for it.
   Acceptance: CLI test against the mock API (context, redaction, no tools, nothing run or
   touched), the Down key in a real zsh (explains, the proposal stays and runs, Down elsewhere and
   its binding unchanged).
+- [x] 2.20 Explanations above the command, and proposals pre-filled in a session. Down shows the
+  explanation above the proposal as display-only text (zle `PREDISPLAY`), with the cursor still
+  in the command; Esc closes it first, a second Esc removes the proposal, Enter runs it, and the
+  text is gone when the line is accepted. The `ush>` session pre-fills its proposal with zsh's
+  `vared` and the same keys, because Python's readline can't pre-fill with libedit (macOS).
+  Acceptance: the plugin in a real zsh (explanation before the command, edit with it shown, Esc
+  twice, Enter runs the edited command); the session editor in a pty (pre-filled and edited, Esc,
+  Down and Esc).
 
 ## 3. Release
 

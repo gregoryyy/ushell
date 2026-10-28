@@ -73,7 +73,8 @@ In dependency order: the packages that don't depend on others first.
 - [ ] 1.12 Propose mode (ushpy TODO 2.17): `propose_command`, the default `mode`, `--run`, `--new`,
   the handoff directory and per-shell conversations (same files and formats as ushpy, so the
   plugin and a saved conversation work with either), refusal of control characters, `ush explain`
-  (ushpy TODO 2.19); the installer's `zshrc.sh` and the plugin's keys are shared already (2.18).
+  (ushpy TODO 2.19), the session's pre-filled proposal (2.20: zsh `vared`, or the Go line
+  editor); the installer's `zshrc.sh` and the plugin's keys are shared already (2.18, 2.20).
   Acceptance: ushpy's `test_propose` cases ported; the CLI propose and explain tests and the zsh
   plugin tests pass against the Go binary.
 
