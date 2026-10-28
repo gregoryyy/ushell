@@ -9,7 +9,7 @@ defined in [SDLC](../../docs/SDLC.md#done-entries).
 
 ---
 
-## 2026-10-29 00:45 — The tag moved to the merge of #24; default branch main
+## 2026-10-29 00:40 — The tag moved to the merge of #24; default branch main
 
 TODO items: 2.5 (still open: `govulncheck`). PR: #25.
 
