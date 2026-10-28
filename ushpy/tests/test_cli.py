@@ -395,7 +395,16 @@ class CliTest(TempDirTest):
                 until("ush> ")
                 self.assertIn("Created the file.", output)
                 os.write(fd, b"\r")  # an empty line ends the follow-up
-                _, status = os.waitpid(pid, 0)
+                end = time.time() + 30
+                while True:  # keep reading: a full terminal buffer would block ush's last writes
+                    done, status = os.waitpid(pid, os.WNOHANG)
+                    if done or time.time() > end:
+                        break
+                    if select.select([fd], [], [], 0.2)[0]:
+                        try:
+                            os.read(fd, 4096)
+                        except OSError:
+                            pass
             finally:
                 os.close(fd)
         self.assertTrue(os.path.exists(made))

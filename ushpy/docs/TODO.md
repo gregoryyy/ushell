@@ -74,15 +74,15 @@ DONE has an entry for it.
   and `just ush` for development. Acceptance: mock-API request shape, misconfiguration
   and remote-URL refusals before any request, honest banner; live run against a local
   Ollama; SEC updated.
-- [ ] 2.9 Neutralise control characters (C0/C1, ANSI/OSC, bidi overrides, zero-width)
+- [x] 2.9 Neutralise control characters (C0/C1, ANSI/OSC, bidi overrides, zero-width)
   in everything ush writes to the terminal: commands and scripts in the approval
   prompt, command output, and answers (SECTEST F1). Acceptance: rendered-bytes tests
   and a pty test show a `\r`/escape-sequence command visibly; no raw sequence reaches
   the terminal.
-- [ ] 2.10 Close DNS exfiltration through auto-approved `dig`/`host`/`nslookup`
+- [x] 2.10 Close DNS exfiltration through auto-approved `dig`/`host`/`nslookup`
   (SECTEST F2), e.g. approval for names the model chose. Acceptance: negative policy
   tests; SEC residual risk updated.
-- [ ] 2.11 Fill the remaining gaps in [SECTEST.md](SECTEST.md): injection corpus
+- [x] 2.11 Fill the remaining gaps in [SECTEST.md](SECTEST.md): injection corpus
   and opt-in model-in-the-loop evals (free on a local Ollama model), tokenizer
   differential fuzzing against zsh, a GTFOBins sweep, redaction vectors, redirect,
   `USH_BASE_URL` under root, planted symlinks, binary output, and oversized stdin.

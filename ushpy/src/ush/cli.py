@@ -11,14 +11,14 @@ from typing import Callable, Optional
 from . import __version__, execute
 from .agent import Agent, Options, os_name
 from .check import Checker
-from .config import (EFFORTS, PROVIDERS, ConfigError, Identity, KeyStore, Settings,
+from .config import (EFFORTS, PROVIDERS, ConfigError, Identity, KeyStore, Settings, path_risks,
                      apply_environment, check_ollama_url, identity, load_settings, mask,
                      save_settings)
 from .handoff import Sessions, handoff_dir, session_key, take_ran, write_proposal
 from .history import History, Step
 from .policy import classify
 from .provider import (API_URL, AnthropicProvider, OllamaProvider, Provider, ProviderError,
-                       Turn, ollama_remote_host)
+                       Turn, local_opener, ollama_remote_host)
 from .redact import redact
 from .ui import Terminal, visible
 
@@ -416,6 +416,9 @@ def _banner(ui: Terminal, ident: Identity, settings: Settings, options: Options)
         parts.append("dry run")
     parts.append(disclosure(settings))
     ui.info(" · ".join(parts))
+    if ident.is_root:
+        for risk in path_risks():
+            ui.warn(f"PATH entry {risk}: as root, another program could run instead of a listed one")
     if settings.checker:
         ui.info(checker_disclosure(settings))
 
@@ -565,6 +568,9 @@ def _ai(args: list[str], ui: Terminal, ident: Identity, settings: Settings,
         print(f"settings:  {os.path.join(ident.config_dir(), 'config.json')}")
         print(f"history:   {os.path.join(ident.state_dir(), 'history.jsonl')}")
         print(f"shell:     {' '.join(execute.find_shell()[:-1])}")
+        risks = path_risks()
+        print("PATH:      " + ("; ".join(risks) + " (another program could run instead of a "
+                                "listed one)" if risks else "no relative or writable entries"))
         return 0
     if action == "clear-key":
         removed = keys.clear()
@@ -601,7 +607,7 @@ def _ollama_models(url: str) -> list[str]:
     """Names of the models a local Ollama has, for `ush ai configure`; empty if unreachable."""
     import json
     import urllib.request
-    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+    opener = local_opener()
     try:
         with opener.open(f"{url}/api/tags", timeout=2) as response:
             models = json.load(response).get("models", [])

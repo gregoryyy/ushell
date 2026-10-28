@@ -60,6 +60,11 @@ sandbox.
 | Captured output kept on disk | `output` lives only until the next `//` (then deleted) or shell exit; the saved conversation is 0600 in the state directory and expires after an hour; history keeps no output | `test_propose` (sessions) |
 | An explanation (`ush explain`, Down) sends more than the user expects | Only the command line, and for a proposal the last request and its purpose; redacted; the command between random-tag markers as data; nothing runs; `-v` shows the destination | `test_cli` (explain tests) |
 | The installer changes `~/.zshrc` without consent | It asks, only from a terminal; `--zshrc` or `--no-zshrc` decide explicitly; never as root or twice; only appends one `source` line | `test_install` |
+| Text that the terminal acts on: escape sequences, OSC 52, bidi overrides in commands, output, answers, history (F1) | Everything ush writes passes `ui.visible`, which writes them out as `^[`, `^M`, `<U+202E>` | `test_security` `DisplayTest` |
+| Expansions the policy misreads: `""~`, `""=cmd` (F4) | Treated as unsupported, so they need approval; the tokenizer is fuzzed against zsh | `test_security` `PolicyTest` |
+| A planted temporary file under sudo: root truncates a hard-linked root-owned file (F5) | Private files are written through a random name created with `O_EXCL`, then renamed | `test_security` `PrivilegeTest` |
+| Untrusted text that stalls redaction (F3) | Bounded patterns; 300 KB in well under a second | `test_security` `RedactionCorpusTest` |
+| A `PATH` entry that lets another program stand in for a listed one | `ai status` lists relative and writable entries; a root session warns about them | `test_security` `test_path_risks` |
 | User aliases or rc files changing command meaning | Commands run with `zsh -f` | `test_execute` |
 
 ## Residual risks
@@ -79,10 +84,11 @@ sandbox.
   cannot judge it.
 - **Keychain under sudo** is best effort: ush runs `security` as the invoking user.
   Failure falls back to the credentials file.
-- **Network egress** by read-only commands (`dig`, `host`, `nslookup`) is allowed,
-  which an injection can use to leak data through DNS names (SECTEST F2).
-- **Terminal output is not filtered** (SECTEST F1): escape sequences in a command or its
-  output can change what the approval prompt shows. Fix planned in TODO 2.9.
+- **Network egress** by read-only commands: DNS lookups of names need approval since SECTEST F2
+  was fixed; other read-only tools that touch the network (`ping` is not listed, `curl` needs
+  approval) stay out of the table.
+- **Homoglyphs** in commands (a Cyrillic `а` in a path) are shown as they are; control and
+  format characters are written out (SECTEST F1, fixed), lookalike letters are not flagged.
 - **An allow rule is the user's judgement.** A rule such as `git` allows every `git` subcommand,
   including ones that write (`git clean -fdx`) if the model calls them `read`. Narrow rules
   (`git status`) are safe; ush can't tell which subcommands of an unknown tool write.
