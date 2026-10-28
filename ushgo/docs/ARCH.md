@@ -2,7 +2,7 @@
 
 How ush is ported to Go: the package layout, how behaviour is kept equal, and the decisions behind
 it. ush's own architecture, which this port reproduces, is in [ush ARCH](../../ushpy/docs/ARCH.md).
-Status: 2026-10-28 09:59, project set up; no module ported yet.
+Status: 2026-10-28 23:45, all packages ported; ushpy's black-box tests pass against the Go binary.
 
 ## Why a port, and why Go
 
@@ -52,7 +52,8 @@ internal/config ─── identity under sudo, settings, keychain / 0600 key fil
 internal/history ── append-only JSONL history and replay                           (history.py)
 ```
 
-Only `cmd/ush` exists today. The zsh plugin (`ushpy/shell/ush.plugin.zsh`) is shared unchanged: both
+Also `internal/handoff` (propose mode's handoff directory and saved conversations, handoff.py)
+and `internal/check` (the checker model, check.py). The zsh plugin (`ushpy/shell/ush.plugin.zsh`) is shared unchanged: both
 implementations are the command `ush`.
 
 ## Decisions
@@ -68,7 +69,25 @@ implementations are the command `ush`.
 - **2026-10-27: Go 1.27, no dependencies until a package needs one.** Each dependency is pinned in
   `go.sum`, with its licence and maturity recorded here when it is added: the Anthropic SDK with
   the provider (TODO 1.6), `golang.org/x/term` with the approval prompt (TODO 1.8).
-- **Open *(decision)*, TODO 1.1: port ush's tokenizer or use `mvdan.cc/sh`.** `mvdan.cc/sh` parses
+- **2026-10-28: no dependencies; the Messages API client is ushgo's own** (TODO 1.6, replacing the
+  plan for `anthropic-sdk-go`). ush uses a small part of the API: one streaming request with
+  tools, thinking, fallbacks and beta flags, plus one plain request for the checker and `explain`.
+  About 400 lines on `net/http` cover it, with ushpy's error messages and the SDK's retry rules
+  (408/409/429/5xx, connection errors). Nothing third-party to review, pin or update, and the
+  release stays reproducible from the standard library alone. The cost is that new API features
+  are ours to add. For Ollama it uses no proxy and follows no redirect, as ushpy does.
+- **2026-10-28: the tokenizer is ported, not `mvdan.cc/sh`** (TODO 1.1), as proposed below. The
+  shared corpus `conform/policy.json` holds 1545 command lines with ushpy's verdicts and reasons;
+  `ushpy/scripts/policy_corpus.py` writes it, ushpy's `test_conform` keeps it current, and ushgo's
+  `TestConformance` compares every case. RE2 has no lookaround or backreferences: the sed
+  substitution check is a small parser, and redaction captures what ushpy's patterns look around.
+  RE2 matches in linear time, so redaction can't stall (SECTEST F3).
+- **2026-10-28: conformance by ushpy's black-box tests** (TODO 1.10). `test_cli`, `test_security`,
+  `test_smoke` and `test_zsh_plugin` start ush as a program; `USH_TEST_BIN` points them at the Go
+  binary (`ushgo/scripts/conform.sh`, `just ushgo-conform`, CI job `ushgo-conform`). They cover
+  the CLI against the mock Messages API, the approval prompt and sessions in a pty, propose mode,
+  explanations, the security tests that run ush, and the smoke test.
+- **Earlier proposal, TODO 1.1: port ush's tokenizer or use `mvdan.cc/sh`.** `mvdan.cc/sh` parses
   POSIX shell and bash, not zsh: zsh's glob qualifiers, `=cmd` expansion and other word rules
   differ. Porting ush's own tokenizer (about 110 lines, built for exactly the `zsh -f` rules the policy
   needs) keeps the decisions equal by construction. Proposed: port it, and use `mvdan.cc/sh` only if

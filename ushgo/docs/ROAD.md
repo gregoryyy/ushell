@@ -2,7 +2,7 @@
 
 Where the Go port goes. Each phase ends with a gate that decides whether the next one starts; the
 work is in [TODO](TODO.md). The port is phase 3 of [ush's roadmap](../../ushpy/docs/ROAD.md).
-Status: 2026-10-28 09:59.
+Status: 2026-10-28 23:45; the port is complete (TODO 1.x), the first release 0.2.0-rc1 is next.
 
 | Phase | Goal | TODO | Gate to the next phase |
 | --- | --- | --- | --- |

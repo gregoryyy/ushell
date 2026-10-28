@@ -6,16 +6,20 @@ binary: no interpreter or installed packages for root to trust under `sudo`, and
 while a Python SDK loads. Python is where features are tried first; ushgo gets each of them, and the
 two must behave the same ([SDLC](../docs/SDLC.md#ush-one-command-two-implementations)).
 
-**Status:** set up (TODO 0.1–0.3). The binary builds and tests run in CI, but it answers no requests
-yet: `ush --version` (`ush 0.0.0-dev (go)`) and `ush --help` work, and everything else is refused
-as a usage error. The port's plan is in [TODO](docs/TODO.md).
+**Status:** ported (TODO 1.1–1.12). Every package of ushpy has its Go counterpart, and ushpy's
+black-box tests pass against the Go binary (`just ushgo-conform`): the command line, propose mode,
+sessions and the approval prompt in a pty, the zsh plugin, the security tests and the smoke test.
+The policy matches ushpy's on all 1545 lines of the shared corpus. 0.2.0-rc1 is its first release
+([TODO](docs/TODO.md) 2.5).
 
 ## Build and test
 
-ushgo needs Go 1.27 (`brew install go`) and nothing else; it has no dependencies yet.
+ushgo needs Go 1.27 (`brew install go`) and nothing else; it has no dependencies. The conformance
+tests also need Python 3.10+ and zsh.
 
 ```sh
 just ushgo-test                         # from the repository root: gofmt, go vet, go test
+just ushgo-conform                      # ushpy's black-box tests against the Go binary
 cd ushgo && go build -o ush ./cmd/ush   # writes ./ush
 ```
 

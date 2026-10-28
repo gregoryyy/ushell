@@ -18,6 +18,16 @@ from ush.ui import Choice, Terminal  # noqa: E402
 
 SYNTHETIC_KEY = "sk-ant-test-0000000000000000000000000000SYNTHETIC"
 
+# The black-box tests run the ush command. USH_TEST_BIN runs them against another binary of the
+# same command, the Go implementation (ushgo TODO 1.10): `just ushgo-conform`.
+TEST_BIN = os.environ.get("USH_TEST_BIN", "")
+IMPLEMENTATION = "go" if TEST_BIN else "python"
+
+
+def ush_argv() -> list[str]:
+    """How to start ush: the binary under test, or this Python package."""
+    return [TEST_BIN] if TEST_BIN else [sys.executable, "-m", "ush"]
+
 
 def tool_use(command: str, effect: str = "read", ident: str = "", timeout: int = 30,
              purpose: str = "test") -> dict:

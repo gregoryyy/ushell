@@ -8,7 +8,7 @@ checked, and executed. Both use the user's own AI API key, or a local model.
 | --- | --- | --- |
 | **ush** | The `//` shell for zsh on your machine, optionally under `sudo`; one command, two implementations | |
 | ↳ [ushpy](ushpy/README.md) | ush in Python: the experimental implementation, where features are tried first | Complete; not yet released |
-| ↳ [ushgo](ushgo/README.md) | ush in Go: the compiled deliverable, one static binary | Port under way; 0.2.0-rc1 ships it at parity |
+| ↳ [ushgo](ushgo/README.md) | ush in Go: the compiled deliverable, one static binary | Ported, at parity with ushpy; 0.2.0-rc1 ships it |
 | [wish](wish/README.md) | Browser workspace: files, notebooks, live tools | Design documents; not implemented |
 
 What comes next, across the projects, is in the roadmap: [docs/ROAD.md](docs/ROAD.md).
@@ -53,13 +53,14 @@ the checker model, and what is sent to the provider are described in
 ### ushgo: Go
 
 The version users will install: one static binary, with no interpreter or installed packages for
-root to trust under `sudo`, and no two-second start while a Python SDK loads. Today it answers
-`--version` and `--help` only; the port goes module by module, policy first.
+root to trust under `sudo`, and no two-second start while a Python SDK loads. It has every feature
+of ushpy, and ushpy's black-box tests pass against it (`just ushgo-conform`).
 
 ```sh
 just ushgo-test                                  # gofmt, go vet, go test (Go 1.27: brew install go)
 cd ushgo && go build -o ush ./cmd/ush            # writes ./ush
 ./ush --version                                  # ush 0.0.0-dev (go)
+just ushgo-conform                               # ushpy's black-box tests against the Go binary
 ```
 
 The [user guide](ushgo/docs/USER.md) and the [admin guide](ushgo/docs/ADMIN.md) describe the `ush`

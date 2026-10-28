@@ -33,6 +33,8 @@ def test_the_repository_workflow_maps_completely() -> None:
         "ushpy-macos-latest-3.13",
         "ushgo-ubuntu-latest",
         "ushgo-macos-latest",
+        "ushgo-conform-ubuntu-latest",
+        "ushgo-conform-macos-latest",
         "tools",
         "secrets",
     ]
@@ -59,6 +61,7 @@ def test_only_this_platforms_matrix_entries_run_here() -> None:
         "ushpy-macos-latest-3.10",
         "ushpy-macos-latest-3.13",
         "ushgo-macos-latest",
+        "ushgo-conform-macos-latest",
         "tools",
         "secrets",
     ]

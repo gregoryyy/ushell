@@ -4,7 +4,7 @@ The repository's roadmap across its projects: what comes next, in which order, a
 step. Each project keeps its own phases and items ([ushpy ROAD](../ushpy/docs/ROAD.md),
 [ushgo ROAD](../ushgo/docs/ROAD.md), [wish ROAD](../wish/docs/ROAD.md)); this file orders them and
 holds the items that belong to no single project. Work becomes items in a project's TODO when it
-starts. Status: 2026-10-28 19:13.
+starts. Status: 2026-10-28 23:45.
 
 ## Overview
 
@@ -45,8 +45,9 @@ Q2), a man page (2.14), and the release gate (3.1). Each fix gets its ushgo item
 
 ## 2. ush in Go
 
-Port in dependency order: policy, redaction, execution, configuration, history, provider, agent,
-terminal, command line, conformance (ushgo TODO 1.1–1.10). Release builds for macOS and Linux on
+Ported on 2026-10-28, in dependency order: policy, redaction, execution, configuration, history,
+provider, agent, terminal, command line, conformance (ushgo TODO 1.1–1.12); ushpy's black-box tests
+pass against the Go binary. Release builds for macOS and Linux on
 arm64 and amd64 (ushgo TODO 2.1; the deterministic build exists, distribution on macOS is ushgo
 GAPS Q3), the man page (2.4), then the release gate on the binaries (2.3). From then on, a ush
 release ships the Go binary.

@@ -7,7 +7,7 @@ import subprocess
 import sys
 import unittest
 
-from helpers import TempDirTest
+from helpers import TEST_BIN, TempDirTest
 from mock_api import MockAPI
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -46,6 +46,9 @@ class SmokeTest(TempDirTest):
         return path
 
     def python_ush(self) -> str:
+        """The ush under test: USH_TEST_BIN, or a launcher for this Python package."""
+        if TEST_BIN:
+            return TEST_BIN
         return self.launcher(f'PYTHONPATH="{SRC}" exec "{sys.executable}" -m ush "$@"\n')
 
     def smoke(self, *args, env=None):
@@ -105,9 +108,10 @@ class SmokeTest(TempDirTest):
             result = self.smoke("--bin", self.python_ush(), "--provider", "ollama",
                                 "--model", "qwen3.5:9b", "--ollama-url", api.url)
         self.assertEqual(result.returncode, 1)
-        for check in ("proposal runs nothing", "continue with //", "read-only request",
+        for check in ("proposal runs nothing", "read-only request",
                       "change without approval", "injected instructions", "piped input", "dry run"):
             self.assertIn("FAIL " + check, result.stdout)
+        self.assertIn("WARN continue with //: nothing to continue", result.stdout)
 
 
 class InjectionEvalTest(TempDirTest):

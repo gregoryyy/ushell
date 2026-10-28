@@ -38,45 +38,51 @@ Each port item is done when the package reproduces the ush module's behaviour, i
 
 In dependency order: the packages that don't depend on others first.
 
-- [ ] 1.1 `internal/policy`: tokenizer, command table, validators, secret paths. *(decision)* Port
+- [x] 1.1 `internal/policy`: tokenizer, command table, validators, secret paths. *(decision)* Port
   ush's tokenizer or use `mvdan.cc/sh` (ARCH proposes the port). Acceptance: a shared corpus of
   command lines with expected decisions (JSON, generated from ush's policy tests) passes in both
   implementations; a fuzz test of the tokenizer against `zsh -f` finds no disagreement on a line
   the policy accepts.
-- [ ] 1.2 `internal/redact`. Acceptance: ush's redaction tests ported; the synthetic tokens stay in
+- [x] 1.2 `internal/redact`. Acceptance: ush's redaction tests ported; the synthetic tokens stay in
   `.gitleaksignore`.
-- [ ] 1.3 `internal/execute`: `zsh -f -o pipefail`, `/dev/null` stdin, process groups, timeouts,
+- [x] 1.3 `internal/execute`: `zsh -f -o pipefail`, `/dev/null` stdin, process groups, timeouts,
   interrupt, bounded output, scrubbed environment, private script files. Acceptance: ush's
   execution tests ported, including the pipeline that ignores SIGTERM.
-- [ ] 1.4 `internal/config`: identity under sudo, settings, keychain (secret on stdin) or 0600
+- [x] 1.4 `internal/config`: identity under sudo, settings, keychain (secret on stdin) or 0600
   file, environment overrides ignored as root; checker names bare or `provider:model`, and
   `ai configure` asking again after a bad answer (ushpy, 2026-10-28). Acceptance: ush's config
   tests ported; settings written by one implementation read by the other.
-- [ ] 1.5 `internal/history`: append-only JSONL, `history`, `replay` through the policy.
+- [x] 1.5 `internal/history`: append-only JSONL, `history`, `replay` through the policy.
   Acceptance: ush's history tests ported; history files interchangeable.
-- [ ] 1.6 `internal/provider`: Anthropic through `anthropic-sdk-go` (streaming, eager tool input,
+- [x] 1.6 `internal/provider`: Anthropic through `anthropic-sdk-go` (streaming, eager tool input,
   fallbacks, progress updates) and Ollama through the same API (loopback only, no proxies or
   redirects, cloud-model disclosure). Acceptance: request shape and errors against ush's mock
   Messages API (`ushpy/tests/mock_api.py`); SDK licence and maturity in ARCH.
-- [ ] 1.7 `internal/agent`: the loop with strict tools, schema validation, step limits, every
+- [x] 1.7 `internal/agent`: the loop with strict tools, schema validation, step limits, every
   `tool_use` answered. Acceptance: ush's agent tests ported with a scripted fake provider.
-- [ ] 1.8 `internal/ui`: status lines and the approval prompt via `/dev/tty`. Acceptance: pty tests;
+- [x] 1.8 `internal/ui`: status lines and the approval prompt via `/dev/tty`. Acceptance: pty tests;
   the display-integrity rules of ush TODO 2.9 apply here from the start.
-- [ ] 1.9 `cmd/ush`: the full CLI (requests, sessions, piped input, options, `ai`, `history`,
+- [x] 1.9 `cmd/ush`: the full CLI (requests, sessions, piped input, options, `ai`, `history`,
   `replay`). Acceptance: ush's CLI tests ported; the smoke test passes offline.
-- [ ] 1.10 Conformance: ush's black-box tests (`test_cli`, `test_zsh_plugin`, the pty approval
+- [x] 1.10 Conformance: ush's black-box tests (`test_cli`, `test_zsh_plugin`, the pty approval
   tests) run against a binary chosen by an environment variable, and pass for both. Acceptance: a
   CI job runs them against the Go binary; the smoke test passes with a local model.
-- [ ] 1.11 Allow rules (ushpy TODO 2.15): `ush allow`, the `allow` setting, `parse_rule`'s
+- [x] 1.11 Allow rules (ushpy TODO 2.15): `ush allow`, the `allow` setting, `parse_rule`'s
   refusals, prefix matching, not used as root. Acceptance: ushpy's `AllowRuleTest` cases in the
   policy corpus; the CLI tests for `ush allow` pass against the Go binary.
-- [ ] 1.12 Propose mode (ushpy TODO 2.17): `propose_command`, the default `mode`, `--run`, `--new`,
+- [x] 1.12 Propose mode (ushpy TODO 2.17): `propose_command`, the default `mode`, `--run`, `--new`,
   the handoff directory and per-shell conversations (same files and formats as ushpy, so the
   plugin and a saved conversation work with either), refusal of control characters, `ush explain`
   (ushpy TODO 2.19, brief and -v 2.21), the session's pre-filled proposal (2.20: zsh `vared`, or
   the Go line editor); the installer's `zshrc.sh` and the plugin's keys are shared already (2.18, 2.20).
   Acceptance: ushpy's `test_propose` cases ported; the CLI propose and explain tests and the zsh
   plugin tests pass against the Go binary.
+
+Done 2026-10-28 (DONE): all twelve, with two deviations recorded in ARCH. The provider is a
+client of its own on `net/http` instead of `anthropic-sdk-go` (1.6), so ushgo has no dependencies.
+The tokenizer is fuzzed against zsh through ushpy (1.1): the Go policy matches ushpy's on all
+1545 lines of `conform/policy.json`, 1500 of them seeded random, and ushpy's tokenizer is fuzzed
+against `zsh -f` (ushpy `test_security`).
 
 ## 2. Release
 

@@ -14,7 +14,7 @@ import unittest
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from unittest import mock
 
-from helpers import SYNTHETIC_KEY, TempDirTest, fake_identity
+from helpers import SYNTHETIC_KEY, TempDirTest, fake_identity, ush_argv
 from mock_api import MockAPI
 from ush import cli, execute
 from ush.check import Verdict
@@ -111,7 +111,7 @@ class DisplayTest(TempDirTest):
         env = {k: v for k, v in os.environ.items() if not k.startswith(("USH_", "XDG_"))}
         env.update({"PYTHONPATH": SRC, "XDG_STATE_HOME": os.path.join(self.tmp, "state"),
                     "XDG_CONFIG_HOME": os.path.join(self.tmp, "config")})
-        listing = subprocess.run([sys.executable, "-m", "ush", "history"], capture_output=True,
+        listing = subprocess.run([*ush_argv(), "history"], capture_output=True,
                                  text=True, env=env, timeout=30).stdout
         assert_nothing_hidden(self, listing.replace("\n", ""))
         self.assertIn("echo safe^Mrm -rf ~<U+2028>more", listing)  # nothing cut at \r or U+2028
@@ -509,7 +509,7 @@ def run_ush(home, *args, stdin="", env=None):
     base.update({"PYTHONPATH": SRC, "XDG_CONFIG_HOME": os.path.join(home, "config"),
                  "XDG_STATE_HOME": os.path.join(home, "state"), "NO_COLOR": "1",
                  "USH_BASE_URL": DEAD_URL, "USH_OLLAMA_URL": DEAD_URL, **(env or {})})
-    return subprocess.run([sys.executable, "-m", "ush", *args], input=stdin, text=True,
+    return subprocess.run([*ush_argv(), *args], input=stdin, text=True,
                           capture_output=True, env=base, cwd=home, timeout=60,
                           start_new_session=True)
 
