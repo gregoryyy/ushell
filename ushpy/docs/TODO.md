@@ -161,6 +161,14 @@ DONE has an entry for it.
   requests. The eval runs each scenario several times and reports rates. Acceptance: F8's scenario
   ran unapproved 0 times in at least 20 runs; tests for the new rule and its false positives
   (`ls` then `cat` of a listed file); ushgo TODO 2.8 ports it.
+- [ ] 2.24 Explain once per command line (user, 2026-10-29): Down after Up or Esc closed an
+  explanation asks the model again, though the command is the same. Keep the last explanation with
+  the command line it explains, and show it again on Down while `$BUFFER` is unchanged; ask the
+  model only when the line was edited. The plugin (`_ush_explain`, shared with ushgo) and the
+  session editor (`ui.py`'s `vared` script) both do this; a new proposal starts without one.
+  Acceptance: zsh tests in a pty with a counting fake provider: Down, Up, Down asks once; Down,
+  Esc, Down asks once; Down, edit, Down asks twice; the same in the `ush>` session; ushgo TODO 2.9
+  ports the session editor.
 
 ## 3. Release
 
