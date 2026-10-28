@@ -94,7 +94,7 @@ docs/ROAD.md              the roadmap across projects
 ushpy/                    ush in Python, experimental: README, docs/, src/, tests/, shell/
 ushgo/                    ush in Go, the deliverable: README, docs/, cmd/ush/, scripts/
 wish/                     browser workspace: README, docs/
-tools/                    PDF build scripts, the Markdown link checker, local CI (ci/)
+tools/                    the Markdown link checker, PDF build scripts (pdf/), local CI (ci/)
 .github/                  CI workflow (ci.yml), PR template
 ```
 

@@ -7,12 +7,12 @@ default:
 # Build FILE.md.pdf beside a Markdown file, resolving FILE from the calling directory
 [positional-arguments]
 pdf file:
-    @cd {{quote(invocation_directory())}} && {{quote(justfile_directory() + "/tools/pdf.sh")}} "$@"
+    @cd {{quote(invocation_directory())}} && {{quote(justfile_directory() + "/tools/pdf/pdf.sh")}} "$@"
 
 # Build PDFs under PATHS (default README.md, docs/, ushpy/, ushgo/, and wish/), skipping unchanged documents
 [positional-arguments]
 pdfs *paths:
-    @cd {{quote(invocation_directory())}} && {{quote(justfile_directory() + "/tools/pdfs.sh")}} "$@"
+    @cd {{quote(invocation_directory())}} && {{quote(justfile_directory() + "/tools/pdf/pdfs.sh")}} "$@"
 
 # Test both implementations of ush: ushpy-test and ushgo-test
 ush-test: ushpy-test ushgo-test
