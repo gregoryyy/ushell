@@ -3,7 +3,7 @@
 Open questions and explicit assumptions for ush. **Questions** are for the user to answer.
 **Assumptions** are what the documents currently take for granted because they seemed clear enough
 not to ask; check them and correct any that are wrong. The rules for this file are in
-[SDLC](../../docs/SDLC.md#work-items). Status: 2026-10-28 10:23.
+[SDLC](../../docs/SDLC.md#work-items). Status: 2026-10-28 18:40.
 
 - Answers carry date, time and author: `**Answer** (2026-10-27 15:10, Gregor Heinrich): …`. Short
   answers are fine. A changed answer goes on top; earlier ones stay below it, struck through.
@@ -56,6 +56,23 @@ everything except listed commands without approval.
   friction, `ask` (always ask, even when the table would run it) and `never` (refuse even
   when approved), for commands a user wants extra protection from (`rm -rf`, `diskutil erase`).
 
+### Q6. Should ush run commands, or propose them for the user to run?
+
+Raised by the user on 2026-10-28: "the idea of the ushell is to propose specific shell commands and
+prewrite them to be executed by the user. right now the system performs the actions directly and
+prints the result without showing what was executed". Asked as three questions.
+
+**Answer** (2026-10-28 18:40, Gregor Heinrich):
+- **Investigation:** "Ask each time". ush runs nothing to investigate either: it proposes
+  investigation commands too, the user runs them, and their output becomes context for the next
+  proposal.
+- **Agent mode:** "Keep behind a flag". Proposing is the default; `ush --run //…`, or the `mode`
+  setting, keeps the agent mode.
+- **Several commands:** "One at a time". The first command goes on the command line; after it ran,
+  `//` continues with its output and proposes the next one.
+
+**Resolved:** propose mode, [ARCH](ARCH.md#propose-mode), TODO 2.17.
+
 ## Assumptions
 
 | ID | Assumption | Where it matters | Correction |
@@ -67,3 +84,5 @@ everything except listed commands without approval.
 | A5 | "An adversarial model to check the proposed implementation that takes independent sources; it can be a small model" (2026-10-27) means a runtime checker: a second model that judges each command or script the assistant proposes, from independent input (the user's requests only, not the output the assistant read). Not a reviewer of code changes in this repository. | TODO 2.13, [ARCH](ARCH.md), `check.py` | |
 | A6 | The checker is off unless configured: it needs a model, adds a request per command, and small models raise false alarms. | `config.py`, README | |
 | A7 | Allow rules are for the user's own account; a root session (`sudo ush`) uses none, even the invoking user's. | `agent.py`, `cli.py` | |
+| A8 | In propose mode, the line the user runs from the prompt that held the proposal is its result, even if they replaced it entirely; only another `ush` call there counts as not running it. | plugin, `handoff.py` | |
+| A9 | A conversation continues in the same shell for an hour without use; `--new` starts over. Under `sudo` it doesn't continue, because each `sudo` is a new parent process. | `handoff.py`, `cli.py` | |

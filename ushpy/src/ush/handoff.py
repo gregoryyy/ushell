@@ -1,0 +1,171 @@
+"""Propose mode between two `//` calls (ARCH: propose mode, TODO 2.17).
+
+ush proposes one command; the zsh plugin puts it on the user's command line, and the user runs
+it in their own shell, edited or not, or doesn't. The plugin records what ran, and the next `//`
+continues the conversation with it.
+
+- The handoff directory is the plugin's: made with `mktemp -d` when the plugin loads, passed as
+  USH_HANDOFF, removed when the shell exits. ush writes `proposal` (a mode line, `capture` or
+  `interactive`, then the command); the plugin writes `ran` (the exit status, then the command
+  line that ran) and `output` (what it printed, unless the proposal was interactive). ush uses
+  the directory only if it is a real directory of the user's, closed to others, and never as
+  root.
+- The conversation is saved per shell in the state directory, `sessions/KEY.json`, mode 0600,
+  where KEY is the handoff directory's name or, without the plugin, the parent process. It holds
+  what was sent to the provider, so redacted command output, and expires after an hour unused.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import re
+import stat
+import time
+from dataclasses import dataclass
+from typing import Optional
+
+from .config import Identity
+from .execute import _Collector
+
+SESSION_TTL = 3600
+KEY = re.compile(r"^[A-Za-z0-9._-]{1,64}$")
+
+
+@dataclass
+class Ran:
+    """What the user ran after a proposal."""
+    command: str
+    exit_code: Optional[int]
+    output: str = ""
+    captured: bool = False      # False: an interactive command, its output was not recorded
+    truncated: bool = False
+
+
+def handoff_dir(ident: Identity, environ: Optional[dict] = None) -> Optional[str]:
+    """The plugin's handoff directory, if usable: never as root, only the user's own, mode 0700."""
+    env = os.environ if environ is None else environ
+    path = env.get("USH_HANDOFF", "")
+    if ident.is_root or not path or not os.path.isabs(path):
+        return None
+    try:
+        info = os.lstat(path)
+    except OSError:
+        return None
+    if not stat.S_ISDIR(info.st_mode) or info.st_uid != ident.uid or info.st_mode & 0o077:
+        return None
+    return path
+
+
+def write_proposal(directory: str, command: str, interactive: bool) -> None:
+    """Leave the proposal for the plugin's next prompt; replaces an earlier one atomically."""
+    for name in ("ran", "output"):
+        _remove(os.path.join(directory, name))
+    temporary = os.path.join(directory, f".proposal.{os.getpid()}")
+    _remove(temporary)
+    fd = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+    with os.fdopen(fd, "w", encoding="utf-8") as f:
+        f.write(("interactive" if interactive else "capture") + "\n" + command)
+    os.replace(temporary, os.path.join(directory, "proposal"))
+
+
+def take_ran(directory: str, limit: int) -> Optional[Ran]:
+    """What the plugin recorded since the proposal, then removed; None if nothing ran."""
+    text = _read(os.path.join(directory, "ran"))
+    if text is None:
+        return None
+    status, _, command = text.partition("\n")
+    exit_code = int(status) if status.strip().lstrip("-").isdigit() else None
+    collector = _Collector(limit, None)
+    captured = False
+    try:
+        fd = os.open(os.path.join(directory, "output"), os.O_RDONLY | os.O_NOFOLLOW)
+    except OSError:
+        pass
+    else:
+        with os.fdopen(fd, "rb") as f:
+            if stat.S_ISREG(os.fstat(f.fileno()).st_mode):
+                captured = True
+                while chunk := f.read(65536):
+                    collector.feed(chunk)
+    output, truncated = collector.text()
+    for name in ("ran", "output", "proposal"):
+        _remove(os.path.join(directory, name))
+    return Ran(command.rstrip("\n"), exit_code, output, captured, truncated)
+
+
+def session_key(handoff: Optional[str]) -> str:
+    """One conversation per shell: the plugin's directory, or the parent process without it."""
+    if handoff and KEY.match(os.path.basename(handoff)):
+        return os.path.basename(handoff)
+    return f"ppid-{os.getppid()}"
+
+
+class Sessions:
+    """Saved conversations in propose mode, one per shell."""
+
+    def __init__(self, state_dir: str, key: str):
+        if not KEY.match(key):
+            raise ValueError(f"bad session key {key!r}")
+        self.directory = os.path.join(state_dir, "sessions")
+        self.path = os.path.join(self.directory, key + ".json")
+
+    def load(self) -> Optional[dict]:
+        try:
+            if time.time() - os.lstat(self.path).st_mtime > SESSION_TTL:
+                self.clear()
+                return None
+        except OSError:
+            return None
+        text = _read(self.path)
+        try:
+            data = json.loads(text) if text else None
+        except ValueError:
+            data = None
+        return data if isinstance(data, dict) else None
+
+    def save(self, data: dict) -> None:
+        os.makedirs(self.directory, mode=0o700, exist_ok=True)
+        self._prune()
+        temporary = f"{self.path}.{os.getpid()}"
+        _remove(temporary)
+        fd = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            json.dump(data, f)
+        os.replace(temporary, self.path)
+
+    def clear(self) -> None:
+        _remove(self.path)
+
+    def _prune(self) -> None:
+        """Remove conversations of other shells that expired."""
+        now = time.time()
+        try:
+            names = os.listdir(self.directory)
+        except OSError:
+            return
+        for name in names:
+            path = os.path.join(self.directory, name)
+            try:
+                if name.endswith(".json") and now - os.lstat(path).st_mtime > SESSION_TTL:
+                    os.remove(path)
+            except OSError:
+                pass
+
+
+def _read(path: str) -> Optional[str]:
+    try:
+        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+    except OSError:
+        return None
+    with os.fdopen(fd, encoding="utf-8", errors="replace") as f:
+        if not stat.S_ISREG(os.fstat(f.fileno()).st_mode):
+            return None
+        return f.read()
+
+
+def _remove(path: str) -> None:
+    try:
+        os.remove(path)
+    except FileNotFoundError:
+        pass

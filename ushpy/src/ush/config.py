@@ -23,6 +23,7 @@ from typing import Callable, Optional
 DEFAULT_MODEL = "claude-opus-5-5"
 EFFORTS = ("low", "medium", "high", "xhigh", "max")
 PROVIDERS = ("anthropic", "ollama")
+MODES = ("propose", "run")      # ARCH: propose mode (default) and agent mode
 OLLAMA_URL = "http://127.0.0.1:11434"
 ANTHROPIC_MODEL = re.compile(r"^[a-z0-9.\-]{3,64}$")
 OLLAMA_MODEL = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/\-]{0,127}$")
@@ -83,6 +84,7 @@ def identity(environ: Optional[dict] = None) -> Identity:
 
 @dataclass
 class Settings:
+    mode: str = "propose"          # propose: ush proposes, the user runs; run: ush runs (agent)
     provider: str = "anthropic"
     model: str = DEFAULT_MODEL     # the Anthropic model
     effort: str = "medium"
@@ -100,6 +102,8 @@ class Settings:
     @classmethod
     def from_dict(cls, data: dict) -> "Settings":
         s = cls()
+        if data.get("mode") in MODES:
+            s.mode = data["mode"]
         if data.get("provider") in PROVIDERS:
             s.provider = data["provider"]
         if isinstance(data.get("model"), str) and ANTHROPIC_MODEL.match(data["model"]):
@@ -126,7 +130,7 @@ class Settings:
         return s
 
     def to_dict(self) -> dict:
-        return {"provider": self.provider, "model": self.model, "effort": self.effort,
+        return {"mode": self.mode, "provider": self.provider, "model": self.model, "effort": self.effort,
                 "ollama_url": self.ollama_url, "ollama_model": self.ollama_model,
                 "checker": self.checker, "allow": list(self.allow), "max_steps": self.max_steps,
                 "command_timeout": self.command_timeout, "max_timeout": self.max_timeout,
@@ -135,6 +139,11 @@ class Settings:
     @property
     def active_model(self) -> str:
         return self.ollama_model if self.provider == "ollama" else self.model
+
+    def set_mode(self, mode: str) -> None:
+        if mode not in MODES:
+            raise ConfigError(f"mode must be one of {', '.join(MODES)}")
+        self.mode = mode
 
     def set_provider(self, provider: str) -> None:
         if provider not in PROVIDERS:
@@ -160,6 +169,9 @@ class Settings:
         if value in ("", "off"):
             self.checker = ""
             return
+        if value.lower() in ("on", "yes", "true", "enable", "enabled"):
+            raise ConfigError("give the checker's model name, e.g. claude-haiku-5-5 or "
+                              "qwen3.5:4b, or off")
         provider, _, model = value.partition(":")
         if provider not in PROVIDERS:
             provider, model = ("anthropic" if value.startswith("claude-") else "ollama"), value

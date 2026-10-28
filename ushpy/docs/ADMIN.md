@@ -61,11 +61,14 @@ ush has no system-wide configuration; each user configures their own with `ush a
 | Settings | `~/.config/ush/config.json` (or `$XDG_CONFIG_HOME/ush/`) | written mode 0600 |
 | API key | macOS keychain (service `ush`, account `anthropic`), else `~/.config/ush/credentials` | the file must be a regular file owned by the user (or root), mode 0600, not a symlink, or ush refuses it |
 | History | `~/.local/state/ush/history.jsonl` (or `$XDG_STATE_HOME/ush/`) | append-only, mode 0600, no command output |
+| Conversations | `~/.local/state/ush/sessions/KEY.json` | propose mode, one per shell, mode 0600, with redacted output; expire after an hour |
+| Handoff | a `mktemp -d` directory in `$TMPDIR`, as `USH_HANDOFF` | made by the zsh plugin, mode 0700: the proposal, what ran, its output; removed when the shell exits |
 
 Settings in `config.json`:
 
 | Key | Default | Range or values |
 | --- | --- | --- |
+| `mode` | `propose` | `propose` (ush proposes, the user runs) or `run` (agent mode) |
 | `provider` | `anthropic` | `anthropic`, `ollama` |
 | `model` | `claude-opus-5-5` | Anthropic model name |
 | `effort` | `medium` | `low` … `max` |
@@ -88,6 +91,7 @@ Environment variables (ignored as root, so `sudo -E` can't redirect a root sessi
 | `USH_BASE_URL` | another Anthropic endpoint, e.g. a company gateway |
 | `XDG_CONFIG_HOME`, `XDG_STATE_HOME` | where settings and history live |
 | `USH_BARE_SLASH=0` | before sourcing the plugin: no bare `// …` form |
+| `USH_HANDOFF` | set by the plugin; ush uses it only if it is a 0700 directory of the user's, never as root |
 | `NO_COLOR` | no colours |
 
 ush never reads `.env` files, and it removes `ANTHROPIC_*` and `USH_API_KEY` from the environment of
@@ -100,7 +104,9 @@ As root via `sudo`, ush:
   that user, which can fail when the keychain is locked: then `ush ai configure --file`;
 - writes history to root's state directory;
 - ignores `USH_*`, `XDG_*` and `USH_BASE_URL`, and uses none of the user's allow rules;
-- still asks before every command the policy can't verify.
+- in propose mode, prints proposals without putting them on a command line, and doesn't continue a
+  conversation across `sudo` calls;
+- in agent mode, still asks before every command the policy can't verify.
 
 ## Network
 

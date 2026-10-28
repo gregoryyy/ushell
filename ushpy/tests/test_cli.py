@@ -69,19 +69,84 @@ class CliTest(TempDirTest):
     def test_configure_asks_again_after_a_bad_answer(self):
         # A bad answer used to end `ai configure` with an error, losing what was entered; now the
         # same question is asked again. Ollama on an unused port: no key prompt, no models listed.
-        answers = ["openai", "ollama", "http://127.0.0.1:9", "bad name!", "llama3.2:3b",
+        answers = ["agent", "run", "openai", "ollama", "http://127.0.0.1:9", "bad name!", "llama3.2:3b",
                    "anthropic:", "claude-haiku-5-5"]
         result = self.ush("ai", "configure", stdin="\n".join(answers) + "\n")
         self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("mode must be one of", result.stderr)
         self.assertIn("provider must be one of", result.stderr)
         self.assertIn("checker 'anthropic:' is not a model name", result.stderr)
         self.assertIn("checker: claude-haiku-5-5 through anthropic", result.stderr)
         with open(os.path.join(self.tmp, "config", "ush", "config.json"), encoding="utf-8") as f:
             saved = json.load(f)
-        self.assertEqual((saved["provider"], saved["ollama_url"], saved["ollama_model"],
-                          saved["checker"]),
-                         ("ollama", "http://127.0.0.1:9", "llama3.2:3b",
+        self.assertEqual((saved["mode"], saved["provider"], saved["ollama_url"],
+                          saved["ollama_model"], saved["checker"]),
+                         ("run", "ollama", "http://127.0.0.1:9", "llama3.2:3b",
                           "anthropic:claude-haiku-5-5"))
+
+    @unittest.skipUnless(HAVE_SDK, "anthropic SDK not installed")
+    def test_propose_mode_hands_over_and_continues(self):
+        # The default: ush runs nothing, leaves the proposal for the plugin, and `//` continues
+        # with what the plugin recorded (here written by hand, as the plugin would).
+        made = os.path.join(self.tmp, "made")
+        handoff = os.path.join(self.tmp, "ush.handoff1")
+        os.mkdir(handoff, 0o700)
+        replies = [
+            ([{"type": "text", "text": "This creates it."},
+              {"type": "tool_use", "id": "p1", "name": "propose_command",
+               "input": {"command": f"touch {made}", "purpose": "create it", "effect": "change",
+                         "interactive": False}}], "tool_use"),
+            ([{"type": "text", "text": "Done: the file exists."}], "end_turn"),
+        ]
+        env = {"ANTHROPIC_API_KEY": SYNTHETIC_KEY, "USH_HANDOFF": handoff}
+        with MockAPI(replies) as api:
+            env["USH_BASE_URL"] = api.url
+            first = self.ush("//make a file", env=env)
+            self.assertEqual(first.returncode, 0, first.stderr)
+            self.assertFalse(os.path.exists(made))
+            self.assertIn("proposes, you run", first.stderr)
+            self.assertIn("on your command line", first.stderr)
+            with open(os.path.join(handoff, "proposal")) as f:
+                self.assertEqual(f.read(), f"capture\ntouch {made}")
+            self.assertEqual([t["name"] for t in api.requests[0]["body"]["tools"]],
+                             ["propose_command"])
+            os.remove(os.path.join(handoff, "proposal"))  # taken by the plugin
+            with open(os.path.join(handoff, "ran"), "w") as f:
+                f.write(f"0\ntouch {made}\n")
+            with open(os.path.join(handoff, "output"), "w") as f:
+                f.write("touched-ok\n")
+            second = self.ush("//", env=env)
+        self.assertEqual(second.returncode, 0, second.stderr)
+        self.assertIn("Done: the file exists.", second.stdout)
+        result = api.requests[1]["body"]["messages"][-1]["content"][0]
+        self.assertEqual(result["tool_use_id"], "p1")
+        self.assertIn("ran the proposed command", result["content"])
+        self.assertIn("touched-ok", result["content"])
+        self.assertEqual(os.listdir(handoff), [])
+        sessions = os.path.join(self.tmp, "state", "ush", "sessions")
+        self.assertEqual(os.listdir(sessions), ["ush.handoff1.json"])
+        listing = self.ush("history").stdout
+        self.assertIn("proposed", listing)
+        self.assertIn("user-ran", listing)
+
+    @unittest.skipUnless(HAVE_SDK, "anthropic SDK not installed")
+    def test_propose_mode_without_the_plugin_prints_and_new_starts_over(self):
+        replies = [
+            ([{"type": "tool_use", "id": "p1", "name": "propose_command",
+               "input": {"command": "df -h /", "purpose": "free space", "effect": "read",
+                         "interactive": False}}], "tool_use"),
+            ([{"type": "text", "text": "Fresh start."}], "end_turn"),
+        ]
+        env = {"ANTHROPIC_API_KEY": SYNTHETIC_KEY}
+        with MockAPI(replies) as api:
+            env["USH_BASE_URL"] = api.url
+            first = self.ush("//how much space?", env=env)
+            second = self.ush("--new", "//hello", env=env)
+        self.assertEqual(first.returncode, 0, first.stderr)
+        self.assertIn("→ df -h /", first.stderr)
+        self.assertIn("ush ran nothing: copy the command", first.stderr)
+        self.assertEqual(second.returncode, 0, second.stderr)
+        self.assertEqual(len(api.requests[1]["body"]["messages"]), 1)  # --new: no old context
 
     def test_ai_status_never_prints_the_key(self):
         result = self.ush("ai", "status", env={"ANTHROPIC_API_KEY": SYNTHETIC_KEY})
@@ -106,7 +171,7 @@ class CliTest(TempDirTest):
         env = {"ANTHROPIC_API_KEY": SYNTHETIC_KEY}
         with MockAPI(replies) as api:
             env["USH_BASE_URL"] = api.url
-            result = self.ush("//what does this log mean?", stdin="kernel: disk0 I/O error\n",
+            result = self.ush("--run", "//what does this log mean?", stdin="kernel: disk0 I/O error\n",
                               env=env)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("The log shows a disk error.", result.stdout)
@@ -170,7 +235,7 @@ class CliTest(TempDirTest):
         with MockAPI(replies, tags=tags) as api:
             env = {"USH_PROVIDER": "ollama", "USH_MODEL": "qwen3.5:9b", "USH_OLLAMA_URL": api.url,
                    "USH_CHECKER": "ollama:qwen3.5:2b"}
-            result = self.ush("//why is my disk full?", env=env)
+            result = self.ush("--run", "//why is my disk full?", env=env)
             status = self.ush("ai", "status", env=env)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("checker qwen3.5:2b: your requests and the proposed commands stay on this "
@@ -234,7 +299,7 @@ class CliTest(TempDirTest):
                             "XDG_CONFIG_HOME": os.path.join(self.tmp, "config"),
                             "XDG_STATE_HOME": os.path.join(self.tmp, "state")})
                 os.chdir(self.tmp)
-                os.execve(sys.executable, [sys.executable, "-m", "ush", "//make a file"], env)
+                os.execve(sys.executable, [sys.executable, "-m", "ush", "--run", "//make a file"], env)
             output = ""
 
             def until(text, timeout=20):

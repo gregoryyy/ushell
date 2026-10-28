@@ -4,7 +4,7 @@ The repository's roadmap across its projects: what comes next, in which order, a
 step. Each project keeps its own phases and items ([ushpy ROAD](../ushpy/docs/ROAD.md),
 [ushgo ROAD](../ushgo/docs/ROAD.md), [wish ROAD](../wish/docs/ROAD.md)); this file orders them and
 holds the items that belong to no single project. Work becomes items in a project's TODO when it
-starts. Status: 2026-10-28 10:58.
+starts. Status: 2026-10-28 19:13.
 
 ## Overview
 
@@ -13,7 +13,7 @@ starts. Status: 2026-10-28 10:58.
 | 0. Repository | Land the open stack; one default branch; CI; licence | Below | All PRs on the default branch; licence chosen |
 | 1. ush 0.1 | The `//` shell for zsh, safe to hand to others | ushpy TODO 2.9–2.11, 2.1.2, 3.1 | Release gate: no open High finding, suites on macOS and Linux, smoke test on the artifact |
 | 2. ush in Go | The same `ush` as a static Go binary, the deliverable | ushgo TODO 1.1–1.10, 2.1, 2.3 | ushgo passes ushpy's black-box tests and the smoke test; releases then ship it |
-| 3. ush for daily use | Fewer approvals for harmless commands, enforced read-only, long sessions | ushpy TODO 2.4–2.6 and their ushgo items | Weeks of daily use without a policy bypass; approvals per request falling |
+| 3. ush for daily use | Propose mode; fewer approvals for harmless commands, enforced read-only, long sessions | ushpy TODO 2.4–2.6, 2.17 and their ushgo items | Weeks of daily use without a policy bypass; approvals per request falling |
 | 4. wish phase 1 | A lean browser workspace: files, pipes, one notebook, `//` | wish TODO 1–4, 6, 9.1–9.4 | wish ROAD phase 1 acceptance; release gate |
 | 5. One `//` paradigm | The same request contract and policy semantics in ush and wish | ushpy TODO 2.7 | wish has a shell (wish TODO 2.1, 6.2) |
 
@@ -53,6 +53,9 @@ release ships the Go binary.
 
 ## 3. ush for daily use
 
+- Propose mode as the default: ush proposes, the user runs from their command line, `//`
+  continues with what ran; agent mode behind `--run`. Done in ushpy (TODO 2.17, manual checks
+  open), to port (ushgo TODO 1.12).
 - A user allowlist of commands that run without approval, on top of the built-in read-only table:
   done in ushpy (TODO 2.15), to port (ushgo TODO 1.11). No blacklist mode; deny rules that only
   add friction may follow (ushpy GAPS Q5).
@@ -80,5 +83,16 @@ same in ush and wish (ushpy TODO 2.7).
   loopback rules as Ollama.
 - **`ush explain CMD`:** describe what a command line would do, using the policy's parse, without
   running it.
+- **Analyse files with a set of instructions:** `ush analyze "INSTRUCTIONS" FILE…`, e.g.
+  `ush analyze "list the commands this script runs; flag destructive ones" deploy/*.sh`. The
+  instructions apply to each file in turn, with a result per file. The files go to the provider as
+  context, under the same redaction and disclosure as piped input.
+- **Data loss prevention on the way to the provider:** filters on everything ush sends (requests,
+  command output, piped input, files) that remove credentials and system internals (host names,
+  internal addresses, user and path names beyond what the request needs). This would go further
+  than today's pattern redaction. The adversarial checker would also review outgoing data for
+  leaks. Today it never sees command output, so that injected text can't steer it (ushpy ARCH). A
+  leak check needs to see that output, so it would be a separate role that can only answer "leak"
+  or "no leak" and only block, never approve.
 - **One policy corpus** for ushpy, ushgo and later wish: command lines with expected decisions, as
   the shared contract (ushgo ROAD).

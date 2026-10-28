@@ -1,8 +1,9 @@
 # ush, the you shell
 
 ush brings wish's `//` paradigm to zsh on your own machine. Ask in plain language.
-ush investigates with real Unix commands and short helper scripts, interprets the
-output, and answers. You can then ask follow-up questions in the same context.
+ush proposes the Unix command that answers it and puts it on your command line; you run
+it, and `//` continues with its output: the next command, or the answer. ush itself runs
+nothing, unless you ask for agent mode (`--run`), where it investigates on its own.
 
 This directory, `ushpy/`, is the Python implementation of `ush`: the experimental one, where
 features are tried first. The Go implementation in [ushgo/](../ushgo/README.md) is the same command
@@ -10,18 +11,20 @@ and will be the one releases ship; both must behave the same
 ([SDLC](../docs/SDLC.md#ush-one-command-two-implementations)).
 
 ```console
-$ ush //find out why my machine does not have enough disk space and visual tools don't seem to get anywhere
-ush · claude-opus-5-5 · requests and command output go to Anthropic, secrets redacted
-$ df -h /   # free space on the startup volume
-  └ exit 0, 0.1s
-$ tmutil listlocalsnapshots /   # local Time Machine snapshots
-  └ exit 0, 0.3s
-$ du -xsh ~/Library/* 2>/dev/null | sort -h | tail -8   # largest folders in Library
-  └ exit 0, 41.2s
-Your disk has 9 GB free of 460 GB. Most of the space Finder can't account for is
-in local Time Machine snapshots (≈96 GB) and ~/Library/Developer (≈71 GB) ...
-follow up with // QUESTION, run a command, or press Enter to finish
-ush> // which of the Xcode folders can I delete safely?
+$ // find out why my disk is full and visual tools don't seem to get anywhere
+ush · claude-opus-5-5 · proposes, you run · requests and command output go to Anthropic, secrets redacted
+First the volumes and local Time Machine snapshots, which Finder doesn't count.
+→ df -h / /System/Volumes/Data && tmutil listlocalsnapshots /   # free space, snapshots
+on your command line: Enter runs it, or edit it first · then // continues
+$ df -h / /System/Volumes/Data && tmutil listlocalsnapshots /
+...
+$ //
+9 GB free of 460 GB, and no local snapshots. Next, the largest folders in Library.
+→ du -xsh ~/Library/* 2>/dev/null | sort -h | tail -8   # largest folders in Library
+$ du -xsh ~/Library/* 2>/dev/null | sort -h | tail -8
+...
+$ //
+Most of the space is in ~/Library/Developer (≈71 GB): Xcode's DerivedData and old simulators ...
 ```
 
 The transcript above is illustrative; actual commands and answers depend on the
@@ -29,10 +32,15 @@ machine and the model.
 
 ## How it works
 
-- **`//` asks; anything else is a command.** `ush //REQUEST` answers one request
-  and then offers follow-ups. `ush` alone starts a session. In a session, `// TEXT`
-  asks, and any other line runs as an ordinary command whose output becomes context
-  for your next question.
+- **ush proposes, you run.** `// REQUEST` gets one proposed command, which the zsh plugin
+  puts on your command line. Enter runs it in your shell (edit it first if you like);
+  the plugin records the exit status and output, and `//` continues: ush proposes the
+  next command or answers. Changes, commands ush can't verify as read-only, and the
+  checker's objections are marked in yellow. Without the plugin, ush prints the proposal.
+- **Agent mode** (`ush --run //REQUEST`, or `mode: run`): ush runs the commands itself,
+  answers, and offers follow-ups. `ush` alone starts a session, where `// TEXT` asks and
+  any other line runs as an ordinary command whose output becomes context. The rest of
+  this list is about agent mode.
 - **Read-only commands run immediately.** ush has its own policy for command
   lines. It recognizes known read-only invocations such as `df`, `du`, `ls`,
   `find` without `-delete`/`-exec`, `diskutil list`, `tmutil listlocalsnapshots`,
@@ -138,15 +146,17 @@ what was measured. `ush replay` runs no checker, as it uses no AI.
 ## Commands and options
 
 ```text
-ush [OPTIONS] //REQUEST...   investigate and answer; then follow-up questions
+ush [OPTIONS] //REQUEST...   propose a command for your command line, or answer
+ush [OPTIONS] //             continue with what you ran
 ush [OPTIONS]                start a session
-ush ai configure [--file]    set the provider, API key or Ollama URL, model, and effort
+ush ai configure [--file]    set the mode, provider, API key or Ollama URL, model, and effort
 ush ai status                show provider, model, key source, and paths
 ush ai clear-key             remove the stored API key
 ush allow [add|remove RULE]  list, add, or remove commands that may run without approval
 ush history [-n N]           list recent requests and the commands they ran
 ush replay ID|last [-n]      run those commands again, without AI
 
+-r, --run       agent mode: ush runs the commands     -N, --new      start a new conversation
 -n, --dry-run   show what would run, run nothing     -c, --confirm  approve every command
 -1, --once      no follow-up questions               -v, --verbose  show complete output
 -m, --model M   model for this run                   -e, --effort L low … max
@@ -154,10 +164,10 @@ ush replay ID|last [-n]      run those commands again, without AI
 ```
 
 Piped input becomes context: `dmesg | tail -50 | ush //explain these errors`.
-Without a terminal (cron, CI), ush cannot ask for approval. It runs read-only
-commands only and declines the rest.
+Without a terminal (cron, CI), propose mode prints the proposal; agent mode cannot ask
+for approval, so it runs read-only commands only and declines the rest.
 
-Settings live in `~/.config/ush/config.json` (`provider`, `model`, `effort`,
+Settings live in `~/.config/ush/config.json` (`mode`, `provider`, `model`, `effort`,
 `ollama_url`, `ollama_model`, `checker`, `allow`, `max_steps`, `command_timeout`, `max_timeout`,
 `output_limit`, `show_lines`). The default model
 is `claude-opus-5-5` with effort `medium`. Refusals fall back server-side to a
@@ -167,15 +177,17 @@ model Anthropic selects (`fallbacks: "default"`).
 
 With Anthropic, each request sends your text, the OS name, your user name, and the
 working directory to Anthropic. With a local Ollama model the same data goes only to
-Ollama on this machine; with an Ollama cloud model, Ollama forwards it to ollama.com. It also sends the output of every command that runs, up to 32 KB each,
-plus any piped input. A checker model gets your requests and the proposed commands, but no
+Ollama on this machine; with an Ollama cloud model, Ollama forwards it to ollama.com. It also sends the output of every command that runs, up to 32 KB each (in propose mode, of
+each proposal you run), plus any piped input. A checker model gets your requests and the proposed commands, but no
 output; ush names where it runs before the first request. Before sending, ush redacts known token formats, private key
 blocks, URL credentials, `password=`-style assignments, and your API key.
 Redaction is pattern-based and cannot catch everything: assume that what a command
 prints may reach the provider. Use `--confirm` to see each command before it runs.
 
 History (`~/.local/state/ush/history.jsonl`, mode 0600) stores requests, commands,
-decisions, exit codes, and a shortened, redacted answer, but no command output.
+decisions, exit codes, and a shortened, redacted answer, but no command output. In
+propose mode the conversation, with the redacted output sent, is kept for an hour in
+`~/.local/state/ush/sessions/` (mode 0600) so that `//` can continue it.
 The API key is never passed to commands; `ANTHROPIC_*` variables are removed from
 their environment.
 

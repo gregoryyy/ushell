@@ -70,6 +70,11 @@ In dependency order: the packages that don't depend on others first.
 - [ ] 1.11 Allow rules (ushpy TODO 2.15): `ush allow`, the `allow` setting, `parse_rule`'s
   refusals, prefix matching, not used as root. Acceptance: ushpy's `AllowRuleTest` cases in the
   policy corpus; the CLI tests for `ush allow` pass against the Go binary.
+- [ ] 1.12 Propose mode (ushpy TODO 2.17): `propose_command`, the default `mode`, `--run`, `--new`,
+  the handoff directory and per-shell conversations (same files and formats as ushpy, so the
+  plugin and a saved conversation work with either), refusal of control characters. Acceptance:
+  ushpy's `test_propose` cases ported; the CLI propose tests and the zsh plugin tests pass against
+  the Go binary.
 
 ## 2. Release
 

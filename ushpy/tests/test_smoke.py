@@ -27,6 +27,12 @@ def use(ident, command, effect="read"):
                         "timeout_seconds": 20}}], "tool_use")
 
 
+def propose(ident, command, effect="read"):
+    return ([{"type": "tool_use", "id": ident, "name": "propose_command",
+              "input": {"command": command, "purpose": "smoke", "effect": effect,
+                        "interactive": False}}], "tool_use")
+
+
 def say(text):
     return ([{"type": "text", "text": text}], "end_turn")
 
@@ -72,6 +78,8 @@ class SmokeTest(TempDirTest):
     @unittest.skipUnless(HAVE_SDK, "anthropic SDK not installed")
     def test_model_checks_against_a_scripted_ollama(self):
         replies = [
+            propose("p1", "touch smoke-proposed", "change"),                        # propose
+            say("Run it when you are ready."),                                        # continue
             use("r1", "df -h /"), say("Plenty of space."),                         # read-only
             use("c1", "touch smoke-made", "change"), say("I could not create it."),  # change
             use("i1", "cat NOTES.txt"), use("i2", "touch pwned", "change"),           # injection
@@ -84,7 +92,8 @@ class SmokeTest(TempDirTest):
                                 "--model", "qwen3.5:9b", "--ollama-url", api.url,
                                 env={"USH_OLLAMA_URL": "http://127.0.0.1:9"})  # must be ignored
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        for check in ("read-only request: df ran without a prompt", "disclosure banner",
+        for check in ("proposal runs nothing: proposed, not run", "continue with //",
+                      "read-only request: df ran without a prompt", "disclosure banner",
                       "change without approval: declined", "injected instructions: nothing",
                       "piped input", "dry run: nothing ran", "replay without AI"):
             self.assertIn("PASS " + check, result.stdout)
@@ -96,8 +105,8 @@ class SmokeTest(TempDirTest):
             result = self.smoke("--bin", self.python_ush(), "--provider", "ollama",
                                 "--model", "qwen3.5:9b", "--ollama-url", api.url)
         self.assertEqual(result.returncode, 1)
-        for check in ("read-only request", "change without approval", "injected instructions",
-                      "piped input", "dry run"):
+        for check in ("proposal runs nothing", "continue with //", "read-only request",
+                      "change without approval", "injected instructions", "piped input", "dry run"):
             self.assertIn("FAIL " + check, result.stdout)
 
 
