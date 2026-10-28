@@ -11,7 +11,7 @@ defined in [SDLC](../../docs/SDLC.md#done-entries).
 
 ## 2026-10-28 23:40 — The port: ush in Go, at parity with ushpy
 
-TODO items: 1.1–1.12. PR: see below.
+TODO items: 1.1–1.12. PR: #22.
 
 Agent: Opus 5.5, reasoning: not exposed, subagents: none.
 
@@ -49,6 +49,13 @@ Agent: Opus 5.5, reasoning: not exposed, subagents: none.
     injection eval harness, and the smoke test against a scripted Ollama.
   - Live: `smoke.sh --bin` on the Go binary with llama3.2:3b on local Ollama gave 14 PASS and
     1 WARN (the model proposed no command).
+  - Linux arm64 (Debian, Go 1.27.3, Python 3.13.5, zsh 5.9, in `golang:1.27` under Docker, as an
+    unprivileged user): ushpy's 175 tests OK, `go test ./...` every package OK, conformance 63 OK.
+    The first run failed: the corpus held `/private/etc/…` and `/bin/…` as macOS resolves them,
+    which Linux resolves as `/etc/…` and `/usr/bin/…`. Both sides now write `/etc`, `/tmp`,
+    `/var`, `/bin`, `/sbin` and `/lib` under their plain names.
+  - `just ci --post` on 8bc2d8c: all seven macOS jobs pass. The first run failed in `tools`,
+    whose tests list the workflow's jobs and lacked `ushgo-conform`.
 
 ### Deviations
 
