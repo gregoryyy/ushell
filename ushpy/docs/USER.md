@@ -105,9 +105,12 @@ proposed command, never command output, so text that tricked the assistant can't
 flags needs your approval, even if ush would have run it; it never approves anything.
 
 ```sh
-ush -k ollama:llama3.2:3b //why is my disk full?     # for one run
-ush ai configure                                     # to keep it (last question)
+ush -k llama3.2:3b //why is my disk full?     # for one run, with a local model
+ush ai configure                              # to keep it (last question)
 ```
+
+A model name starting with `claude-` is Anthropic's, any other is Ollama's; `anthropic:…` or
+`ollama:…` in front says so explicitly.
 
 ## Options
 
@@ -119,7 +122,7 @@ ush ai configure                                     # to keep it (last question
 | `-v`, `--verbose` | show complete command output (default: the first 12 lines) |
 | `-m`, `--model M` | model for this run |
 | `-e`, `--effort L` | Anthropic effort: `low`, `medium`, `high`, `xhigh`, `max` |
-| `-k`, `--checker P:M` | checker for this run (`ollama:llama3.2:3b`, `anthropic:claude-haiku-5-5`, `off`) |
+| `-k`, `--checker MODEL` | checker for this run (`claude-haiku-5-5`, `llama3.2:3b`, `off`) |
 
 ## Other commands
 

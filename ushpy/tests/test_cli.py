@@ -1,15 +1,20 @@
 """End-to-end CLI runs without a terminal, against the mock API."""
 
+import functools
+import io
 import json
 import os
 import subprocess
 import sys
 import unittest
+from unittest import mock
 
 from helpers import SYNTHETIC_KEY, TempDirTest
 from mock_api import MockAPI
+from ush import cli
 
 SRC = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "src")
+DEAD_URL = "http://127.0.0.1:9"  # the discard port: nothing listens, a request fails at once
 
 try:
     import anthropic  # noqa: F401
@@ -23,7 +28,10 @@ class CliTest(TempDirTest):
         base = {k: v for k, v in os.environ.items()
                 if not k.startswith(("ANTHROPIC_", "USH_", "XDG_"))}
         base.update({"PYTHONPATH": SRC, "XDG_CONFIG_HOME": os.path.join(self.tmp, "config"),
-                     "XDG_STATE_HOME": os.path.join(self.tmp, "state"), "NO_COLOR": "1"})
+                     "XDG_STATE_HOME": os.path.join(self.tmp, "state"), "NO_COLOR": "1",
+                     # The developer's keychain is not isolated: a key found there must not reach
+                     # a real provider. Tests that talk to a provider point these at a mock.
+                     "USH_BASE_URL": DEAD_URL, "USH_OLLAMA_URL": DEAD_URL})
         base.update(env or {})
         # A new session has no controlling terminal, as in CI or a cron job.
         return subprocess.run([sys.executable, "-m", "ush", *args], input=stdin, text=True,
@@ -41,10 +49,39 @@ class CliTest(TempDirTest):
         self.assertEqual(self.ush().returncode, 2)  # no terminal for a session
 
     def test_missing_key_fails_before_anything_runs(self):
-        result = self.ush("//why is my disk full")
-        self.assertEqual(result.returncode, 2)
-        self.assertIn("no API key", result.stderr)
+        # In-process, with the keychain out of reach: a key the developer stored there must not
+        # stand in for the missing one (it once did, and the request went to Anthropic).
+        env = {k: v for k, v in os.environ.items()
+               if not k.startswith(("ANTHROPIC_", "USH_", "XDG_"))}
+        env.update({"XDG_CONFIG_HOME": os.path.join(self.tmp, "config"),
+                    "XDG_STATE_HOME": os.path.join(self.tmp, "state"), "NO_COLOR": "1",
+                    "USH_BASE_URL": DEAD_URL})
+        err = io.StringIO()
+        with mock.patch.dict(os.environ, env, clear=True), \
+                mock.patch("ush.config.SECURITY", os.path.join(self.tmp, "no-security")), \
+                mock.patch("sys.stdin", io.TextIOWrapper(io.BytesIO())), \
+                mock.patch.object(cli, "Terminal", functools.partial(cli.Terminal, err=err)):
+            code = cli.main(["//why is my disk full"])
+        self.assertEqual(code, 2)
+        self.assertIn("no API key", err.getvalue())
         self.assertEqual(self.ush("history").stdout, "")
+
+    def test_configure_asks_again_after_a_bad_answer(self):
+        # A bad answer used to end `ai configure` with an error, losing what was entered; now the
+        # same question is asked again. Ollama on an unused port: no key prompt, no models listed.
+        answers = ["openai", "ollama", "http://127.0.0.1:9", "bad name!", "llama3.2:3b",
+                   "anthropic:", "claude-haiku-5-5"]
+        result = self.ush("ai", "configure", stdin="\n".join(answers) + "\n")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("provider must be one of", result.stderr)
+        self.assertIn("checker 'anthropic:' is not a model name", result.stderr)
+        self.assertIn("checker: claude-haiku-5-5 through anthropic", result.stderr)
+        with open(os.path.join(self.tmp, "config", "ush", "config.json"), encoding="utf-8") as f:
+            saved = json.load(f)
+        self.assertEqual((saved["provider"], saved["ollama_url"], saved["ollama_model"],
+                          saved["checker"]),
+                         ("ollama", "http://127.0.0.1:9", "llama3.2:3b",
+                          "anthropic:claude-haiku-5-5"))
 
     def test_ai_status_never_prints_the_key(self):
         result = self.ush("ai", "status", env={"ANTHROPIC_API_KEY": SYNTHETIC_KEY})

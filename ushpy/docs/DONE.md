@@ -12,6 +12,59 @@ top. The format is defined in [SDLC](../../docs/SDLC.md#done-entries).
 
 ---
 
+## 2026-10-28 18:15 — Checker names without the provider; `ai configure` asks again; tests kept off the keychain
+
+TODO items: none new; fixes to 2.13 (checker) and the test suite, from the user's first
+`ush ai configure`. ushgo TODO 1.4 ports the behaviour. PR: see below.
+
+Agent: Opus 5.5, reasoning: not exposed, subagents: none.
+
+### Implementation notes
+
+- **The report:** "the model name expected seems to require the provider twice". After choosing
+  Anthropic, the checker answer `claude-haiku-5-5` was refused as "not provider:model". The error
+  also ended `ai configure`, so the answers given before it (model `claude-haiku-5-5`) were lost.
+- **Bare checker names** (`Settings.set_checker`): `claude-…` is Anthropic's, anything else
+  Ollama's (`qwen3.5:4b`, `library/qwen3.5:4b`). The explicit `anthropic:` / `ollama:` form still
+  works. The setting is stored as `provider:model`, so the file stays unambiguous. The rule
+  depends on the name, not on the main provider, so `-k`, `USH_CHECKER` and the settings file
+  give the same result in any order.
+- **`ai configure` asks again** (`cli._ask`) after an invalid provider, Ollama URL, model, effort
+  or checker. An empty answer keeps the current value, as before. It also prints how it read the
+  checker (`checker: claude-haiku-5-5 through anthropic`).
+- **Test isolation bug, found while testing this:**
+  - `test_missing_key_fails_before_anything_runs` ran `//why is my disk full` without a key and
+    without a mock endpoint. On the user's machine, the key just stored in the macOS keychain
+    stood in for the missing one. The test then most likely sent a real request to Anthropic, and
+    timed out after 60 s.
+  - Fixed twice over:
+    - `CliTest.ush` now points `USH_BASE_URL` and `USH_OLLAMA_URL` at a closed loopback port
+      (127.0.0.1:9) unless a test sets a mock, so no CLI test can reach a real provider.
+    - The missing-key test runs in-process, with `SECURITY` patched to a missing path and an empty
+      stdin, so it doesn't depend on the developer's keychain.
+- Usage text, both guides' shared sections, `.env.template` and the ushpy README describe the
+  bare form.
+- **Validation:**
+  - `just ushpy-test`: 108 tests OK, among them the new
+    `test_bare_checker_names_choose_the_provider_by_name` and
+    `test_configure_asks_again_after_a_bad_answer`.
+  - Reinstalled with `ushpy/install.sh`; `ush --help` shows `-k, --checker MODEL`.
+
+### Deviations
+
+- None from the plan. The isolation fix goes beyond the reported problem, because the suite
+  failed on the machine once a key was stored.
+
+### Insights
+
+- The keychain belongs to the user, not to `XDG_*`: tests that isolate settings through
+  `XDG_CONFIG_HOME` still see a real key. Any test that runs the CLI without a mock must not be able
+  to reach a provider at all. The closed-port default makes that hold for future tests too.
+- The rule "tests never call a paid provider" (AGENTS.md) was broken by the environment, not by a
+  test that meant to. Release gate checks should include a run on a machine with a stored key.
+
+---
+
 ## 2026-10-28 10:23 — User allowlist; no blacklist mode
 
 TODO items: 2.15 (ported by ushgo TODO 1.11); new GAPS Q5 and A7. PR:

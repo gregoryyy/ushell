@@ -49,8 +49,9 @@ In dependency order: the packages that don't depend on others first.
   interrupt, bounded output, scrubbed environment, private script files. Acceptance: ush's
   execution tests ported, including the pipeline that ignores SIGTERM.
 - [ ] 1.4 `internal/config`: identity under sudo, settings, keychain (secret on stdin) or 0600
-  file, environment overrides ignored as root. Acceptance: ush's config tests ported; settings
-  written by one implementation read by the other.
+  file, environment overrides ignored as root; checker names bare or `provider:model`, and
+  `ai configure` asking again after a bad answer (ushpy, 2026-10-28). Acceptance: ush's config
+  tests ported; settings written by one implementation read by the other.
 - [ ] 1.5 `internal/history`: append-only JSONL, `history`, `replay` through the policy.
   Acceptance: ush's history tests ported; history files interchangeable.
 - [ ] 1.6 `internal/provider`: Anthropic through `anthropic-sdk-go` (streaming, eager tool input,

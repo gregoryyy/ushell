@@ -71,7 +71,7 @@ Settings in `config.json`:
 | `effort` | `medium` | `low` … `max` |
 | `ollama_url` | `http://127.0.0.1:11434` | loopback only (`127.0.0.1`, `localhost`, `::1`) |
 | `ollama_model` | none | a pulled model with tool support |
-| `checker` | off | `provider:model` |
+| `checker` | off | `provider:model`, e.g. `anthropic:claude-haiku-5-5` |
 | `allow` | none | the user's allow rules ([USER](USER.md#your-allowlist)) |
 | `max_steps` | 30 | 1–200 commands per request |
 | `command_timeout` | 120 | 1–3600 s, default per command |

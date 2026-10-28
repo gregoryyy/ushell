@@ -150,7 +150,7 @@ ush replay ID|last [-n]      run those commands again, without AI
 -n, --dry-run   show what would run, run nothing     -c, --confirm  approve every command
 -1, --once      no follow-up questions               -v, --verbose  show complete output
 -m, --model M   model for this run                   -e, --effort L low … max
--k, --checker P:M  checker for this run (ollama:llama3.2:3b, anthropic:claude-haiku-5-5, off)
+-k, --checker M checker for this run (claude-haiku-5-5, llama3.2:3b, off)
 ```
 
 Piped input becomes context: `dmesg | tail -50 | ush //explain these errors`.

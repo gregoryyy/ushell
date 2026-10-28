@@ -218,12 +218,26 @@ class CheckerSettingsTest(TempDirTest):
         for off in ("off", "", "  "):
             s.set_checker(off)
             self.assertEqual(s.checker, "")
-        for bad in ("openai:gpt-6", "claude-haiku-5-5", "ollama:bad name!", "anthropic:x; rm",
-                    "ollama:"):
+        for bad in ("bad name!", "ollama:bad name!", "anthropic:x; rm", "anthropic:", "ollama:",
+                    "claude-haiku 5"):
             with self.subTest(bad=bad), self.assertRaises(ConfigError):
                 s.set_checker(bad)
         with self.assertRaises(ConfigError):
-            Settings.from_dict({"checker": "openai:gpt-6"})
+            Settings.from_dict({"checker": "anthropic:"})
+
+    def test_bare_checker_names_choose_the_provider_by_name(self):
+        # Whatever the main provider: claude-… is Anthropic's, anything else Ollama's (where
+        # names have tags, qwen3.5:4b); stored with the provider, so the setting is unambiguous.
+        for main in ("anthropic", "ollama"):
+            s = Settings(provider=main)
+            for value, stored in (("claude-haiku-5-5", "anthropic:claude-haiku-5-5"),
+                                  ("qwen3.5:4b", "ollama:qwen3.5:4b"),
+                                  ("llama3.2", "ollama:llama3.2"),
+                                  ("library/qwen3.5:4b", "ollama:library/qwen3.5:4b")):
+                with self.subTest(main=main, value=value):
+                    s.set_checker(value)
+                    self.assertEqual(s.checker, stored)
+                    self.assertEqual(Settings.from_dict(s.to_dict()).checker, stored)
 
     def test_checker_from_the_environment_but_not_as_root(self):
         env = {"USH_CHECKER": "ollama:qwen3.5:2b"}
