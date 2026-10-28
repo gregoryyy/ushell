@@ -14,6 +14,36 @@ Implementation completion doesn't imply a merged PR or a release; corrections an
 
 ---
 
+## 2026-10-28 10:58 — The stack lands on the default branch
+
+TODO items: 0.8, 0.9 (merge outcome). PR: [#12](https://github.com/gregoryyy/ushell/pull/12),
+merged by the user as merge commit 06e3710 on `feature/wish-planning-process`.
+
+Agent: Opus 5.5, reasoning: not exposed, subagents: none.
+
+### Implementation notes
+
+- PRs #3–#6 had been merged into each other's branches, so the default branch held only #2. The
+  open stack #7–#11 had the same shape. At the user's choice ("one pr"), #12 was retargeted to the
+  default branch with all 11 commits from #3 on, and #7–#11 were closed with a pointer to it.
+- Before the retarget, `git merge-tree --write-tree` of the default branch and 641f569 gave exactly
+  the tree of 641f569, so the local CI run on 641f569 (all jobs passed on macOS; Linux entries not
+  run) covers what was merged.
+- [ROAD](../../docs/ROAD.md) step 0 records the landing.
+
+### Deviations
+
+- None of #7–#11 were merged on their own; their descriptions remain the detailed record of each
+  part, and the DONE entries cite them.
+
+### Insights
+
+- A stacked PR only reaches the default branch if its base PR is merged *and* its branch is
+  deleted (or GitHub otherwise retargets it) before the next merge. One PR per landing, against
+  the default branch, avoids that trap; stack only when the base is about to merge.
+
+---
+
 ## 2026-10-28 10:06 — ushpy and ushgo side by side; AGENTS.md; repository roadmap
 
 TODO items: 0.9. PR: [#9](https://github.com/gregoryyy/ushell/pull/9) (stacked on #8).

@@ -4,7 +4,7 @@ The repository's roadmap across its projects: what comes next, in which order, a
 step. Each project keeps its own phases and items ([ushpy ROAD](../ushpy/docs/ROAD.md),
 [ushgo ROAD](../ushgo/docs/ROAD.md), [wish ROAD](../wish/docs/ROAD.md)); this file orders them and
 holds the items that belong to no single project. Work becomes items in a project's TODO when it
-starts. Status: 2026-10-28 10:06.
+starts. Status: 2026-10-28 10:58.
 
 ## Overview
 
@@ -24,9 +24,10 @@ than waiting for it. Step 4 starts when the user decides (wish GAPS Q1); the pro
 
 ## 0. Repository
 
-- **Land the stack.** PRs #3–#6 merged into each other's branches, not the default branch; #7
-  lands them, and the PRs after it stack on #7. Delete each branch when its PR is merged, or turn on
-  automatic deletion, so GitHub retargets the next PR.
+- **Land the stack:** done 2026-10-28. PRs #3–#6 had merged into each other's branches, not the
+  default branch; [#12](https://github.com/gregoryyy/ushell/pull/12) landed them with #7–#11 as one
+  PR. From now on, a PR targets the default branch unless its base is merged first; turn on
+  automatic deletion of head branches so a stacked PR is retargeted when its base merges.
 - **One default branch named `main`.** The default branch is `feature/wish-planning-process`, while
   [AGENTS.md](../AGENTS.md) and SDLC assume `main`. Renaming it in the repository settings
   retargets open PRs.
