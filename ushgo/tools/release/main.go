@@ -125,6 +125,7 @@ func sharedFiles(root string) ([]File, error) {
 		{"README.txt", "packaging/README.txt", 0o644},
 		{"ush.plugin.zsh", "../ushpy/shell/ush.plugin.zsh", 0o644},
 		{"zshrc.sh", "../ushpy/shell/zshrc.sh", 0o755},
+		{"LICENSE", "../LICENSE", 0o644},
 	} {
 		data, err := os.ReadFile(filepath.Join(root, f.path))
 		if err != nil {

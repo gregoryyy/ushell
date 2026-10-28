@@ -109,7 +109,7 @@ func TestBuildIsReproducibleAndRuns(t *testing.T) {
 	if output, err := exec.Command("tar", "-xzf", tarball, "-C", out).CombinedOutput(); err != nil {
 		t.Fatalf("tar: %v %s", err, output)
 	}
-	for _, name := range []string{"ush", "install.sh", "README.txt", "ush.plugin.zsh", "zshrc.sh"} {
+	for _, name := range []string{"ush", "install.sh", "README.txt", "ush.plugin.zsh", "zshrc.sh", "LICENSE"} {
 		if _, err := os.Stat(filepath.Join(out, host, name)); err != nil {
 			t.Error(err)
 		}

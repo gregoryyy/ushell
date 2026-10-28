@@ -10,7 +10,7 @@ cd "$(dirname "$0")/.."
 version=${1:?usage: scripts/release.sh VERSION [--check]}
 shift
 epoch=$(git log -1 --format=%ct)
-if [ -n "$(git status --porcelain -- . ../ushpy/shell)" ]; then
+if [ -n "$(git status --porcelain -- . ../ushpy/shell ../LICENSE)" ]; then
     echo "release.sh: uncommitted changes in ushgo/ or the plugin; the build would not match the commit" >&2
     [ "${1:-}" = --check ] || exit 1
 fi
