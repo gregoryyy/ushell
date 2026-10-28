@@ -6,7 +6,7 @@ set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 paths=("$@")
 if [ "${#paths[@]}" -eq 0 ]; then
-    cd "$(dirname "$here")"
+    cd "$(dirname "$(dirname "$here")")"
     paths=(README.md docs ushpy ushgo wish)
 fi
 command -v git >/dev/null || { echo "ERROR: git is required" >&2; exit 1; }

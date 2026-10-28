@@ -4,12 +4,12 @@
 set -euo pipefail
 
 here="$(cd "$(dirname "$0")" && pwd)"
-root="$(dirname "$here")"
+root="$(dirname "$(dirname "$here")")"
 css="$here/pdf-style.css"
 stampdir="$root/.pdfstamps"
 
 if [ "$#" -ne 1 ]; then
-    echo "usage: tools/pdf.sh <file.md>" >&2
+    echo "usage: tools/pdf/pdf.sh <file.md>" >&2
     exit 2
 fi
 src="$1"
