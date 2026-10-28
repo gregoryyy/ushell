@@ -357,6 +357,7 @@ class Agent:
             self.ui.show_proposal(command, purpose, notes)
             entry.steps.append(step)
             self.proposal = {"id": block["id"], "command": command, "purpose": purpose,
+                             "verbose": self.options.verbose,
                              "interactive": bool(args["interactive"]), "cwd": os.getcwd()}
         return results
 

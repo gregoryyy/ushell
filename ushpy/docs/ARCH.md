@@ -100,10 +100,22 @@ propose specific shell commands and prewrite them to be executed by the user"; t
    working directory, and the redacted output (bounded head and tail), or that nothing ran. The
    model then proposes the next command or answers.
 
+**Keys on a proposal** (TODO 2.18–2.21):
+- The plugin binds Esc and Down only while a proposal is on the line. It saves their bindings as
+  `bindkey -L` prints them and restores them when the line runs, is cleared, or is abandoned.
+- **Down** runs `ush explain --inline` on the line as it stands. That is one request without
+  tools (`complete`), with the request and the proposal's purpose as context. The answer has a
+  fixed form (Summary, Parts, Access, Notes); brief shows Parts and Access, `-v` all of it.
+- The explanation is drawn as zle's `PREDISPLAY`, above the command and display-only, so the
+  cursor stays in the command.
+- **Esc** clears the explanation, or else the proposal.
+- **The installers** offer to add the plugin to `~/.zshrc` (`shell/zshrc.sh`).
+
 **Without the plugin**, ush prints the proposal, and the conversation is keyed by the parent
 process. The next `ush //` tells the model that ush can't know what ran.
 
-**In a session** (`ush`), the proposal is pre-filled at the `ush>` prompt through readline. A line
+**In a session** (`ush`), the proposal is pre-filled at the `ush>` prompt by zsh's `vared`,
+with the same keys. Python's readline can't pre-fill with libedit, macOS's default. A line
 the user runs there answers it, with output.
 
 **As root**, there is no handoff: the plugin creates none, and ush ignores `USH_HANDOFF`. The

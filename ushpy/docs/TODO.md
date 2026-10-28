@@ -118,7 +118,7 @@ DONE has an entry for it.
   over; proposals with control characters are refused. Ported by ushgo TODO 1.12.
   - [x] 2.17.1 Implementation and automated tests: agent, handoff, CLI end to end, the plugin in a
     real zsh, smoke checks; ARCH, SEC, guides, READMEs, SMOKE (M11–M15).
-  - [ ] 2.17.2 Manual checks M11–M15 by the user with a real model, and a live smoke run in
+  - [ ] 2.17.2 Manual checks M11–M18 by the user with a real model, and a live smoke run in
     propose mode.
 - [x] 2.18 Plugin setup and Esc: both installers offer to add the plugin to `~/.zshrc`
   (`shell/zshrc.sh`: asks only from a terminal, `--zshrc`/`--no-zshrc`, never twice or as root);
@@ -141,6 +141,14 @@ DONE has an entry for it.
   Acceptance: the plugin in a real zsh (explanation before the command, edit with it shown, Esc
   twice, Enter runs the edited command); the session editor in a pty (pre-filled and edited, Esc,
   Down and Esc).
+- [x] 2.21 Brief explanations: the model answers in a fixed form (Summary, Parts, Access, Notes);
+  by default only the parts and the access (files and network, read and write, anonymization
+  where it applies) are shown, and `-v` (`ush -v`, `ush -v //…`, carried by the proposal, or
+  `ush explain -v`) adds the banner, ush's verdict, the summary, the notes, and the key hint. The
+  progress text and the explanation take the prompt's place above the command, without leftover
+  lines; `{}` is literal in the policy, so `find -exec … {} +` names `-exec`. Acceptance: CLI
+  tests (brief exactly the parts, verbose in full, hint only for the key, the proposal's -v), the
+  order on a full redraw in a real zsh and in the session editor, policy tests for `{}`.
 
 ## 3. Release
 

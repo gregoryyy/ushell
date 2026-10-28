@@ -73,8 +73,8 @@ In dependency order: the packages that don't depend on others first.
 - [ ] 1.12 Propose mode (ushpy TODO 2.17): `propose_command`, the default `mode`, `--run`, `--new`,
   the handoff directory and per-shell conversations (same files and formats as ushpy, so the
   plugin and a saved conversation work with either), refusal of control characters, `ush explain`
-  (ushpy TODO 2.19), the session's pre-filled proposal (2.20: zsh `vared`, or the Go line
-  editor); the installer's `zshrc.sh` and the plugin's keys are shared already (2.18, 2.20).
+  (ushpy TODO 2.19, brief and -v 2.21), the session's pre-filled proposal (2.20: zsh `vared`, or
+  the Go line editor); the installer's `zshrc.sh` and the plugin's keys are shared already (2.18, 2.20).
   Acceptance: ushpy's `test_propose` cases ported; the CLI propose and explain tests and the zsh
   plugin tests pass against the Go binary.
 
@@ -91,11 +91,18 @@ In dependency order: the packages that don't depend on others first.
     ushpy's does and none writable by others.
   - [ ] 2.1.2 The same checksums from the same tag on a second machine (Linux CI once Actions runs,
     or by hand).
-  - [ ] 2.1.3 *(decision)* macOS distribution: signing and notarization with an Apple Developer ID,
-    a Homebrew tap that builds from source, or neither (GAPS Q3).
+  - [x] 2.1.3 *(decision)* macOS distribution: a tag, a GitHub release with the archives, and a
+    Homebrew tap; no signing for now (GAPS Q3, answered 2026-10-28).
 - [x] 2.2 *(decision)* Which implementation is maintained after parity: both, Go as the
   deliverable, Python as the experimental implementation (GAPS Q2, 2026-10-28).
 - [ ] 2.3 Release gate per [AGENTS.md](../../AGENTS.md) and [SEC](SEC.md): conformance on each
   supported OS, ush SECTEST levels 1 and 2 on the binary, `govulncheck`, secret scan.
 - [ ] 2.4 The man page `ush.1` (ushpy TODO 2.14) in the release archive, installed to
   `share/man/man1`.
+- [ ] 2.5 0.2.0-rc1, the first release, of the Go binaries at parity (user, 2026-10-28): version
+  0.2.0-rc1 in both implementations, release notes, the release gate (2.3) on the tagged commit.
+  The AI prepares; the user tags and publishes.
+- [ ] 2.6 GitHub release from the tag: the four archives and `SHA256SUMS` attached, the notes, the
+  install line for curl users.
+- [ ] 2.7 Homebrew tap: a formula that builds `ush` from the tagged source with Go
+  (`brew install gregoryyy/ush/ush`); the tap repository `homebrew-ush` is created by the user.

@@ -18,6 +18,7 @@ AUTO = [
     "diskutil apfs list",
     "docker system df",
     "brew cleanup -n",
+    "ls a{}b",
     "ps aux",
     "top -l 1 -n 10",
     "log show --last 1h --predicate 'eventMessage contains \"disk\"'",
@@ -45,6 +46,8 @@ NEEDS_APPROVAL = {
     "find {.,-delete}": "brace",
     "find . -name x -delete": "-delete",
     "find . -exec rm {} +": "-exec",
+    # {} is literal in zsh; the reason must name what actually needs approval
+    "find ~ -type f -size +100M -exec du -h {} + 2>/dev/null | sort -rh": "-exec",
     "sed -i '' s/a/b/ f": "sed",
     "sed 's/a/b/w /tmp/out' f": "sed",
     "sed e f": "sed",
@@ -97,6 +100,14 @@ class PolicyTest(unittest.TestCase):
                 self.assertFalse(verdict.auto)
                 self.assertTrue(verdict.reason)
                 self.assertIn(hint.lower(), verdict.reason.lower() + " " + command.lower())
+
+    def test_empty_braces_are_literal(self):
+        # zsh doesn't expand {}; find -exec ... {} + needs approval for -exec, not for braces.
+        verdict = classify("find ~ -type f -exec du -h {} + 2>/dev/null")
+        self.assertEqual((verdict.auto, verdict.reason), (False, "find -exec runs commands or "
+                                                                 "changes files"))
+        self.assertIn("brace", classify("ls {a,b}").reason)
+        self.assertIn("brace", classify("ls {").reason)
 
     def test_sudo_is_reported(self):
         self.assertTrue(classify("df -h && sudo du -sh /").sudo)

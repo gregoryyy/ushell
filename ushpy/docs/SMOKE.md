@@ -71,6 +71,9 @@ should see.
 | M13 | `// make a file named c.txt`, edit the line to `touch d.txt`, Enter, `//` | `d.txt` exists, `c.txt` doesn't; ush mentions the edited command |
 | M14 | `// show me the system log in a pager`, Enter, quit the pager, `//` | The pager worked normally (interactive); ush says it didn't see the output |
 | M15 | `// list my home directory`, then Ctrl-U and `// never mind, what time is it?` | ush knows the listing didn't run |
+| M16 | `// find the largest files on disk`, then Down | Above the command: the parts and the access (files, network); the cursor stays in the command |
+| M17 | Same, then Esc, Esc | The first Esc closes the explanation, the second removes the proposal |
+| M18 | `ush -v`, then `// find the largest files on disk` and Down at `ush>` | Pre-filled at `ush>`; the explanation also has summary, notes, ush's verdict and "Esc closes this" |
 
 ## When it fails
 

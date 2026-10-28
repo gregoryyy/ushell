@@ -7,8 +7,8 @@ checked, and executed. Both use the user's own AI API key, or a local model.
 | Project | What | Status |
 | --- | --- | --- |
 | **ush** | The `//` shell for zsh on your machine, optionally under `sudo`; one command, two implementations | |
-| ↳ [ushpy](ushpy/README.md) | ush in Python: the experimental implementation, where features are tried first | Version 0.1 implemented; not yet released |
-| ↳ [ushgo](ushgo/README.md) | ush in Go: the compiled deliverable, one static binary | Set up; answers no requests yet |
+| ↳ [ushpy](ushpy/README.md) | ush in Python: the experimental implementation, where features are tried first | Complete; not yet released |
+| ↳ [ushgo](ushgo/README.md) | ush in Go: the compiled deliverable, one static binary | Port under way; 0.2.0-rc1 ships it at parity |
 | [wish](wish/README.md) | Browser workspace: files, notebooks, live tools | Design documents; not implemented |
 
 What comes next, across the projects, is in the roadmap: [docs/ROAD.md](docs/ROAD.md).
@@ -22,15 +22,19 @@ its own, running read-only commands at once and showing anything else for approv
 an Anthropic API key or a local model in Ollama, and an optional second model can check each
 proposed command.
 
+On the command line, a proposal waits for you: Enter runs it, Down explains it (what each part
+does, which files and network it reads and writes), Esc removes it. `ush explain COMMAND` explains
+any command line, and `-v` gives the full explanation.
+
 `ush` is one command with two implementations that must behave the same: Python in `ushpy/` and Go
 in `ushgo/`. `ush --version` says which one you have (`(python)` or `(go)`). Features land in Python
 first and are then ported to Go; releases ship the Go binary once it passes the same black-box tests
 ([SDLC](docs/SDLC.md#ush-one-command-two-implementations)). Until then, install the Python one.
 
 ```sh
-cd ushpy && ./install.sh         # installs ~/.local/bin/ush; prints the zsh plugin line
-ush ai configure                 # provider, model, and key (macOS keychain or a 0600 file)
-ush //find out why my machine does not have enough disk space
+cd ushpy && ./install.sh         # installs ~/.local/bin/ush; offers to add the plugin to ~/.zshrc
+ush ai configure                 # mode, provider, model, key (macOS keychain or a 0600 file)
+// find out why my machine does not have enough disk space      # in a new terminal
 ```
 
 To check an installed `ush` of either implementation, run the user smoke test

@@ -227,7 +227,8 @@ class ZshProposeTest(TempDirTest):
     def test_down_explains_above_the_command_and_esc_closes_it(self):
         out = self.session([
             ("// capture echo one\r", "PROMPT> echo one"),
-            ("\x1b[B", "Enter runs the command"),  # Down: the explanation, above the command
+            ("\x1b[B", "EXPLAIN"),                 # Down: the explanation, above the command
+            ("\x0c", "echo one"),                   # Ctrl-L redraws all of it, in order
             (" two", "two"),                         # the cursor is still on the line
             ("\x1b", "echo one two"),               # Esc closes the explanation only
             ("\r", "PROMPT> "),                     # Enter runs the edited command
@@ -235,19 +236,20 @@ class ZshProposeTest(TempDirTest):
             ("\x1b[B", ""),                         # Down without a proposal: no ush
             ("\x15bindkey -M main $'\\e[B'\r", "PROMPT> "),
         ])
-        self.assertIn('EXPLAIN["--", "echo one"]', out[1])
-        plain = re.sub(r"\x1b\[[0-9;?]*[A-Za-z]|\r", "", out[1])
+        self.assertIn('EXPLAIN["--inline", "--", "echo one"]', out[1])
+        plain = re.sub(r"\x1b\[[0-9;?]*[A-Za-z]|\r", "", out[2])
+        self.assertLess(plain.index("PROMPT> "), plain.index("EXPLAIN"))
         self.assertLess(plain.index("EXPLAIN"), plain.rindex("→ echo one"))  # above the command
-        self.assertNotIn("proposal removed", out[3])
-        self.assertIn("one two", out[4])
-        self.assertEqual(self.records(out[5])[0], "0\necho one two\n")
-        self.assertNotIn("EXPLAIN", out[6] + out[7])
-        self.assertIn('"^[[B" down-line-or-history', out[7])
+        self.assertNotIn("proposal removed", out[4])
+        self.assertIn("one two", out[5])
+        self.assertEqual(self.records(out[6])[0], "0\necho one two\n")
+        self.assertNotIn("EXPLAIN", out[7] + out[8])
+        self.assertIn('"^[[B" down-line-or-history', out[8])
 
     def test_second_esc_removes_the_explained_proposal(self):
         out = self.session([
             ("// capture echo one\r", "PROMPT> echo one"),
-            ("\x1b[B", "Enter runs the command"),
+            ("\x1b[B", "EXPLAIN"),
             ("\x1b", "echo one"),
             ("\x1b", "proposal removed"),
             ("//\r", "PROMPT> "),
@@ -281,7 +283,8 @@ class SessionPrefillTest(TempDirTest):
                                "TERM": "xterm-256color",
                                "XDG_CONFIG_HOME": os.path.join(self.tmp, "config"),
                                "XDG_STATE_HOME": os.path.join(self.tmp, "state"),
-                               # no provider reachable, whatever key the keychain holds
+                               # a local model that isn't there: no key, no cost
+                               "USH_PROVIDER": "ollama", "USH_MODEL": "qwen3.5:4b",
                                "USH_BASE_URL": "http://127.0.0.1:9",
                                "USH_OLLAMA_URL": "http://127.0.0.1:9"})
             os.execv(sys.executable, [sys.executable, "-c", EDITOR])
@@ -305,10 +308,12 @@ class SessionPrefillTest(TempDirTest):
         self.assertIn("GOT'ls'", out[2])
 
     def test_down_explains_and_esc_closes_the_explanation(self):
-        out = self.edit([("\x1b[B", "Enter runs the command"), ("\x1b", "echo prefilled"),
-                         ("\r", "END")])
-        self.assertRegex(out[1], "no API key|cannot reach|explaining")
-        self.assertIn("GOT'echo prefilled'", out[3])
+        out = self.edit([("\x1b[B", "cannot reach Ollama"), ("\x0c", "echo prefilled"),
+                         ("\x1b", "echo prefilled"), ("\r", "END")])
+        plain = re.sub(r"\x1b\[[0-9;?]*[A-Za-z]|\r", "", out[2])  # after Ctrl-L: in order
+        self.assertLess(plain.index("cannot reach Ollama"), plain.rindex("→ echo prefilled"))
+        self.assertNotIn("ush> ", plain)  # the explanation takes the prompt's place
+        self.assertIn("GOT'echo prefilled'", out[4])
 
 
 if __name__ == "__main__":

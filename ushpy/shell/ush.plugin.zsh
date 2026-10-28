@@ -159,13 +159,12 @@ _ush_discard() {
 _ush_explain() {
   if [[ $_ush_state == offered && $HISTNO == $HISTCMD && $RBUFFER != *$'\n'* &&
         -n ${BUFFER//[[:space:]]/} ]]; then
-    zle -M "ush: explaining…"
+    PREDISPLAY=$'\n'"ush: explaining…"$'\n'"→ "
     zle -R
     local text
-    text=$(command ${USH_BIN:-ush} explain -- "$BUFFER" 2>&1 </dev/null)
-    zle -M ''
+    text=$(command ${USH_BIN:-ush} explain --inline -- "$BUFFER" 2>&1 </dev/null)
     _ush_explained=1
-    PREDISPLAY=$'\n'"$text"$'\n'"Esc closes this · Enter runs the command"$'\n'"→ "
+    PREDISPLAY=$'\n'"$text"$'\n'"→ "
   else
     local widget=${_ush_orig[$KEYS]:-down-line-or-history}
     [[ $widget == undefined-key ]] || zle $widget
