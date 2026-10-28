@@ -9,7 +9,7 @@ import sys
 import unittest
 from unittest import mock
 
-from helpers import SYNTHETIC_KEY, TempDirTest
+from helpers import IMPLEMENTATION, SYNTHETIC_KEY, TempDirTest, ush_argv
 from mock_api import MockAPI
 from ush import cli
 
@@ -36,14 +36,14 @@ class CliTest(TempDirTest):
                      "USH_BASE_URL": DEAD_URL, "USH_OLLAMA_URL": DEAD_URL})
         base.update(env or {})
         # A new session has no controlling terminal, as in CI or a cron job.
-        return subprocess.run([sys.executable, "-m", "ush", *args], input=stdin, text=True,
+        return subprocess.run([*ush_argv(), *args], input=stdin, text=True,
                               capture_output=True, env=base, cwd=self.tmp, timeout=60,
                               start_new_session=True)
 
     def test_help_and_usage_errors(self):
         self.assertIn("usage:", self.ush("help").stdout)
         # Both implementations are the command `ush`; --version says which one this is.
-        self.assertRegex(self.ush("--version").stdout, r"^ush \d+\.\d+\.\d+\S* \(python\)\n$")
+        self.assertRegex(self.ush("--version").stdout, rf"^ush \d+\.\d+\.\d+\S* \({IMPLEMENTATION}\)\n$")
         result = self.ush("frobnicate")
         self.assertEqual(result.returncode, 2)
         self.assertIn("requests start with //", result.stderr)
@@ -374,7 +374,8 @@ class CliTest(TempDirTest):
                             "XDG_CONFIG_HOME": os.path.join(self.tmp, "config"),
                             "XDG_STATE_HOME": os.path.join(self.tmp, "state")})
                 os.chdir(self.tmp)
-                os.execve(sys.executable, [sys.executable, "-m", "ush", "--run", "//make a file"], env)
+                argv = ush_argv()
+                os.execve(argv[0], [*argv, "--run", "//make a file"], env)
             output = ""
 
             def until(text, timeout=20):

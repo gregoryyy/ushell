@@ -4,11 +4,10 @@ How to install, verify, configure, run under `sudo`, upgrade, and remove `ush` o
 after, and what it touches on the system and the network. For daily use, see the
 [user guide](USER.md). Status: 2026-10-28 10:23.
 
-> **Which ush this describes.** This is the Python implementation of `ush`, in `ushpy/`: the one to
-> install for real use today. The Go implementation in `ushgo/` is the same command and the one
-> releases will ship once its port is complete; it uses the same files, settings and plugin, so
-> switching later is a reinstall ([ushgo ADMIN](../../ushgo/docs/ADMIN.md)). Sections below say
-> where the two differ.
+> **Which ush this describes.** This is the Python implementation of `ush`, in `ushpy/`, where
+> features are tried first. The Go implementation in `ushgo/` is the same command and the one
+> releases ship; it uses the same files, settings and plugin, so switching is a reinstall
+> ([ushgo ADMIN](../../ushgo/docs/ADMIN.md)). Sections below say where the two differ.
 
 <!-- shared:begin (identical in ushpy/docs and ushgo/docs; test_docs) -->
 

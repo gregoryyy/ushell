@@ -130,10 +130,14 @@ if [ -n "$provider" ]; then
     elif err propose | grep -q "^→ "; then result PASS "proposal runs nothing" "proposed, not run"
     else result WARN "proposal runs nothing" "nothing ran, but the model proposed no command"; fi
 
-    ush --detach continue "//"
-    if request_failed continue "continue with //"; then :
-    elif [ -n "$(out continue)$(err continue | grep '^→ ')" ]; then result PASS "continue with //"
-    else result WARN "continue with //" "no answer and no proposal"; fi
+    if ! err propose | grep -q "^→ "; then
+        result WARN "continue with //" "nothing to continue: the model proposed no command"
+    else
+        ush --detach continue "//"
+        if request_failed continue "continue with //"; then :
+        elif [ -n "$(out continue)$(err continue | grep '^→ ')" ]; then result PASS "continue with //"
+        else result WARN "continue with //" "no answer and no proposal"; fi
+    fi
 
     ush --detach read --run -1 "//How much free disk space is on /? Run df -h / to find out."
     if [ "$code" != 0 ] || [ -z "$(out read)" ]; then

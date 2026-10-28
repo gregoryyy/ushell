@@ -14,8 +14,8 @@ pdf file:
 pdfs *paths:
     @cd {{quote(invocation_directory())}} && {{quote(justfile_directory() + "/tools/pdfs.sh")}} "$@"
 
-# Test both implementations of ush: ushpy-test and ushgo-test
-ush-test: ushpy-test ushgo-test
+# Test both implementations of ush: ushpy-test, ushgo-test and ushgo-conform
+ush-test: ushpy-test ushgo-test ushgo-conform
 
 # Run the Python ush suite (unit, mock-provider integration, and zsh plugin tests)
 ushpy-test:
@@ -24,6 +24,10 @@ ushpy-test:
 # Format-check, vet and test ushgo (Go 1.27: brew install go)
 ushgo-test:
     @ushgo/scripts/test.sh
+
+# ushpy's black-box tests against the Go binary: the two implementations behave the same
+ushgo-conform:
+    @ushgo/scripts/conform.sh
 
 # Build the Go release archives into ushgo/dist/, e.g. `just ushgo-release 0.1.0` (`--check` to
 # build twice and compare). Building only; publishing a release is a human's step.

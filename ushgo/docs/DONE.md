@@ -9,6 +9,66 @@ defined in [SDLC](../../docs/SDLC.md#done-entries).
 
 ---
 
+## 2026-10-28 23:40 — The port: ush in Go, at parity with ushpy
+
+TODO items: 1.1–1.12. PR: see below.
+
+Agent: Opus 5.5, reasoning: not exposed, subagents: none.
+
+### Implementation notes
+
+- **The request:** "the go version shall have feature parity with the python version", for the
+  0.2.0-rc1 release of the Go binaries.
+- **Packages:** `internal/` holds each ushpy module's counterpart:
+  - `policy`, `redact`, `execute`, `config` (settings and key store), `history`;
+  - `handoff` (propose mode's files and conversations), `check` (the checker);
+  - `provider` (Messages API and Ollama), `ui` (terminal, approval, the `vared` session
+    editor), `agent` (both modes);
+  - `cmd/ush` has the full command line: requests, `//`, sessions, piped input, all options,
+    `ai`, `allow`, `explain`, `history`, `replay`.
+- **Exact behaviour:** prompts, tool schemas, usage text and messages are ushpy's word for word;
+  a script compared the system prompts and the explanation prompt. The files are ushpy's, in the
+  same formats: settings, key store, history, handoff directory, saved conversations.
+- **No dependencies:** the provider is a streaming client on `net/http`, about 400 lines (ARCH).
+  Terminal checks and echo control use `ioctl`, per OS.
+- **Policy parity:**
+  - `conform/policy.json` holds 1545 command lines with ushpy's verdicts and reasons, over a
+    fixture tree with a fake home: ushpy's policy tests, an escape-vector sweep, allow rules, and
+    1500 seeded random lines.
+  - ushgo's `TestConformance` compares every case; planting one wrong reason made 8 cases fail.
+  - `ushpy/scripts/policy_corpus.py` writes the corpus, and ushpy's `test_conform` fails if it is
+    out of date.
+- **Black-box parity:** `test_cli`, `test_security`, `test_smoke` and `test_zsh_plugin` start ush
+  through `USH_TEST_BIN`. `ushgo/scripts/conform.sh` builds the Go binary and runs them against it
+  (`just ushgo-conform`, part of `just ush-test`, and the new CI job `ushgo-conform`).
+- **Validation:**
+  - `go test ./...`: every package OK, on macOS; `go vet` for macOS and Linux.
+  - Conformance against the Go binary: all 63 tests OK. That covers `test_cli` (16) and
+    `test_security`, `test_smoke` and `test_zsh_plugin` (47), among them the pty approval prompt,
+    propose mode with handoff and continuation, sessions with `vared` and Up, explanations, the
+    injection eval harness, and the smoke test against a scripted Ollama.
+  - Live: `smoke.sh --bin` on the Go binary with llama3.2:3b on local Ollama gave 14 PASS and
+    1 WARN (the model proposed no command).
+
+### Deviations
+
+- **Own HTTP client:** replaces `anthropic-sdk-go` (planned in 1.6); the reasons are in ARCH.
+- **Tokenizer fuzzing:** ushgo's tokenizer is not fuzzed against zsh directly. It equals ushpy's on
+  the 1545 corpus lines, and ushpy's is fuzzed against zsh.
+- **Test hook:** `ui.Terminal.Ask` lets the agent tests answer approval prompts.
+- **Smoke test:** it now runs `//` only after the model proposed something, and warns otherwise.
+  A weak model that proposes nothing had made the check fail, in either implementation.
+
+### Insights
+
+- The corpus found F7 in ushpy, a crash on `cat < 2>/dev/null`, before the Go side passed.
+  Comparing two implementations tests both.
+- RE2's lack of lookaround cost a small sed-substitution parser. Its linear time removes a whole
+  class of findings (F3).
+- Running the black-box tests against both binaries makes parity a CI result, not a claim.
+
+---
+
 ## 2026-10-28 10:23 — User and admin guides
 
 TODO items: 0.4; ushpy TODO 2.16. PR: [#12](https://github.com/gregoryyy/ushell/pull/12) (stacked on #11).

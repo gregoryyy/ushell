@@ -6,10 +6,9 @@ machines, see the [admin guide](ADMIN.md). Status: 2026-10-28 10:23.
 
 > **Which ush this describes.** `ush` is one command with two implementations that behave the same:
 > this Python one in `ushpy/`, where features are tried first, and the Go one in `ushgo/`, which
-> releases will ship. Everything below works in this implementation today; the Go one gets each
-> part as it is ported ([ushgo TODO](../../ushgo/docs/TODO.md)). The same guide is in
-> [ushgo/docs/USER.md](../../ushgo/docs/USER.md). `ush --version` tells you which one you have:
-> `ush 0.1.0 (python)` or `ush 0.0.0-dev (go)`.
+> releases ship. Everything below works in both; ushpy's black-box tests pass against the Go binary.
+> The same guide is in [ushgo/docs/USER.md](../../ushgo/docs/USER.md). `ush --version` tells you
+> which one you have: `ush 0.2.0-rc1 (python)` or `ush 0.2.0-rc1 (go)`.
 
 <!-- shared:begin (identical in ushpy/docs and ushgo/docs; test_docs) -->
 

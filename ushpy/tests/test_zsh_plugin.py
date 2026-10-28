@@ -10,7 +10,7 @@ import sys
 import time
 import unittest
 
-from helpers import TempDirTest
+from helpers import TempDirTest, ush_argv
 
 PLUGIN = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "shell", "ush.plugin.zsh")
 ZSH = shutil.which("zsh") or ""
@@ -351,7 +351,8 @@ class SessionTest(TempDirTest):
                                "XDG_STATE_HOME": os.path.join(self.tmp, "state"),
                                "USH_BASE_URL": "http://127.0.0.1:9"})
             os.chdir(self.tmp)
-            os.execv(sys.executable, [sys.executable, "-m", "ush"])
+            argv = ush_argv()
+            os.execv(argv[0], argv)
         try:
             read = ZshPluginTest._read
             read(fd, "ush> ")

@@ -5,11 +5,9 @@ what runs and what leaves your machine. For installing ush for others, under `su
 machines, see the [admin guide](ADMIN.md). Status: 2026-10-28 10:23.
 
 > **Which ush this describes.** `ush` is one command with two implementations that behave the same:
-> the Go one built from `ushgo/` (the one releases will ship) and the Python one in `ushpy/`. Today
-> the Go implementation answers only `ush --version` and `ush --help`; everything below works in the
-> Python implementation, and each part reaches the Go one as it is ported
-> ([TODO](TODO.md)). `ush --version` tells you which one you have: `ush 0.1.0 (python)` or
-> `ush 0.0.0-dev (go)`.
+> the Go one built from `ushgo/`, which releases ship, and the Python one in `ushpy/`. Everything
+> below works in both; ushpy's black-box tests pass against the Go binary. `ush --version` tells you
+> which one you have: `ush 0.2.0-rc1 (go)` or `ush 0.2.0-rc1 (python)`.
 
 <!-- shared:begin (identical in ushpy/docs and ushgo/docs; test_docs) -->
 

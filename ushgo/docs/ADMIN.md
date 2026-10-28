@@ -5,10 +5,9 @@ after, and what it touches on the system and the network. For daily use, see the
 [user guide](USER.md). Status: 2026-10-28 10:23.
 
 > **Which ush this describes.** The Go implementation built from `ushgo/` is the deliverable: one
-> static binary per platform. Today it answers only `--version` and `--help`, so until its port is
-> complete (TODO 1.x), install the Python implementation from `ushpy/` for real use; it uses the same
-> files, settings and plugin, so switching later is a reinstall. Sections below say where the two
-> differ.
+> static binary per platform, with the same behaviour, files, settings and plugin as the Python
+> implementation in `ushpy/`, so switching between them is a reinstall. Sections below say where the
+> two differ.
 
 <!-- shared:begin (identical in ushpy/docs and ushgo/docs; test_docs) -->
 

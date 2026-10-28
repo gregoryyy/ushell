@@ -391,3 +391,29 @@ func vared(prompt, prefill string, tty *os.File, verbose bool, history, ushArgv 
 	}
 	return true, execute.Decode(data), true
 }
+
+// Input reads answers for `ush ai configure` from stdin, as Python's input(): the prompt on
+// stdout, EOF as an empty answer.
+func (t *Terminal) Input(prompt string) string {
+	io.WriteString(t.Out, prompt)
+	if t.stdin == nil {
+		t.stdin = bufio.NewReader(os.Stdin)
+	}
+	line, _ := t.stdin.ReadString('\n')
+	return strings.TrimRight(line, "\r\n")
+}
+
+// Secret reads a line without echo when stdin is a terminal (Python's getpass); the prompt goes
+// to stderr.
+func (t *Terminal) Secret(prompt string) string {
+	io.WriteString(t.Err, prompt)
+	if IsTerminal(os.Stdin) {
+		restore := setEcho(os.Stdin, false)
+		defer func() { restore(); io.WriteString(t.Err, "\n") }()
+	}
+	if t.stdin == nil {
+		t.stdin = bufio.NewReader(os.Stdin)
+	}
+	line, _ := t.stdin.ReadString('\n')
+	return strings.TrimRight(line, "\r\n")
+}
