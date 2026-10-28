@@ -34,8 +34,9 @@ cd ushpy && ./install.sh                          # for you: ~/.local/bin/ush, ~
 in `~/.local/share/ush/venv`, installs the hash-pinned packages from `requirements.lock` into it, and
 copies the `ush` package in instead of building it, so it fetches no unpinned build tools. The
 launcher `~/.local/bin/ush` runs that venv's Python with `-I`, which ignores `PYTHON*` variables,
-the user site directory and the current directory. The installer prints the plugin line for
-`~/.zshrc`.
+the user site directory and the current directory. Run from a terminal, the installer offers to
+add the plugin line to `~/.zshrc` (`--zshrc` adds it without asking, `--no-zshrc` only prints it);
+it never adds it twice or as root.
 
 ### For sudo: a root-owned install
 

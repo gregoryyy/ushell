@@ -94,7 +94,9 @@ exec python3 - "$@" <<'PY'
 import json, os, sys
 d = os.environ["USH_HANDOFF"]
 args = sys.argv[1:]
-if args == ["//"]:
+if args[:1] == ["explain"]:
+    print("EXPLAIN" + json.dumps(args[1:]))
+elif args == ["//"]:
     def read(name):
         try:
             return open(os.path.join(d, name)).read()
@@ -186,6 +188,47 @@ class ZshProposeTest(TempDirTest):
             ("\x15//\r", "PROMPT> "),
         ])
         self.assertEqual(self.records(out[1]), [None, None])
+
+    def test_esc_removes_the_proposal(self):
+        out = self.session([
+            ("// capture echo one\r", "PROMPT> echo one"),
+            ("\x1b", "proposal removed"),
+            ("echo other\r", "PROMPT> "),
+            ("//\r", "PROMPT> "),
+        ])
+        self.assertNotIn("oneecho", out[2])  # the line was empty before typing
+        self.assertIn("other", out[2])
+        self.assertEqual(self.records(out[3]), [None, None])  # nothing counts as the proposal
+
+    def test_esc_keeps_its_own_binding_outside_a_proposal(self):
+        out = self.session([
+            ("bindkey -M emacs '^[' backward-word\r", "PROMPT> "),
+            ("// capture echo one\r", "PROMPT> echo one"),
+            ("\r", "PROMPT> "),                                   # ran it
+            ("bindkey -M emacs '^['\r", "PROMPT> "),
+            ("// capture echo two\r", "PROMPT> echo two"),
+            ("\x1b", "proposal removed"),                          # removed it
+            ("bindkey -M emacs '^['\r", "PROMPT> "),
+            ("// capture echo three\r", "PROMPT> echo three"),
+            ("\x03", "PROMPT> "),                                 # abandoned it (Ctrl-C)
+            ("bindkey -M emacs '^['\r", "PROMPT> "),
+        ])
+        for i in (3, 6, 9):
+            self.assertIn('"^[" backward-word', out[i])
+
+    def test_down_explains_the_proposal_and_keeps_it(self):
+        out = self.session([
+            ("// capture echo one\r", "PROMPT> echo one"),
+            ("\x1b[B", "PROMPT> echo one"),        # Down: explain, the proposal stays
+            ("\r", "PROMPT> "),                    # then run it
+            ("//\r", "PROMPT> "),
+            ("\x1b[B", "PROMPT> "),                # Down without a proposal: history, no ush
+            ("\x15bindkey -M main $'\\e[B'\r", "PROMPT> "),
+        ])
+        self.assertIn('EXPLAIN["--", "echo one"]', out[1])
+        self.assertEqual(self.records(out[3])[0], "0\necho one\n")
+        self.assertNotIn("EXPLAIN", out[4] + out[5])
+        self.assertIn('"^[[B" down-line-or-history', out[5])
 
     def test_no_handoff_as_root_or_twice(self):
         with open(PLUGIN) as f:

@@ -145,8 +145,44 @@ class CliTest(TempDirTest):
         self.assertEqual(first.returncode, 0, first.stderr)
         self.assertIn("→ df -h /", first.stderr)
         self.assertIn("ush ran nothing: copy the command", first.stderr)
+        self.assertIn("add the zsh plugin to ~/.zshrc", first.stderr)
         self.assertEqual(second.returncode, 0, second.stderr)
         self.assertEqual(len(api.requests[1]["body"]["messages"]), 1)  # --new: no old context
+
+    @unittest.skipUnless(HAVE_SDK, "anthropic SDK not installed")
+    def test_explain_runs_nothing_and_uses_the_proposal_context(self):
+        made = os.path.join(self.tmp, "made")
+        handoff = os.path.join(self.tmp, "ush.explain1")
+        os.mkdir(handoff, 0o700)
+        replies = [
+            ([{"type": "tool_use", "id": "p1", "name": "propose_command",
+               "input": {"command": f"touch {made}", "purpose": "create the file",
+                         "effect": "change", "interactive": False}}], "tool_use"),
+            ([{"type": "text", "text": "touch creates an empty file."}], "end_turn"),
+            ([{"type": "text", "text": "rm deletes."}], "end_turn"),
+        ]
+        env = {"ANTHROPIC_API_KEY": SYNTHETIC_KEY, "USH_HANDOFF": handoff}
+        with MockAPI(replies) as api:
+            env["USH_BASE_URL"] = api.url
+            self.ush("//make a file", env=env)
+            proposed = self.ush("explain", "--", f"touch {made}", env=env)
+            other = self.ush("explain", "rm", "-rf", f"{self.tmp}/x", f"--token={SYNTHETIC_KEY}",
+                             env=env)
+        self.assertEqual(proposed.returncode, 0, proposed.stderr)
+        self.assertIn("touch creates an empty file.", proposed.stdout)
+        self.assertIn("explaining, runs nothing", proposed.stderr)
+        self.assertIn("ush's policy: not verified as read-only", proposed.stderr)
+        self.assertFalse(os.path.exists(made))
+        body = api.requests[1]["body"]
+        self.assertNotIn("tools", body)
+        sent = body["messages"][0]["content"]
+        self.assertIn("The user asked ush: make a file", sent)
+        self.assertIn("for: create the file", sent)
+        self.assertIn(f"touch {made}", sent)
+        self.assertEqual(other.returncode, 0, other.stderr)
+        self.assertNotIn(SYNTHETIC_KEY, json.dumps(api.requests[2]["body"]))
+        self.assertTrue(os.path.exists(os.path.join(handoff, "proposal")))  # untouched
+        self.assertEqual(self.ush("explain").returncode, 2)
 
     def test_ai_status_never_prints_the_key(self):
         result = self.ush("ai", "status", env={"ANTHROPIC_API_KEY": SYNTHETIC_KEY})

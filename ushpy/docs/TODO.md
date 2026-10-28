@@ -120,6 +120,19 @@ DONE has an entry for it.
     real zsh, smoke checks; ARCH, SEC, guides, READMEs, SMOKE (M11–M15).
   - [ ] 2.17.2 Manual checks M11–M15 by the user with a real model, and a live smoke run in
     propose mode.
+- [x] 2.18 Plugin setup and Esc: both installers offer to add the plugin to `~/.zshrc`
+  (`shell/zshrc.sh`: asks only from a terminal, `--zshrc`/`--no-zshrc`, never twice or as root);
+  Esc removes a proposal from the command line and is bound only while one is there, restoring
+  the user's own binding afterwards; without the plugin, ush prints the line to add. Acceptance:
+  `test_install` (each mode, a real terminal answer), the plugin in a real zsh (Esc, the binding
+  kept after running, removing and abandoning a proposal), the release archive carries the script.
+- [x] 2.19 Explain a command: `ush explain COMMAND…` sends the command line (and, for the pending
+  proposal, the user's last request and its purpose) to the model as one request without tools,
+  shows ush's policy verdict first, and runs nothing; Down on a proposal, past its last line and
+  at the newest history line, runs it from the plugin, bound only while the proposal is there.
+  Acceptance: CLI test against the mock API (context, redaction, no tools, nothing run or
+  touched), the Down key in a real zsh (explains, the proposal stays and runs, Down elsewhere and
+  its binding unchanged).
 
 ## 3. Release
 

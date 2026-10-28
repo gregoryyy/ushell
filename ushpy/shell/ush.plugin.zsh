@@ -85,10 +85,13 @@ _ush() {
 # goes through tee, so while that one command runs its stdout and stderr are a pipe.
 # Not as root: root doesn't get proposals on its command line.
 typeset -g _ush_dir= _ush_state= _ush_mode= _ush_line= _ush_tee= _ush_out= _ush_err=
+typeset -ga _ush_saved=()   # the key bindings a proposal replaced, as `bindkey -L` prints them
+typeset -gA _ush_orig=()    # key sequence -> the widget it had
 zmodload -F zsh/zselect b:zselect 2>/dev/null
 
 _ush_precmd() {
   local st=$? content
+  _ush_keys_restore
   if [[ $_ush_state == running ]]; then
     _ush_end_capture
     print -r -- "$st"$'\n'"$_ush_line" >| $_ush_dir/ran
@@ -100,9 +103,11 @@ _ush_precmd() {
   _ush_mode=${content%%$'\n'*}
   print -rz -- "${content#*$'\n'}"
   _ush_state=offered
+  _ush_keys_bind
 }
 
 _ush_preexec() {
+  _ush_keys_restore
   [[ $_ush_state == offered ]] || return 0
   _ush_state=
   # A new request instead of the proposal: nothing of it ran.
@@ -129,7 +134,58 @@ _ush_end_capture() {
   _ush_tee=
 }
 
+# Two keys act on a proposal while it is on the command line, and only then; their own bindings
+# come back as soon as the line is run, cleared, or abandoned:
+# - Esc removes it, to start from scratch; `//` then hears that it didn't run. Only in the emacs
+#   keymap: in vi mode Esc switches to command mode (Ctrl-U clears the line there).
+# - Down, past the last line of the proposal, explains it (`ush explain`, with the model); the
+#   proposal stays on the line. Elsewhere Down does what it did before.
+_ush_discard() {
+  _ush_state=
+  BUFFER= CURSOR=0
+  _ush_keys_restore
+  zle -M "ush: proposal removed"
+}
+
+_ush_explain() {
+  if [[ $_ush_state == offered && $HISTNO == $HISTCMD && $RBUFFER != *$'\n'* &&
+        -n ${BUFFER//[[:space:]]/} ]]; then
+    zle -I
+    print
+    command ${USH_BIN:-ush} explain -- "$BUFFER" </dev/null
+  else
+    local widget=${_ush_orig[$KEYS]:-down-line-or-history}
+    [[ $widget == undefined-key ]] || zle $widget
+  fi
+}
+
+_ush_keys_bind() {
+  (( ${#_ush_saved} )) && return 0
+  local key line
+  _ush_saved=("$(bindkey -M emacs -L $'\e')")
+  bindkey -M emacs $'\e' _ush_discard
+  for key in $'\e[B' $'\eOB'; do
+    line=$(bindkey -M main -L $key)
+    _ush_saved+=("$line")
+    _ush_orig[$key]=${${(z)line}[-1]}
+    bindkey -M main $key _ush_explain
+  done
+}
+
+_ush_keys_restore() {
+  (( ${#_ush_saved} )) || return 0
+  local line
+  bindkey -M emacs -r $'\e'
+  bindkey -M main -r $'\e[B'
+  bindkey -M main -r $'\eOB'
+  for line in $_ush_saved; do
+    [[ -n $line ]] && eval "$line"
+  done
+  _ush_saved=()
+}
+
 _ush_exit() {
+  _ush_keys_restore
   _ush_end_capture
   [[ -n $_ush_dir ]] && command rm -rf -- $_ush_dir
 }
@@ -141,4 +197,6 @@ then
   autoload -Uz add-zsh-hook
   add-zsh-hook preexec _ush_preexec
   add-zsh-hook zshexit _ush_exit
+  zle -N _ush_discard
+  zle -N _ush_explain
 fi

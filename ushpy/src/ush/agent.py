@@ -191,11 +191,8 @@ class Agent:
         root = ""
         if self.ident.is_root:
             root = f" (root, via sudo by {self.ident.owner_name})" if self.ident.via_sudo else " (root)"
-        os_name = platform.platform(terse=True)
-        if platform.system() == "Darwin" and platform.mac_ver()[0]:
-            os_name = f"macOS {platform.mac_ver()[0]} ({platform.machine()})"
         prompt = SYSTEM_PROPOSE if self.options.propose else SYSTEM_PROMPT
-        self.system = prompt.format(os=os_name, user=self.ident.name, root=root,
+        self.system = prompt.format(os=os_name(), user=self.ident.name, root=root,
                                     cwd=os.getcwd(), shell=shell)
         self.tools = [PROPOSE_TOOL] if self.options.propose else TOOLS
 
@@ -359,7 +356,7 @@ class Agent:
                                  f"{check.reason}")
             self.ui.show_proposal(command, purpose, notes)
             entry.steps.append(step)
-            self.proposal = {"id": block["id"], "command": command,
+            self.proposal = {"id": block["id"], "command": command, "purpose": purpose,
                              "interactive": bool(args["interactive"]), "cwd": os.getcwd()}
         return results
 
@@ -492,6 +489,13 @@ class Agent:
         if result.truncated:
             head.append("Output was shortened; the middle part is omitted.")
         return "\n".join(head) + "\n" + (self._clean(result.output) or "(no output)")
+
+
+def os_name() -> str:
+    """The OS as the model should see it, e.g. "macOS 26.2 (arm64)"."""
+    if platform.system() == "Darwin" and platform.mac_ver()[0]:
+        return f"macOS {platform.mac_ver()[0]} ({platform.machine()})"
+    return platform.platform(terse=True)
 
 
 def _result(block: dict, text: str, error: bool = False) -> dict:

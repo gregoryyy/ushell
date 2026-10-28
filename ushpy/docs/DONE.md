@@ -12,6 +12,114 @@ top. The format is defined in [SDLC](../../docs/SDLC.md#done-entries).
 
 ---
 
+## 2026-10-28 19:33 — Explain a proposal: Down, or `ush explain`
+
+TODO items: 2.19. PR: see below (with 2.18).
+
+Agent: Opus 5.5, reasoning: not exposed, subagents: none.
+
+### Implementation notes
+
+- **The request:** "add a function to explain the proposed command. arrow down beyond the proposed
+  command explains the command, using the language model."
+- **`ush explain COMMAND…`** (`cli._explain`) runs nothing:
+  - It prints the disclosure (`explaining, runs nothing · the command goes to …`) and ush's policy
+    verdict, which is local, without the model.
+  - It sends one request without tools through the provider's `complete`, as the checker does.
+    The system prompt asks for the whole first, then each part, what it reads, changes, sends,
+    and what is risky.
+  - If this shell has a pending proposal, it adds the user's last request and the proposal's
+    purpose, or notes that the command was edited.
+  - The command sits between markers with a random tag, as data; everything sent is redacted.
+  - The proposal now keeps its `purpose` in the saved conversation for this.
+- **Down in the plugin** (`_ush_explain`):
+  - It is bound to `^[[B` and `^[OB` in the main keymap, only while a proposal is on the line,
+    with the same save and restore as Esc (`_ush_keys_bind` / `_ush_keys_restore`).
+  - It explains only at the newest history line (`HISTNO == HISTCMD`), past the last line of the
+    buffer, and with something on it. Otherwise it calls the key's own widget.
+  - `zle -I`, then `ush explain -- "$BUFFER"`; zle redraws the prompt with the proposal still on
+    it, and the explanation shows what's on the line, edits included.
+- **Docs:** the guides' "Proposals" and "Other commands", what leaves the machine, the ushpy README
+  and usage text. ROAD: the `ush explain` idea is now done. ushgo TODO 1.12 includes it.
+- **Validation:**
+  - `just ush-test`, both suites OK.
+  - `test_explain_runs_nothing_and_uses_the_proposal_context`, against the mock API:
+    - the context lines, no tools;
+    - the synthetic key redacted;
+    - nothing created; the handoff proposal untouched;
+    - `ush explain` without a command is a usage error.
+  - `test_down_explains_the_proposal_and_keeps_it`, in a real zsh:
+    - Down calls `ush explain -- 'echo one'`, and the proposal stays and then runs and is
+      recorded;
+    - Down without a proposal calls no ush, and its binding is `down-line-or-history` again.
+  - The raw terminal output of an explanation, two lines, shows `\r\n` line ends and the prompt
+    redrawn with the proposal.
+
+### Deviations
+
+- `ush explain` is also a subcommand for any command line, since Down needs a program to call; it
+  was an unscheduled ROAD idea.
+
+### Insights
+
+- `complete`, written for the checker, serves any one-shot question; explanations are not part of
+  the conversation, so they don't disturb the pending proposal.
+
+---
+
+## 2026-10-28 19:28 — The plugin on install; Esc removes a proposal
+
+TODO items: 2.18. PR: see below.
+
+Agent: Opus 5.5, reasoning: not exposed, subagents: none.
+
+### Implementation notes
+
+- **The report:** "there's no way to get the proposed command directly on the commandline.
+  pre-fill the commandline with the command, esc to remove it and start from scratch". The cause
+  was that the plugin wasn't in the user's `~/.zshrc`. The installer only printed the line, and
+  without the plugin ush can only print a proposal: a child process can't fill its shell's
+  command line.
+- **`shell/zshrc.sh`, used by both installers:**
+  - It adds `source '…/ush.plugin.zsh'` to `${ZDOTDIR:-$HOME}/.zshrc`.
+  - `ask` (the default) asks only when stdin and stdout are a terminal, with yes as the default
+    answer.
+  - `--zshrc` adds the line without asking; `--no-zshrc` and runs without a terminal only print it.
+  - It never adds the line twice (any `ush.plugin.zsh` line counts) or as root, and refuses a
+    path with a quote.
+  - The Go release archive carries the script.
+- **Esc:**
+  - The binding: the user's follow-up, "esc should only be used within the context of a command
+    proposed after //, everything else stays". So `precmd` binds Esc in the emacs keymap only
+    when it puts a proposal on the line. It saves the old binding as `bindkey -L` prints it,
+    and restores it in `preexec`, in the next `precmd` (a line abandoned with Ctrl-C), and when Esc
+    is used.
+  - What Esc does: it clears the line and the offered state, so `//` hears that nothing ran.
+  - Vi mode is left alone; Ctrl-U clears the line there.
+- **Without the plugin**, ush now prints the exact `source` line for the installed plugin (next to
+  the venv).
+- **Docs:** the guides' shared "First steps" and "Proposals"; both ADMIN install sections; the
+  ushpy README.
+- **Validation:**
+  - `just ush-test`: ushpy OK; ushgo ok, including the release build, which now unpacks
+    `zshrc.sh` and runs `install.sh` with a temporary `HOME`.
+  - New `test_install`, 5 tests: each mode, an existing line, `ZDOTDIR`, a quote, and the
+    question answered in a real terminal with Enter and with `n`.
+  - Two new plugin tests in a real zsh: Esc clears the line and nothing counts as run. A custom
+    Esc binding (`backward-word`) is still there after a proposal ran, was removed with Esc, and
+    was abandoned with Ctrl-C.
+
+### Deviations
+
+- None.
+
+### Insights
+
+- Binding Esc only around a proposal keeps zsh's own handling of Esc as the start of Alt-key and
+  arrow-key sequences everywhere else, and keeps any binding the user made.
+
+---
+
 ## 2026-10-28 19:13 — Propose mode: ush proposes, the user runs
 
 TODO items: 2.17.1 (2.17.2, the manual checks, stays open); ushgo TODO 1.12 ports it. GAPS Q6

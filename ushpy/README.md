@@ -72,7 +72,8 @@ cd ushpy
 ush ai configure                 # key goes to the macOS keychain (or a 0600 file)
 ```
 
-Add the zsh plugin to `~/.zshrc` (the installer prints the exact line):
+The installer offers to add the zsh plugin to `~/.zshrc`, which puts proposals on your
+command line (Esc removes one) and lets requests go unquoted. Or add it yourself:
 
 ```sh
 source ~/.local/share/ush/ush.plugin.zsh
@@ -148,6 +149,7 @@ what was measured. `ush replay` runs no checker, as it uses no AI.
 ```text
 ush [OPTIONS] //REQUEST...   propose a command for your command line, or answer
 ush [OPTIONS] //             continue with what you ran
+ush explain COMMAND...       explain a command line with the model (Down on a proposal)
 ush [OPTIONS]                start a session
 ush ai configure [--file]    set the mode, provider, API key or Ollama URL, model, and effort
 ush ai status                show provider, model, key source, and paths

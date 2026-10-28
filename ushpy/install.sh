@@ -6,13 +6,17 @@
 #
 # Use the root-owned install if you run `sudo ush`: root then executes only files
 # that root owns. Set PYTHON to choose the interpreter (3.10 or newer).
+# --zshrc adds the zsh plugin to ~/.zshrc without asking, --no-zshrc leaves it alone;
+# by default the installer asks when run from a terminal (shell/zshrc.sh).
 set -eu
 
-prefix="$HOME/.local"
+prefix="$HOME/.local" zshrc=ask
 while [ $# -gt 0 ]; do
     case "$1" in
         --prefix) prefix=${2:?--prefix needs a directory}; shift 2 ;;
-        -h|--help) sed -n '2,9p' "$0"; exit 0 ;;
+        --zshrc) zshrc=yes; shift ;;
+        --no-zshrc) zshrc=no; shift ;;
+        -h|--help) sed -n '2,11p' "$0"; exit 0 ;;
         *) echo "install.sh: unknown option $1" >&2; exit 2 ;;
     esac
 done
@@ -54,6 +58,5 @@ chmod 755 "$prefix/bin/ush"
 
 echo "installed $prefix/bin/ush"
 case ":$PATH:" in *":$prefix/bin:"*) ;; *) echo "add $prefix/bin to PATH" ;; esac
-echo "for unquoted // requests, add to ~/.zshrc:"
-echo "  source '$lib/ush.plugin.zsh'"
-echo "then set your API key: ush ai configure"
+sh "$src/shell/zshrc.sh" "$lib/ush.plugin.zsh" "$zshrc"
+echo "then choose a model: ush ai configure"
