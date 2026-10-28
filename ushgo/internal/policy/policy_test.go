@@ -57,10 +57,6 @@ func TestConformance(t *testing.T) {
 		t.Setenv(k, strings.ReplaceAll(v, "$ROOT", root))
 	}
 	t.Setenv("HOME", filepath.Join(root, "home"))
-	etc, err := filepath.EvalSymlinks("/etc") // /private/etc on macOS; the corpus holds /etc
-	if err != nil {
-		t.Fatal(err)
-	}
 	t.Chdir(root)
 	var rules [][]string
 	for _, r := range c.Rules {
@@ -77,7 +73,7 @@ func TestConformance(t *testing.T) {
 			use = rules
 		}
 		got := Classify(want.Command, use)
-		got.Reason = strings.ReplaceAll(strings.ReplaceAll(got.Reason, root, "$ROOT"), etc+"/", "/etc/")
+		got.Reason = unresolve(strings.ReplaceAll(got.Reason, root, "$ROOT"))
 		if got.Auto != want.Auto || got.Reason != want.Reason || got.Sudo != want.Sudo || got.Rule != want.Rule {
 			failed++
 			if failed <= 30 {
@@ -103,4 +99,15 @@ func TestConformance(t *testing.T) {
 			t.Errorf("ParseRule(%q) = %q, %q; want %q, %q", want.Text, words, gotErr, want.Words, want.Error)
 		}
 	}
+}
+
+// unresolve writes resolved system paths under their plain names, as the corpus holds them:
+// /etc is /private/etc on macOS, /bin is /usr/bin on Linux with a merged /usr (policy_corpus.py).
+func unresolve(reason string) string {
+	for _, link := range []string{"/etc", "/tmp", "/var", "/bin", "/sbin", "/lib"} {
+		if real, err := filepath.EvalSymlinks(link); err == nil && real != link {
+			reason = strings.ReplaceAll(reason, real+"/", link+"/")
+		}
+	}
+	return reason
 }

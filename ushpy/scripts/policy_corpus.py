@@ -85,6 +85,20 @@ def fuzz_lines(n: int = 1500) -> list[str]:
             for _ in range(n)]
 
 
+# System directories that are symlinks on one supported OS and not on another: /etc is
+# /private/etc on macOS, /bin is /usr/bin on Linux with a merged /usr. Reasons name resolved
+# paths, so the corpus writes them under these names, the same on every OS.
+SYSTEM_LINKS = ("/etc", "/tmp", "/var", "/bin", "/sbin", "/lib")
+
+
+def unresolve(reason: str) -> str:
+    for link in SYSTEM_LINKS:
+        real = os.path.realpath(link)
+        if real != link:
+            reason = reason.replace(real + "/", link + "/")
+    return reason
+
+
 def corpus() -> dict:
     import test_policy  # noqa: the lists of ushpy's own policy tests
     lines = [*test_policy.AUTO, *test_policy.NEEDS_APPROVAL]
@@ -92,7 +106,6 @@ def corpus() -> dict:
     lines += fuzz_lines()
     with tempfile.TemporaryDirectory(prefix="ush-corpus-") as tmp:
         root = os.path.realpath(tmp)
-        etc = os.path.realpath("/etc")  # /private/etc on macOS; the corpus holds /etc
         for path in FIXTURE:
             full = os.path.join(root, path)
             if path.endswith("/"):
@@ -115,7 +128,7 @@ def corpus() -> dict:
                     seen.add((line, bool(rule_set)))
                     v = classify(line, rule_set)
                     cases.append({"command": line, "rules": bool(rule_set), "auto": v.auto,
-                                  "reason": v.reason.replace(root, "$ROOT").replace(etc + "/", "/etc/"),
+                                  "reason": unresolve(v.reason.replace(root, "$ROOT")),
                                   "sudo": v.sudo,
                                   "rule": v.rule})
                 parsed = []
