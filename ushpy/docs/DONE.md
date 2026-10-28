@@ -12,6 +12,61 @@ top. The format is defined in [SDLC](../../docs/SDLC.md#done-entries).
 
 ---
 
+## 2026-10-28 19:33 — Explain a proposal: Down, or `ush explain`
+
+TODO items: 2.19. PR: see below (with 2.18).
+
+Agent: Opus 5.5, reasoning: not exposed, subagents: none.
+
+### Implementation notes
+
+- **The request:** "add a function to explain the proposed command. arrow down beyond the proposed
+  command explains the command, using the language model."
+- **`ush explain COMMAND…`** (`cli._explain`) runs nothing:
+  - It prints the disclosure (`explaining, runs nothing · the command goes to …`) and ush's policy
+    verdict, which is local, without the model.
+  - It sends one request without tools through the provider's `complete`, as the checker does.
+    The system prompt asks for the whole first, then each part, what it reads, changes, sends,
+    and what is risky.
+  - If this shell has a pending proposal, it adds the user's last request and the proposal's
+    purpose, or notes that the command was edited.
+  - The command sits between markers with a random tag, as data; everything sent is redacted.
+  - The proposal now keeps its `purpose` in the saved conversation for this.
+- **Down in the plugin** (`_ush_explain`):
+  - It is bound to `^[[B` and `^[OB` in the main keymap, only while a proposal is on the line,
+    with the same save and restore as Esc (`_ush_keys_bind` / `_ush_keys_restore`).
+  - It explains only at the newest history line (`HISTNO == HISTCMD`), past the last line of the
+    buffer, and with something on it. Otherwise it calls the key's own widget.
+  - `zle -I`, then `ush explain -- "$BUFFER"`; zle redraws the prompt with the proposal still on
+    it, and the explanation shows what's on the line, edits included.
+- **Docs:** the guides' "Proposals" and "Other commands", what leaves the machine, the ushpy README
+  and usage text. ROAD: the `ush explain` idea is now done. ushgo TODO 1.12 includes it.
+- **Validation:**
+  - `just ush-test`, both suites OK.
+  - `test_explain_runs_nothing_and_uses_the_proposal_context`, against the mock API:
+    - the context lines, no tools;
+    - the synthetic key redacted;
+    - nothing created; the handoff proposal untouched;
+    - `ush explain` without a command is a usage error.
+  - `test_down_explains_the_proposal_and_keeps_it`, in a real zsh:
+    - Down calls `ush explain -- 'echo one'`, and the proposal stays and then runs and is
+      recorded;
+    - Down without a proposal calls no ush, and its binding is `down-line-or-history` again.
+  - The raw terminal output of an explanation, two lines, shows `\r\n` line ends and the prompt
+    redrawn with the proposal.
+
+### Deviations
+
+- `ush explain` is also a subcommand for any command line, since Down needs a program to call; it
+  was an unscheduled ROAD idea.
+
+### Insights
+
+- `complete`, written for the checker, serves any one-shot question; explanations are not part of
+  the conversation, so they don't disturb the pending proposal.
+
+---
+
 ## 2026-10-28 19:28 — The plugin on install; Esc removes a proposal
 
 TODO items: 2.18. PR: see below.

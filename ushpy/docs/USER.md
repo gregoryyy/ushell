@@ -77,6 +77,9 @@ objected. With the zsh plugin it then waits on your command line:
 - **Enter** runs it in your shell, as if you had typed it: `cd` and variables persist, and it lands
   in your shell history. ush records the exit status and the output for the next `//`.
 - **Edit** it first; ush sees the command that actually ran.
+- **Down** (the arrow key, past the last line of the proposal) explains it: the model says what
+  each part does, what it reads and changes, and what is risky, together with what ush's policy
+  says. The proposal stays on the line. `ush explain COMMAND` does the same for any command line.
 - **Esc** removes it, so you can start from scratch; ush then knows you didn't run it. Esc does
   this only while a proposal is on the line; otherwise it keeps its usual meaning. (In vi mode,
   use Ctrl-U.) Typing a new `// …` over it also tells ush you didn't run it.
@@ -168,6 +171,7 @@ A model name starting with `claude-` is Anthropic's, any other is Ollama's; `ant
 | `ush ai status` | what is configured, and where things are |
 | `ush ai clear-key` | remove the stored API key |
 | `ush allow [add\|remove RULE]` | your allowlist |
+| `ush explain COMMAND…` | explain a command line with the model, without running it |
 | `ush history [-n N]` | recent requests and the commands they ran (default 10) |
 | `ush replay ID\|last [-n]` | run those commands again, without AI, through the same approval checks |
 | `ush help`, `ush --version` | usage; version and implementation |
@@ -178,7 +182,8 @@ Before each session ush says where requests go. With Anthropic, each request sen
 name, your user name, the working directory, the output of the commands that ran (up to 32 KB each;
 in propose mode, of the proposals you ran) and piped input. With a local Ollama model, all of that stays on this machine; with an Ollama
 *cloud* model, Ollama forwards it to ollama.com, and ush says so. A checker gets your requests and
-the proposed commands, never output.
+the proposed commands, never output. `ush explain` (and Down on a proposal) sends the command line
+and your last request.
 
 Before sending, ush removes known token formats, private keys, URL credentials, `password=`
 assignments and your API key. That is pattern matching: assume what a command prints may reach the

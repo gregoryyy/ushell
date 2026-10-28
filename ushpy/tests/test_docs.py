@@ -31,7 +31,8 @@ class SharedGuidesTest(unittest.TestCase):
         for option in options:
             for spelling in option:
                 self.assertIn(f"`{spelling}", guide)
-        for command in ("ai configure", "ai status", "ai clear-key", "allow", "history", "replay"):
+        for command in ("ai configure", "ai status", "ai clear-key", "allow", "explain", "history",
+                        "replay"):
             self.assertIn(f"`ush {command}", guide)
 
 

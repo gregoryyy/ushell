@@ -72,9 +72,10 @@ In dependency order: the packages that don't depend on others first.
   policy corpus; the CLI tests for `ush allow` pass against the Go binary.
 - [ ] 1.12 Propose mode (ushpy TODO 2.17): `propose_command`, the default `mode`, `--run`, `--new`,
   the handoff directory and per-shell conversations (same files and formats as ushpy, so the
-  plugin and a saved conversation work with either), refusal of control characters. Acceptance:
-  ushpy's `test_propose` cases ported; the CLI propose tests and the zsh plugin tests pass against
-  the Go binary.
+  plugin and a saved conversation work with either), refusal of control characters, `ush explain`
+  (ushpy TODO 2.19); the installer's `zshrc.sh` and the plugin's keys are shared already (2.18).
+  Acceptance: ushpy's `test_propose` cases ported; the CLI propose and explain tests and the zsh
+  plugin tests pass against the Go binary.
 
 ## 2. Release
 

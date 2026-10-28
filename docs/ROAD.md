@@ -55,7 +55,8 @@ release ships the Go binary.
 
 - Propose mode as the default: ush proposes, the user runs from their command line, `//`
   continues with what ran; agent mode behind `--run`. Done in ushpy (TODO 2.17, manual checks
-  open), to port (ushgo TODO 1.12).
+  open), to port (ushgo TODO 1.12). With it, Esc removes a proposal and Down, or
+  `ush explain`, explains it (ushpy TODO 2.18, 2.19).
 - A user allowlist of commands that run without approval, on top of the built-in read-only table:
   done in ushpy (TODO 2.15), to port (ushgo TODO 1.11). No blacklist mode; deny rules that only
   add friction may follow (ushpy GAPS Q5).
@@ -81,8 +82,6 @@ same in ush and wish (ushpy TODO 2.7).
 - **More shells** for ush: bash and fish integrations next to the zsh plugin.
 - **More local providers:** OpenAI-compatible local servers (llama.cpp, LM Studio) behind the same
   loopback rules as Ollama.
-- **`ush explain CMD`:** describe what a command line would do, using the policy's parse, without
-  running it.
 - **Analyse files with a set of instructions:** `ush analyze "INSTRUCTIONS" FILE…`, e.g.
   `ush analyze "list the commands this script runs; flag destructive ones" deploy/*.sh`. The
   instructions apply to each file in turn, with a result per file. The files go to the provider as

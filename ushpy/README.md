@@ -149,6 +149,7 @@ what was measured. `ush replay` runs no checker, as it uses no AI.
 ```text
 ush [OPTIONS] //REQUEST...   propose a command for your command line, or answer
 ush [OPTIONS] //             continue with what you ran
+ush explain COMMAND...       explain a command line with the model (Down on a proposal)
 ush [OPTIONS]                start a session
 ush ai configure [--file]    set the mode, provider, API key or Ollama URL, model, and effort
 ush ai status                show provider, model, key source, and paths
