@@ -1,7 +1,7 @@
 # Roadmap
 
 Where the Go port goes. Each phase ends with a gate that decides whether the next one starts; the
-work is in [TODO](TODO.md). The port is phase 3 of [ush's roadmap](../../ush/docs/ROAD.md).
+work is in [TODO](TODO.md). The port is phase 3 of [ush's roadmap](../../ushpy/docs/ROAD.md).
 Status: 2026-10-28 09:59.
 
 | Phase | Goal | TODO | Gate to the next phase |

@@ -80,7 +80,7 @@ execution, and limited disclosure. ush is not a sandbox.
 
 ## Security tests before a release
 
-Per [CLAUDE.md](../../CLAUDE.md), each release candidate reruns `just ush-test` on
+Per [AGENTS.md](../../AGENTS.md), each release candidate reruns `just ushpy-test` on
 every supported OS and Python. The policy, injection, redaction, credential, and
 history tests listed above are its adversarial suite. Policy changes add negative
 cases to `test_policy.py`; credential or storage changes add cases to

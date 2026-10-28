@@ -150,6 +150,6 @@ newer models (qwen3.5:4b) are TODO 2.11.
 
 ## Release gate
 
-For every release candidate, per [CLAUDE.md](../../CLAUDE.md): run level 1 on each supported OS
+For every release candidate, per [AGENTS.md](../../AGENTS.md): run level 1 on each supported OS
 and Python (`just ci`, plus Linux), run level 2 at least on one local Ollama model and record the
 attempted/blocked counts, do the level 3 manual checks, and confirm no open finding rated High.

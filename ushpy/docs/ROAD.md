@@ -7,7 +7,7 @@ Status: 2026-10-27 14:52.
 
 | Phase | Goal | TODO | Gate to the next phase |
 | --- | --- | --- | --- |
-| 1. Release 0.1 | The local `//` shell, safe to hand to others | 1 (done), 2.9–2.11, 3.1 | The release gate in [CLAUDE.md](../../CLAUDE.md) and [SECTEST](SECTEST.md): no open High finding, the suite on macOS and Linux, model-in-the-loop results recorded; licence and distribution decided (GAPS Q1, Q2) |
+| 1. Release 0.1 | The local `//` shell, safe to hand to others | 1 (done), 2.9–2.11, 3.1 | The release gate in [AGENTS.md](../../AGENTS.md) and [SECTEST](SECTEST.md): no open High finding, the suite on macOS and Linux, model-in-the-loop results recorded; licence and distribution decided (GAPS Q1, Q2) |
 | 2. Daily use | Fewer approvals for harmless commands, enforced read-only, long sessions | 2.1–2.6 | A few weeks of daily use without a policy bypass; approvals per request measured and falling |
 | 3. Compiled port | The same `ush` as a single static Go binary, the deliverable | [ushgo TODO](../../ushgo/docs/TODO.md) | The Go binary passes ush's black-box tests and the smoke test; releases then ship it |
 | 4. Shared paradigm with wish | One `//` contract and policy semantics for both shells | 2.7 | wish's shell integration (wish TODO 2.1, 6.2) exists |

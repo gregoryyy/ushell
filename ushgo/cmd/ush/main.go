@@ -18,7 +18,7 @@ const implementation = "go"
 const usage = `usage: ush --version | --help
 
 This is the Go implementation of ush. It does not answer requests yet;
-use the Python implementation (ush/install.sh) for now.
+use the Python implementation (ushpy/install.sh) for now.
 The state of the port is in ushgo/docs/TODO.md.
 `
 

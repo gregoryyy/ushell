@@ -53,7 +53,7 @@ your approval. USH_PROVIDER, USH_MODEL, USH_CHECKER, and USH_OLLAMA_URL override
 the settings (not as root).
 
 With the zsh plugin, `ush //...` and `// ...` need no quoting:
-  source ush/shell/ush.plugin.zsh
+  source ushpy/shell/ush.plugin.zsh
 """
 
 STDIN_LIMIT = 200_000

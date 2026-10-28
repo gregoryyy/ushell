@@ -1,7 +1,7 @@
 # ushgo architecture
 
 How ush is ported to Go: the package layout, how behaviour is kept equal, and the decisions behind
-it. ush's own architecture, which this port reproduces, is in [ush ARCH](../../ush/docs/ARCH.md).
+it. ush's own architecture, which this port reproduces, is in [ush ARCH](../../ushpy/docs/ARCH.md).
 Status: 2026-10-28 09:59, project set up; no module ported yet.
 
 ## Why a port, and why Go
@@ -52,7 +52,7 @@ internal/config ─── identity under sudo, settings, keychain / 0600 key fil
 internal/history ── append-only JSONL history and replay                           (history.py)
 ```
 
-Only `cmd/ush` exists today. The zsh plugin (`ush/shell/ush.plugin.zsh`) is shared unchanged: both
+Only `cmd/ush` exists today. The zsh plugin (`ushpy/shell/ush.plugin.zsh`) is shared unchanged: both
 implementations are the command `ush`.
 
 ## Decisions

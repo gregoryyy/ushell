@@ -14,6 +14,46 @@ Implementation completion doesn't imply a merged PR or a release; corrections an
 
 ---
 
+## 2026-10-28 10:06 — ushpy and ushgo side by side; AGENTS.md; repository roadmap
+
+TODO items: 0.9. PR: [#9](https://github.com/gregoryyy/ushell/pull/9) (stacked on #8).
+
+Agent: Opus 5.5, reasoning: not exposed, subagents: none.
+
+### Implementation notes
+
+- **`ush/` → `ushpy/`** with `git mv`, so the two implementations of `ush` sit side by side as
+  `ushpy/` (Python, experimental) and `ushgo/` (Go, the deliverable). The Python package stays
+  `ush` (`ushpy/src/ush`), as do the command, the plugin, and every runtime path
+  (`~/.config/ush`, `~/.local/state/ush`, `~/.local/share/ush`). Directory references were
+  rewritten by a pattern that excludes those runtime paths, then checked by `just links`.
+- **Build:** `just ushpy-test` (Python), `just ushgo-test` (Go), `just ush-test` runs both;
+  `just ush` runs the Python implementation from `ushpy/`. The CI job `ush` is now `ushpy`; the
+  local CI's tests follow. `.gitignore` and the PDF defaults use `ushpy/`.
+- **`CLAUDE.md` → [AGENTS.md](../../AGENTS.md)** with `git mv`; the new `CLAUDE.md` is
+  `@AGENTS.md`. AGENTS names the projects ushpy, ushgo and wish, the parity rule, the test recipes,
+  and that earlier records cite ushpy items as "ush TODO". Document links to the rules point to
+  AGENTS.md; links in earlier DONE entries still point to `CLAUDE.md`, which exists.
+- **[docs/ROAD.md](../../docs/ROAD.md):** the roadmap across projects: repository step (land the
+  stack, default branch `main`, CI, licence), ush 0.1, ush in Go, daily use, wish phase 1, one `//`
+  paradigm, ideas.
+- Path-only link fixes in this file's 0.8 entry (`../../ush/docs/` → `../../ushpy/docs/`).
+- **Validation:** `python3 tools/check-links.py`: no broken links. `just ush-test`: ushpy 96 tests
+  OK, ushgo ok. Local CI tool tests: 21 passed. `just ci`: see the PR.
+
+### Deviations
+
+- The existing `ushpy/.venv` moved with the directory (ignored files move with `git mv` of a
+  directory); it keeps working for `python -m`. Recreate it if a script inside fails.
+
+### Insights
+
+- `ush` names four things here: the command, the Python package, the runtime directories, and
+  (until now) a source directory. Only the last changed; the pattern had to leave
+  `.config/ush`, `state/ush`, `share/ush`, `lib/ush` and `src/ush` alone.
+
+---
+
 ## 2026-10-27 14:55 — Propeller's document regime for ush and wish
 
 TODO items: 0.8. PR: [#4](https://github.com/gregoryyy/ushell/pull/4) (stacked on #3).
@@ -29,10 +69,10 @@ Agent: Opus 5.5, reasoning: not exposed, subagents: none.
   security, release gate); its TODO/DONE section now describes newest-first entries and GAPS.
 - **Moves (`git mv`, IDs and status unchanged):** `wish/TODO.md` and `wish/DONE.md` to
   `wish/docs/`, `wish/docs/PHASES.md` to [ROAD.md](ROAD.md); `ush/TODO.md` and `ush/DONE.md` to
-  `ush/docs/`, `ush/docs/DESIGN.md` to [ARCH.md](../../ush/docs/ARCH.md).
+  `ush/docs/`, `ush/docs/DESIGN.md` to [ARCH.md](../../ushpy/docs/ARCH.md).
 - **New:** [GAPS](GAPS.md) for wish (Q1 start, Q2 browsers, Q3 providers, Q4 licence; A1–A3) and
-  for ush ([GAPS](../../ush/docs/GAPS.md): Q1 licence and Q2 distribution, both blocking the 0.1
-  release, Q3 platforms; A1–A4); [ush ROAD](../../ush/docs/ROAD.md) with four phases and gates; a
+  for ush ([GAPS](../../ushpy/docs/GAPS.md): Q1 licence and Q2 distribution, both blocking the 0.1
+  release, Q3 platforms; A1–A4); [ush ROAD](../../ushpy/docs/ROAD.md) with four phases and gates; a
   phase table with gates on top of wish's ROAD; `.github/pull_request_template.md` with the
   definition of done.
 - **TODO and DONE headers** in the new form: status legend and tags, newest-first logs. The earlier

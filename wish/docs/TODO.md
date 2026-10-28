@@ -4,7 +4,7 @@ Plan for wish, the browser workspace shell: the product is in [IDEA](IDEA.md), t
 [ARCH](ARCH.md), the security profile in [SEC](SEC.md), and the research in [SOTA](SOTA.md).
 [ROAD](ROAD.md) defines the lean phase 1 and the conditional phase 2 that the milestones below
 implement; open questions are in [GAPS](GAPS.md), and progress is logged in [DONE](DONE.md). The
-process is [SDLC](../../docs/SDLC.md); the rules in [CLAUDE.md](../../CLAUDE.md) take precedence.
+process is [SDLC](../../docs/SDLC.md); the rules in [AGENTS.md](../../AGENTS.md) take precedence.
 Implement the next requested, ready milestone; a planning task does not authorize executing the
 entire backlog. Status: 2026-10-27 14:52.
 
@@ -48,6 +48,10 @@ against every release candidate.
   `docs/`; DONE newest first with the agent line; GAPS for the user's questions; a PR
   template with the definition of done; root README with ush first. Acceptance: IDs and
   status unchanged, earlier DONE entries kept, links and PDFs build.
+- [x] 0.9 Parity layout for ush: `ush/` renamed to `ushpy/` next to `ushgo/`; `CLAUDE.md`
+  moved to [AGENTS.md](../../AGENTS.md) with a one-line `CLAUDE.md` pointing to it; the
+  repository roadmap in [docs/ROAD.md](../../docs/ROAD.md). Acceptance: history kept by `git mv`;
+  links, both suites, and the local CI pass; runtime paths (`~/.config/ush`) unchanged.
 
 ## Phase 1: a lean browser workspace
 
@@ -137,7 +141,7 @@ byte/text pipes, and JSON/CSV. Evaluate just-bash before writing shell machinery
   recovery, AI/manual equivalence, and replay. Acceptance: failure, conflict,
   cancellation, denial, and secret-handling cases accompany the success path;
   record browser compatibility, startup, responsiveness, and memory observations.
-- [ ] 9.2 Implement the recurring release security gate in [CLAUDE.md](../../CLAUDE.md).
+- [ ] 9.2 Implement the recurring release security gate in [AGENTS.md](../../AGENTS.md).
   Acceptance: run hostile-output/runtime, file-access/bridge, AI disclosure, egress,
   and applicable server tests against every exact release candidate; include secret
   and dependency scans. Earlier passing releases never waive the gate.

@@ -27,20 +27,20 @@ def test_the_repository_workflow_maps_completely() -> None:
     jobs = jobs_of(parse(CI.read_text(encoding="utf-8")))
     assert [j.key for j in jobs] == [
         "links",
-        "ush-ubuntu-latest-3.10",
-        "ush-ubuntu-latest-3.13",
-        "ush-macos-latest-3.10",
-        "ush-macos-latest-3.13",
+        "ushpy-ubuntu-latest-3.10",
+        "ushpy-ubuntu-latest-3.13",
+        "ushpy-macos-latest-3.10",
+        "ushpy-macos-latest-3.13",
         "ushgo-ubuntu-latest",
         "ushgo-macos-latest",
         "tools",
         "secrets",
     ]
     by_key = {j.key: j for j in jobs}
-    ush = by_key["ush-macos-latest-3.10"]
-    assert ush.name == "ush (macos-latest, 3.10)" and ush.runs_on == "macos-latest"
+    ush = by_key["ushpy-macos-latest-3.10"]
+    assert ush.name == "ushpy (macos-latest, 3.10)" and ush.runs_on == "macos-latest"
     assert [s.kind for s in ush.steps] == ["checkout", "setup-python", "shell", "shell"]
-    assert ush.steps[1].python == "3.10" and ush.steps[3].cwd == "ush"
+    assert ush.steps[1].python == "3.10" and ush.steps[3].cwd == "ushpy"
     assert [s.kind for s in by_key["secrets"].steps] == ["checkout", "secrets"]
     ushgo = by_key["ushgo-macos-latest"]
     assert ushgo.name == "ushgo (macos-latest)"
@@ -56,14 +56,14 @@ def test_only_this_platforms_matrix_entries_run_here() -> None:
     here = [j.key for j in jobs if runs_here(j, "Darwin")]
     assert here == [
         "links",
-        "ush-macos-latest-3.10",
-        "ush-macos-latest-3.13",
+        "ushpy-macos-latest-3.10",
+        "ushpy-macos-latest-3.13",
         "ushgo-macos-latest",
         "tools",
         "secrets",
     ]
     on_linux = [j.key for j in jobs if runs_here(j, "Linux")]
-    assert "ush-ubuntu-latest-3.10" in on_linux and "ush-macos-latest-3.10" not in on_linux
+    assert "ushpy-ubuntu-latest-3.10" in on_linux and "ushpy-macos-latest-3.10" not in on_linux
 
 
 def test_an_unknown_matrix_runner_is_an_error() -> None:

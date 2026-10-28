@@ -33,9 +33,9 @@ jobs:
       - name: Check links
         run: python tools/check-links.py
 
-  # The ush suite on each supported platform and the oldest and newest supported Python (ush TODO
+  # The Python ush suite on each supported platform and the oldest and newest supported Python (TODO
   # 1.9, 2.3). Locally only this machine's platform runs.
-  ush:
+  ushpy:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
     strategy:
@@ -54,10 +54,10 @@ jobs:
       - name: Install zsh
         run: command -v zsh >/dev/null || { sudo apt-get update && sudo apt-get install -y zsh; }
       - name: Test
-        working-directory: ush
+        working-directory: ushpy
         run: PYTHON=python ./scripts/test.sh
 
-  # The Go port (ushgo): format, vet and tests on each supported platform. Locally only this
+  # The Go ush (ushgo): format, vet and tests on each supported platform. Locally only this
   # machine's platform runs, with the machine's Go if it is the version asked for.
   ushgo:
     runs-on: ${{ matrix.os }}

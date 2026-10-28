@@ -6,7 +6,7 @@ checked, and executed. Both use the user's own AI API key, or a local model.
 
 | Project | Where it runs | Status |
 | --- | --- | --- |
-| [ush](ush/README.md) | zsh on the user's machine, optionally under `sudo`; Python, the experimental implementation | Version 0.1 implemented; not yet released |
+| [ush](ushpy/README.md) | zsh on the user's machine, optionally under `sudo`; Python, the experimental implementation | Version 0.1 implemented; not yet released |
 | [ushgo](ushgo/README.md) | The same `ush` command, compiled in Go: the deliverable | Set up; answers no requests yet |
 | [wish](wish/README.md) | Browser workspace: files, notebooks, live tools | Design documents; not implemented |
 
@@ -17,19 +17,19 @@ the output, and answers, with follow-up questions in the same context. It needs 
 newer, and an Anthropic API key or a local model in Ollama.
 
 ```sh
-cd ush && ./install.sh           # installs ~/.local/bin/ush; prints the zsh plugin line
+cd ushpy && ./install.sh         # installs ~/.local/bin/ush; prints the zsh plugin line
 ush ai configure                 # provider, model, and key (macOS keychain or a 0600 file)
 ush //find out why my machine does not have enough disk space
 ```
 
 Read-only commands run immediately; anything else is shown for approval first. See
-[ush/README.md](ush/README.md) for the plugin, `sudo` use, local models, and what is sent to the
-provider. Its plan and records are in [ush/docs/](ush/docs/): [TODO](ush/docs/TODO.md),
-[ROAD](ush/docs/ROAD.md), [ARCH](ush/docs/ARCH.md), [SEC](ush/docs/SEC.md),
-[GAPS](ush/docs/GAPS.md), and [DONE](ush/docs/DONE.md).
+[ushpy/README.md](ushpy/README.md) for the plugin, `sudo` use, local models, and what is sent to the
+provider. Its plan and records are in [ushpy/docs/](ushpy/docs/): [TODO](ushpy/docs/TODO.md),
+[ROAD](ushpy/docs/ROAD.md), [ARCH](ushpy/docs/ARCH.md), [SEC](ushpy/docs/SEC.md),
+[GAPS](ushpy/docs/GAPS.md), and [DONE](ushpy/docs/DONE.md).
 
-To check an installed `ush`, run the user smoke test ([SMOKE](ush/docs/SMOKE.md)):
-`ush/scripts/smoke.sh` offline, then with `--provider ollama --model …` on a local model.
+To check an installed `ush`, run the user smoke test ([SMOKE](ushpy/docs/SMOKE.md)):
+`ushpy/scripts/smoke.sh` offline, then with `--provider ollama --model …` on a local model.
 
 ## ushgo
 
@@ -64,13 +64,14 @@ pipes, JSON/CSV, and one Python notebook, starting from an evaluation of just-ba
 Each project keeps the same documents in its `docs/` folder: TODO (the plan, with stable numbered
 items), DONE (the progress log, newest first), ARCH, ROAD, SEC, and GAPS (the questions only the
 user can answer). [docs/SDLC.md](docs/SDLC.md) describes the process. Work happens on branches and
-merges through human-reviewed GitHub PRs; AI never merges ([CLAUDE.md](CLAUDE.md)). Every feature
+merges through human-reviewed GitHub PRs; AI never merges ([AGENTS.md](AGENTS.md)). Every feature
 needs tests, and every release needs fresh security checks.
 
 ```text
-CLAUDE.md                 rules for contributors and agents: human merges, tests, security, releases
+AGENTS.md                 rules for contributors and agents: human merges, tests, security, releases
+CLAUDE.md                 points to AGENTS.md
 docs/SDLC.md              the development process shared by all projects
-ush/                      zsh tool: README, docs/, src/, tests/, shell/
+ushpy/                    ush in Python, experimental: README, docs/, src/, tests/, shell/
 ushgo/                    ush in Go, the deliverable: README, docs/, cmd/ush/, scripts/
 wish/                     browser workspace: README, docs/
 tools/                    PDF build scripts, the Markdown link checker, local CI (ci/)
@@ -81,7 +82,8 @@ tools/                    PDF build scripts, the Markdown link checker, local CI
 
 ```sh
 just                      # list recipes
-just ush-test             # ush unit, integration, and zsh tests
+just ush-test             # both implementations: ushpy-test and ushgo-test
+just ushpy-test           # Python: unit, integration, and zsh tests
 just ushgo-test           # ushgo: gofmt, go vet, go test
 just links                # check relative links in all Markdown files
 just ci                   # the CI workflow, locally, on a clean checkout of HEAD
@@ -104,7 +106,7 @@ Set `CHROME_BIN` to select a different browser executable.
 
 ```sh
 just pdf wish/docs/IDEA.md  # write wish/docs/IDEA.md.pdf
-just pdfs                 # build README.md and all Markdown documents in docs/, ush/, ushgo/, and wish/
+just pdfs                 # build README.md and all Markdown documents in docs/, ushpy/, ushgo/, and wish/
 just pdfs wish/docs       # build only wish/docs/
 just pdfs 'path with spaces'
 ```

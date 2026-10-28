@@ -47,7 +47,7 @@ machine and the model.
 ush needs zsh, Python 3.10 or newer, and an Anthropic API key.
 
 ```sh
-cd ush
+cd ushpy
 ./install.sh                     # installs ~/.local/bin/ush
 ush ai configure                 # key goes to the macOS keychain (or a 0600 file)
 ```
@@ -193,7 +193,7 @@ manual steps that need a terminal, sudo, or the plugin.
 ## Development
 
 ```sh
-just ush-test        # from the repository root; or ush/scripts/test.sh
+just ushpy-test      # from the repository root; or scripts/test.sh
 ```
 
 The tests use fake providers, a local mock of the Messages API driven through the

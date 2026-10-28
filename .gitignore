@@ -4,8 +4,8 @@
 
 .DS_Store
 
-# ush development environment
-ush/.venv/
+# ushpy development environment
+ushpy/.venv/
 __pycache__/
 *.pyc
 

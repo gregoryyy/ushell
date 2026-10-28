@@ -1,8 +1,8 @@
 # Development process
 
 How work moves from an idea to merged, documented, tested code in this repository. It applies to
-people and coding agents alike, and to every project in it: [ush](../ush/README.md),
-[ushgo](../ushgo/README.md) and [wish](../wish/README.md). [CLAUDE.md](../CLAUDE.md) holds the
+people and coding agents alike, and to every project in it: [ush](../ushpy/README.md),
+[ushgo](../ushgo/README.md) and [wish](../wish/README.md). [AGENTS.md](../AGENTS.md) holds the
 rules that override everything else (human merges, security, release gate); this document describes
 the documents and the workflow. The regime follows `../propeller/docs/SDLC.md`. Status:
 2026-10-28 09:59.
@@ -96,7 +96,7 @@ DONE file, below a marker.
 ## Branches, commits and pull requests
 
 - `main` changes only through pull requests, which a human reviews and merges. **AI never merges**,
-  never approves its own PRs and never enables auto-merge ([CLAUDE.md](../CLAUDE.md)).
+  never approves its own PRs and never enables auto-merge ([AGENTS.md](../AGENTS.md)).
 - Branches are named `feat/…`, `fix/…`, `chore/…` or `docs/…`, with the project and TODO item where
   it helps: `feat/ush-2.9-terminal-escapes`. One TODO item per branch where practical.
 - **Stacked PRs** are fine when work depends on an unmerged PR: base the new PR on the earlier
@@ -162,10 +162,10 @@ project in TODO order:
 `ush` is one command with two implementations that must behave the same (decided 2026-10-28,
 [ushgo GAPS](../ushgo/docs/GAPS.md) Q2):
 
-| | Python, [ush/](../ush/README.md) | Go, [ushgo/](../ushgo/README.md) |
+| | Python, [ushpy/](../ushpy/README.md) | Go, [ushgo/](../ushgo/README.md) |
 | --- | --- | --- |
 | Role | Experimental: features are designed and tried here first | The compiled deliverable: what users install |
-| Tests | `just ush-test` (unittest; fake providers, mock API, pty) | `just ushgo-test` (gofmt, vet, `go test`) |
+| Tests | `just ushpy-test` (unittest; fake providers, mock API, pty) | `just ushgo-test` (gofmt, vet, `go test`) |
 | `ush --version` | `ush X.Y.Z (python)` | `ush X.Y.Z (go)` |
 
 **How a feature moves:**
@@ -179,23 +179,23 @@ project in TODO order:
 4. **Port it to Go** in a separate PR, with the Python tests ported or run as conformance tests
    against the Go binary (ushgo TODO 1.10). A difference in behaviour is a bug in one of the two
    unless ARCH records it.
-5. **Smoke-test both** as a user, with the same script ([SMOKE](../ush/docs/SMOKE.md)):
-   `ush/scripts/smoke.sh --bin <either ush>`.
+5. **Smoke-test both** as a user, with the same script ([SMOKE](../ushpy/docs/SMOKE.md)):
+   `ushpy/scripts/smoke.sh --bin <either ush>`.
 
 **Shared contract:** settings (`~/.config/ush/config.json`), key store, history format, exit
 statuses, environment variables (`USH_*`) and the zsh plugin are the same for both; a change to any
 of them is made in both, or in Python with the ushgo item that follows.
 
-**Security-relevant code first in both:** fixes for findings in [SECTEST](../ush/docs/SECTEST.md)
+**Security-relevant code first in both:** fixes for findings in [SECTEST](../ushpy/docs/SECTEST.md)
 go into Python and get their ushgo item in the same PR; the ushgo port of the policy (TODO 1.1)
 starts from the fixed version.
 
 **Releases:** a ush release ships the Go binary once ushgo passes the conformance suite (ushgo
 ROAD); until then, the Python implementation. Either way, the release gate in
-[CLAUDE.md](../CLAUDE.md) and the smoke test run on what ships.
+[AGENTS.md](../AGENTS.md) and the smoke test run on what ships.
 
 ## Releases
 
-The release gate in [CLAUDE.md](../CLAUDE.md) applies to every release, previews and patches
+The release gate in [AGENTS.md](../AGENTS.md) applies to every release, previews and patches
 included: fresh checks on the exact candidate, the adversarial security tests, scans, and a release
 PR that a human reviews, merges and publishes.

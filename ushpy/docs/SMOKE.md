@@ -2,9 +2,9 @@
 
 How to check that an installed `ush` works on your machine before you rely on it: after installing,
 after an upgrade, on a new OS, and before a release (ush TODO 2.1, 3.1). The same steps apply to
-both implementations of the command, Python ([ush/](../README.md)) and Go
+both implementations of the command, Python ([ushpy/](../README.md)) and Go
 ([ushgo/](../../ushgo/README.md)); `ush --version` says which one you have (`ush 0.1.0 (python)`,
-`ush 0.0.0-dev (go)`). The developer test suites are separate: `just ush-test` and
+`ush 0.0.0-dev (go)`). The developer test suites are separate: `just ushpy-test` and
 `just ushgo-test`. Status: 2026-10-28 09:59.
 
 ## Principles
@@ -24,10 +24,10 @@ both implementations of the command, Python ([ush/](../README.md)) and Go
 ## 1. Automated checks: `smoke.sh`
 
 ```sh
-ush/scripts/smoke.sh                                    # offline: no model, no cost
-ush/scripts/smoke.sh --provider ollama --model qwen3.5:9b --checker ollama:llama3.2:3b
-ush/scripts/smoke.sh --provider anthropic --paid        # your configured model; --model to change
-ush/scripts/smoke.sh --bin ~/go/bin/ush                 # another implementation or install
+ushpy/scripts/smoke.sh                                    # offline: no model, no cost
+ushpy/scripts/smoke.sh --provider ollama --model qwen3.5:9b --checker ollama:llama3.2:3b
+ushpy/scripts/smoke.sh --provider anthropic --paid        # your configured model; --model to change
+ushpy/scripts/smoke.sh --bin ~/go/bin/ush                 # another implementation or install
 ```
 
 | Check | Passes when |

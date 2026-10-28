@@ -3,7 +3,7 @@
 Plan for ush, the local `//` shell for zsh: what is built in [ARCH](ARCH.md), checked against
 [SEC](SEC.md) and [SECTEST](SECTEST.md). Phases after the current work are in [ROAD](ROAD.md), open
 questions in [GAPS](GAPS.md), and progress is logged in [DONE](DONE.md). The process is
-[SDLC](../../docs/SDLC.md); the rules in [CLAUDE.md](../../CLAUDE.md) take precedence. IDs are ush's
+[SDLC](../../docs/SDLC.md); the rules in [AGENTS.md](../../AGENTS.md) take precedence. IDs are ush's
 own, independent of ushgo's and wish's. Status: 2026-10-28 09:59.
 
 Status: `[ ]` open, `[x]` done. Tags:
@@ -100,5 +100,5 @@ DONE has an entry for it.
 
 ## 3. Release
 
-- [ ] 3.1 Release 0.1 gate per [CLAUDE.md](../../CLAUDE.md): fresh suite on the exact
+- [ ] 3.1 Release 0.1 gate per [AGENTS.md](../../AGENTS.md): fresh suite on the exact
   candidate on each supported OS/Python, dependency audit, release notes, human merge.

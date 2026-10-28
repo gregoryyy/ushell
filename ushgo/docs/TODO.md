@@ -3,7 +3,7 @@
 Plan for ushgo, the Go port of ush: the approach is in [ARCH](ARCH.md), what changes for security
 in [SEC](SEC.md), the phases in [ROAD](ROAD.md), open questions in [GAPS](GAPS.md), and progress in
 [DONE](DONE.md). The process is [SDLC](../../docs/SDLC.md); the rules in
-[CLAUDE.md](../../CLAUDE.md) take precedence. IDs are ushgo's own, independent of ush's and wish's.
+[AGENTS.md](../../AGENTS.md) take precedence. IDs are ushgo's own, independent of ush's and wish's.
 Status: 2026-10-28 09:59.
 
 Status: `[ ]` open, `[x]` done. Tags:
@@ -27,7 +27,7 @@ Each port item is done when the package reproduces the ush module's behaviour, i
 - [x] 0.3 The command is `ush` (GAPS Q2): `cmd/ush`, `ush --version` prints `ush X.Y.Z (go)`;
   equivalence with the Python implementation as the rule
   ([SDLC](../../docs/SDLC.md#ush-one-command-two-implementations)). Acceptance: tests for the
-  name and version; the user smoke test (`ush/scripts/smoke.sh --bin`) runs against the Go binary
+  name and version; the user smoke test (`ushpy/scripts/smoke.sh --bin`) runs against the Go binary
   and reports the checks it doesn't pass yet.
 
 ## 1. Port
@@ -52,7 +52,7 @@ In dependency order: the packages that don't depend on others first.
 - [ ] 1.6 `internal/provider`: Anthropic through `anthropic-sdk-go` (streaming, eager tool input,
   fallbacks, progress updates) and Ollama through the same API (loopback only, no proxies or
   redirects, cloud-model disclosure). Acceptance: request shape and errors against ush's mock
-  Messages API (`ush/tests/mock_api.py`); SDK licence and maturity in ARCH.
+  Messages API (`ushpy/tests/mock_api.py`); SDK licence and maturity in ARCH.
 - [ ] 1.7 `internal/agent`: the loop with strict tools, schema validation, step limits, every
   `tool_use` answered. Acceptance: ush's agent tests ported with a scripted fake provider.
 - [ ] 1.8 `internal/ui`: status lines and the approval prompt via `/dev/tty`. Acceptance: pty tests;
@@ -70,5 +70,5 @@ In dependency order: the packages that don't depend on others first.
   the tag on a second machine.
 - [x] 2.2 *(decision)* Which implementation is maintained after parity: both, Go as the
   deliverable, Python as the experimental implementation (GAPS Q2, 2026-10-28).
-- [ ] 2.3 Release gate per [CLAUDE.md](../../CLAUDE.md) and [SEC](SEC.md): conformance on each
+- [ ] 2.3 Release gate per [AGENTS.md](../../AGENTS.md) and [SEC](SEC.md): conformance on each
   supported OS, ush SECTEST levels 1 and 2 on the binary, `govulncheck`, secret scan.

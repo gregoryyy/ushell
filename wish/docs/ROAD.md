@@ -8,7 +8,7 @@ neither runtime phase is implemented.
 
 | Phase | Goal | TODO | Gate to the next phase |
 | --- | --- | --- | --- |
-| 1. Lean browser workspace | One local workflow: CSV import, shell transformation, Python notebook and plot, save and reload, the same with `//` and replay | Groups 1–4, 6, 9.1–9.4 | The acceptance below passes, and the release gate in [CLAUDE.md](../../CLAUDE.md) on the candidate |
+| 1. Lean browser workspace | One local workflow: CSV import, shell transformation, Python notebook and plot, save and reload, the same with `//` and replay | Groups 1–4, 6, 9.1–9.4 | The acceptance below passes, and the release gate in [AGENTS.md](../../AGENTS.md) on the candidate |
 | 2. Selected extensions | Extensions with a demonstrated workload, one at a time | Groups 5, 7, selected 8, 9.5 | Per extension: the evidence in the phase 2 table, plus its behavioural and security tests |
 | Not scheduled | Typed pipelines, public resource handles, transparent local/remote placement | 8.5 evaluates them | An acceptance example that files, JSON, names and explicit commands can't express |
 
@@ -81,7 +81,7 @@ save/reload and export recovery, explicit-command use without a key, equivalent
 denied file access, hostile outputs, and attempted key/context leakage.
 
 Apply the feature-test and recurring release-security rules in
-[CLAUDE.md](../../CLAUDE.md). Runtime milestones remain unchecked until implemented
+[AGENTS.md](../../AGENTS.md). Runtime milestones remain unchecked until implemented
 and tested. Phase 1 does not require a server, extension, general Wasm ABI, SQL
 engine, external-tab access, or device adapter to be released.
 

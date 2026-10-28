@@ -1,0 +1,81 @@
+# Roadmap
+
+The repository's roadmap across its projects: what comes next, in which order, and what gates each
+step. Each project keeps its own phases and items ([ushpy ROAD](../ushpy/docs/ROAD.md),
+[ushgo ROAD](../ushgo/docs/ROAD.md), [wish ROAD](../wish/docs/ROAD.md)); this file orders them and
+holds the items that belong to no single project. Work becomes items in a project's TODO when it
+starts. Status: 2026-10-28 10:06.
+
+## Overview
+
+| Step | What | Where | Gate |
+| --- | --- | --- | --- |
+| 0. Repository | Land the open stack; one default branch; CI; licence | Below | All PRs on the default branch; licence chosen |
+| 1. ush 0.1 | The `//` shell for zsh, safe to hand to others | ushpy TODO 2.9–2.11, 2.1.2, 3.1 | Release gate: no open High finding, suites on macOS and Linux, smoke test on the artifact |
+| 2. ush in Go | The same `ush` as a static Go binary, the deliverable | ushgo TODO 1.1–1.10, 2.1, 2.3 | ushgo passes ushpy's black-box tests and the smoke test; releases then ship it |
+| 3. ush for daily use | Fewer approvals for harmless commands, enforced read-only, long sessions | ushpy TODO 2.4–2.6 and their ushgo items | Weeks of daily use without a policy bypass; approvals per request falling |
+| 4. wish phase 1 | A lean browser workspace: files, pipes, one notebook, `//` | wish TODO 1–4, 6, 9.1–9.4 | wish ROAD phase 1 acceptance; release gate |
+| 5. One `//` paradigm | The same request contract and policy semantics in ush and wish | ushpy TODO 2.7 | wish has a shell (wish TODO 2.1, 6.2) |
+
+Steps 1 and 2 overlap: each ush feature lands in Python first and is ported to Go
+([SDLC](SDLC.md#ush-one-command-two-implementations)), so the Go port follows the Python work rather
+than waiting for it. Step 4 starts when the user decides (wish GAPS Q1); the proposal is after ush
+0.1.
+
+## 0. Repository
+
+- **Land the stack.** PRs #3–#6 merged into each other's branches, not the default branch; #7
+  lands them, and the PRs after it stack on #7. Delete each branch when its PR is merged, or turn on
+  automatic deletion, so GitHub retargets the next PR.
+- **One default branch named `main`.** The default branch is `feature/wish-planning-process`, while
+  [AGENTS.md](../AGENTS.md) and SDLC assume `main`. Renaming it in the repository settings
+  retargets open PRs.
+- **CI on GitHub again,** when Actions starts jobs for the account; until then `just ci --post`,
+  which leaves the Linux matrix entries unchecked. A ush release needs one recorded Linux run
+  either way.
+- **Licence** for the repository (ushpy GAPS Q1, wish GAPS Q4): proposed Apache-2.0.
+
+## 1. ush 0.1
+
+In order: fix F1, terminal escape sequences in the approval prompt (ushpy TODO 2.9); close F2, DNS
+exfiltration by auto-approved lookups (2.10); fill the security test gaps (2.11). Then the paid smoke
+test and manual checks by the user (2.1.2), the keychain under sudo (2.2), distribution (ushpy GAPS
+Q2), and the release gate (3.1). Each fix gets its ushgo item in the same PR.
+
+## 2. ush in Go
+
+Port in dependency order: policy, redaction, execution, configuration, history, provider, agent,
+terminal, command line, conformance (ushgo TODO 1.1–1.10). Release builds for macOS and Linux on
+arm64 and amd64 (ushgo TODO 2.1), then the release gate on the binaries (2.3). From then on, a ush
+release ships the Go binary.
+
+## 3. ush for daily use
+
+- A user allowlist of commands that run without approval, on top of the built-in read-only table
+  (next ushpy item, with its ushgo item).
+- A broader built-in command table from real sessions (ushpy TODO 2.4), each command with negative
+  tests.
+- An OS sandbox for auto-approved commands (2.6): `sandbox-exec` on macOS, Landlock or namespaces
+  on Linux.
+- Compaction or context editing for long sessions (2.5).
+- Whether the checker model is on by default (ushpy GAPS Q4).
+
+## 4. wish phase 1
+
+wish's lean browser workspace (wish ROAD phase 1), after the just-bash spike (wish TODO 2.1). Open
+for the user: when to start, which browsers, which providers (wish GAPS Q1–Q3).
+
+## 5. One `//` paradigm
+
+What counts as a request, what history records, what replay does, and how the policy decides, the
+same in ush and wish (ushpy TODO 2.7).
+
+## Ideas not scheduled
+
+- **More shells** for ush: bash and fish integrations next to the zsh plugin.
+- **More local providers:** OpenAI-compatible local servers (llama.cpp, LM Studio) behind the same
+  loopback rules as Ollama.
+- **`ush explain CMD`:** describe what a command line would do, using the policy's parse, without
+  running it.
+- **One policy corpus** for ushpy, ushgo and later wish: command lines with expected decisions, as
+  the shared contract (ushgo ROAD).
