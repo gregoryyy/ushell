@@ -6,6 +6,7 @@ import pty
 import re
 import select
 import shutil
+import sys
 import time
 import unittest
 
@@ -34,7 +35,7 @@ class ZshPluginTest(TempDirTest):
     def run_lines(self, lines, env=None):
         pid, fd = pty.fork()
         if pid == 0:
-            os.environ.update({"PATH": self.bin + ":/usr/bin:/bin", "PS1": "PROMPT> ",
+            os.environ.update({"PATH": self.bin + ":/usr/bin:/bin", "PS1": "PROMPT> ", "TERM": "xterm-256color",
                                "HOME": self.tmp, **(env or {})})
             os.execv(ZSH, [ZSH, "-f", "-i"])
         try:
@@ -55,17 +56,24 @@ class ZshPluginTest(TempDirTest):
 
     @staticmethod
     def _read(fd, until, timeout=10.0):
+        """Output until `until` has appeared and the terminal has been quiet for 0.5 s, which is
+        also longer than zsh's KEYTIMEOUT, so a following key isn't read as Alt-key."""
         out, end = "", time.time() + timeout
+        seen = time.time() if not until else None  # "": just until the terminal is quiet
         while time.time() < end:
             ready, _, _ = select.select([fd], [], [], 0.1)
             if ready:
                 try:
-                    out += os.read(fd, 4096).decode(errors="replace")
+                    chunk = os.read(fd, 4096)
                 except OSError:
                     break
+                if not chunk:  # the process ended
+                    break
+                out += chunk.decode(errors="replace")
                 plain = re.sub(r"\x1b\[[0-9;?]*[A-Za-z]|\r", "", out)  # e.g. bracketed paste
-                if plain.rstrip().endswith(until.rstrip()):
-                    return out
+                seen = time.time() if until.rstrip() in plain else None
+            elif seen and time.time() - seen > 0.5:
+                return out
         return out
 
     def test_requests_reach_ush_verbatim(self):
@@ -134,7 +142,7 @@ class ZshProposeTest(TempDirTest):
         """steps: (keys to send, text to wait for). Returns the output after each step."""
         pid, fd = pty.fork()
         if pid == 0:
-            os.environ.update({"PATH": self.bin + ":/usr/bin:/bin", "PS1": "PROMPT> ",
+            os.environ.update({"PATH": self.bin + ":/usr/bin:/bin", "PS1": "PROMPT> ", "TERM": "xterm-256color",
                                "HOME": self.tmp, "TMPDIR": self.tmpdir})
             os.execv(ZSH, [ZSH, "-f", "-i"])
         try:
@@ -216,24 +224,91 @@ class ZshProposeTest(TempDirTest):
         for i in (3, 6, 9):
             self.assertIn('"^[" backward-word', out[i])
 
-    def test_down_explains_the_proposal_and_keeps_it(self):
+    def test_down_explains_above_the_command_and_esc_closes_it(self):
         out = self.session([
             ("// capture echo one\r", "PROMPT> echo one"),
-            ("\x1b[B", "PROMPT> echo one"),        # Down: explain, the proposal stays
-            ("\r", "PROMPT> "),                    # then run it
+            ("\x1b[B", "Enter runs the command"),  # Down: the explanation, above the command
+            (" two", "two"),                         # the cursor is still on the line
+            ("\x1b", "echo one two"),               # Esc closes the explanation only
+            ("\r", "PROMPT> "),                     # Enter runs the edited command
             ("//\r", "PROMPT> "),
-            ("\x1b[B", "PROMPT> "),                # Down without a proposal: history, no ush
+            ("\x1b[B", ""),                         # Down without a proposal: no ush
             ("\x15bindkey -M main $'\\e[B'\r", "PROMPT> "),
         ])
         self.assertIn('EXPLAIN["--", "echo one"]', out[1])
-        self.assertEqual(self.records(out[3])[0], "0\necho one\n")
-        self.assertNotIn("EXPLAIN", out[4] + out[5])
-        self.assertIn('"^[[B" down-line-or-history', out[5])
+        plain = re.sub(r"\x1b\[[0-9;?]*[A-Za-z]|\r", "", out[1])
+        self.assertLess(plain.index("EXPLAIN"), plain.rindex("→ echo one"))  # above the command
+        self.assertNotIn("proposal removed", out[3])
+        self.assertIn("one two", out[4])
+        self.assertEqual(self.records(out[5])[0], "0\necho one two\n")
+        self.assertNotIn("EXPLAIN", out[6] + out[7])
+        self.assertIn('"^[[B" down-line-or-history', out[7])
+
+    def test_second_esc_removes_the_explained_proposal(self):
+        out = self.session([
+            ("// capture echo one\r", "PROMPT> echo one"),
+            ("\x1b[B", "Enter runs the command"),
+            ("\x1b", "echo one"),
+            ("\x1b", "proposal removed"),
+            ("//\r", "PROMPT> "),
+        ])
+        self.assertIn("proposal removed", out[3])
+        self.assertEqual(self.records(out[4]), [None, None])
 
     def test_no_handoff_as_root_or_twice(self):
         with open(PLUGIN) as f:
             source = f.read()
         self.assertIn("(( EUID != 0 ))", source)
+
+
+EDITOR = """
+import sys
+from ush.ui import Terminal
+print("GOT" + repr(Terminal().read_line("ush> ", prefill="echo prefilled")) + "END", flush=True)
+"""
+
+
+@unittest.skipUnless(ZSH, "zsh not installed")
+class SessionPrefillTest(TempDirTest):
+    """A session's proposal is pre-filled with zsh's vared (Python's readline can't with
+    libedit), with the plugin's keys."""
+
+    def edit(self, keys):
+        src = os.path.join(os.path.dirname(PLUGIN), "..", "src")
+        pid, fd = pty.fork()
+        if pid == 0:
+            os.environ.update({"PYTHONPATH": src, "HOME": self.tmp, "NO_COLOR": "1",
+                               "TERM": "xterm-256color",
+                               "XDG_CONFIG_HOME": os.path.join(self.tmp, "config"),
+                               "XDG_STATE_HOME": os.path.join(self.tmp, "state"),
+                               # no provider reachable, whatever key the keychain holds
+                               "USH_BASE_URL": "http://127.0.0.1:9",
+                               "USH_OLLAMA_URL": "http://127.0.0.1:9"})
+            os.execv(sys.executable, [sys.executable, "-c", EDITOR])
+        try:
+            outputs = [ZshPluginTest._read(fd, "ush> echo prefilled")]
+            for key, until in keys:
+                os.write(fd, key.encode())
+                outputs.append(ZshPluginTest._read(fd, until, timeout=20))
+            return outputs
+        finally:
+            os.close(fd)
+            os.waitpid(pid, 0)
+
+    def test_prefilled_and_editable(self):
+        out = self.edit([(" more\r", "END")])
+        self.assertIn("ush> echo prefilled", out[0])
+        self.assertIn("GOT'echo prefilled more'", out[1])
+
+    def test_esc_clears_the_line(self):
+        out = self.edit([("\x1b", ""), ("ls\r", "END")])
+        self.assertIn("GOT'ls'", out[2])
+
+    def test_down_explains_and_esc_closes_the_explanation(self):
+        out = self.edit([("\x1b[B", "Enter runs the command"), ("\x1b", "echo prefilled"),
+                         ("\r", "END")])
+        self.assertRegex(out[1], "no API key|cannot reach|explaining")
+        self.assertIn("GOT'echo prefilled'", out[3])
 
 
 if __name__ == "__main__":

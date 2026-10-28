@@ -7,6 +7,8 @@ Without a terminal, ush cannot ask, so commands that need approval are declined.
 from __future__ import annotations
 
 import os
+import shutil
+import subprocess
 import sys
 from dataclasses import dataclass
 from typing import Optional, TextIO
@@ -133,21 +135,23 @@ class Terminal:
         return self._terminal() is not None
 
     def read_line(self, prompt: str, prefill: str = "") -> Optional[str]:
-        """Read one line; None on end of input. `prefill` is put on the line to edit, where
-        readline is available (a session in propose mode)."""
+        """Read one line; None on end of input. `prefill` (a proposal in a session) is put on the
+        line to edit with zsh's line editor, which has the plugin's keys: Down explains, Esc
+        closes the explanation or clears the line. Python's readline can't pre-fill with
+        libedit, macOS's default."""
         tty = self._terminal()
         if tty is None:
             return None
         self._end_answer()
+        if prefill:
+            line = _vared(prompt, prefill, tty)
+            if line is not None:
+                return line
         if tty is sys.stdin:
-            hook = _prefill(prefill)
             try:
                 return input(prompt)
             except EOFError:
                 return None
-            finally:
-                if hook is not None:
-                    hook.set_pre_input_hook(None)
         self.err.write(prompt)
         self.err.flush()
         line = tty.readline()
@@ -175,18 +179,72 @@ class Terminal:
                     return Choice("edit", edited.strip())
 
 
-def _prefill(text: str):
-    """Put `text` on the next input() line; returns the readline module to reset, or None."""
-    if not text:
+# zsh's vared edits the pre-filled line; the result comes back on the descriptor in $3. Exit 2: no zle, so the
+# caller falls back to an empty prompt; exit 1: cancelled (Ctrl-C, Ctrl-D).
+VARED = r"""
+zmodload zsh/zle 2>/dev/null || exit 2
+line=$1 prompt=$2 out=$3
+typeset -ga ush=("${@[4,-1]}")
+typeset -gi explained=0
+_ush_esc() {
+  if (( explained )); then
+    explained=0
+    PREDISPLAY=
+  else
+    BUFFER= CURSOR=0
+  fi
+}
+_ush_down() {
+  if [[ $RBUFFER != *$'\n'* && -n ${BUFFER//[[:space:]]/} ]]; then
+    zle -M "ush: explaining…"
+    zle -R
+    local text
+    text=$("${ush[@]}" explain -- "$BUFFER" 2>&1 </dev/null)
+    zle -M ''
+    explained=1
+    PREDISPLAY=$'\n'"$text"$'\n'"Esc closes this · Enter runs the command"$'\n'"→ "
+  else
+    zle down-line-or-history
+  fi
+}
+_ush_finish() {
+  PREDISPLAY=
+}
+zle -N _ush_esc
+zle -N _ush_down
+zle -N zle-line-finish _ush_finish
+bindkey -e
+bindkey $'\e' _ush_esc
+bindkey $'\e[B' _ush_down
+bindkey $'\eOB' _ush_down
+vared -p "$prompt" line || exit 1
+print -rn -- "$line" >&$out
+"""
+
+
+def _vared(prompt: str, prefill: str, tty: TextIO) -> Optional[str]:
+    """Edit `prefill` with zsh's vared; "" if cancelled, None if zsh can't edit here."""
+    zsh = shutil.which("zsh")
+    if not zsh:
         return None
+    ush = [sys.executable, *(["-I"] if sys.flags.isolated else []), "-m", "ush"]
+    streams = {} if tty is sys.stdin else {"stdin": tty, "stdout": tty, "stderr": tty}
+    read, write = os.pipe()
     try:
-        import readline
-    except ImportError:
+        proc = subprocess.Popen([zsh, "-f", "-c", VARED, "zsh", prefill, prompt, str(write), *ush],
+                                pass_fds=(write,), **streams)
+        os.close(write)
+        write = -1
+        data = b""
+        try:
+            while chunk := os.read(read, 65536):
+                data += chunk
+        finally:
+            code = proc.wait()
+    finally:
+        os.close(read)
+        if write >= 0:
+            os.close(write)
+    if code == 2:
         return None
-
-    def insert() -> None:
-        readline.insert_text(text)
-        readline.redisplay()
-
-    readline.set_pre_input_hook(insert)
-    return readline
+    return data.decode("utf-8", "replace") if code == 0 else ""

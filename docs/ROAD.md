@@ -93,5 +93,11 @@ same in ush and wish (ushpy TODO 2.7).
   leaks. Today it never sees command output, so that injected text can't steer it (ushpy ARCH). A
   leak check needs to see that output, so it would be a separate role that can only answer "leak"
   or "no leak" and only block, never approve.
+- **Shell history as context:** let the model see the user's recent commands, so a request such
+  as "repeat that command with these and these changes" works. The plugin would pass the recent
+  history (`fc -ln`) with a request. The commands are filtered before they go to the provider:
+  secrets and credentials redacted, commands that read secret files or carry tokens dropped, at
+  most the last N. That is the data loss prevention filter above, applied to history; the user
+  turns it on and sees it in the disclosure banner.
 - **One policy corpus** for ushpy, ushgo and later wish: command lines with expected decisions, as
   the shared contract (ushgo ROAD).

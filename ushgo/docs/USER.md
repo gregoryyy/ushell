@@ -62,7 +62,7 @@ read-only commands itself and asks before anything else ([Agent mode](#agent-mod
 | `ush //REQUEST` | the same as `// REQUEST`, without the plugin's `//` shortcut |
 | `ush --new //REQUEST` | start over instead of continuing this shell's conversation |
 | `ush --run //REQUEST` | [agent mode](#agent-mode): ush runs the commands itself, then offers follow-up questions |
-| `ush` | a session: `// TEXT` asks, proposals appear at the `ush>` prompt, any other line runs as a command whose output becomes context, `exit` or Ctrl-D ends |
+| `ush` | a session: `// TEXT` asks, proposals appear at the `ush>` prompt (with the same Down and Esc), any other line runs as a command whose output becomes context, `exit` or Ctrl-D ends |
 | `… \| ush //explain this` | piped text becomes context for the request (up to 200 KB) |
 | `sudo ush //…` | commands run as root; see [Using sudo](#using-sudo) |
 
@@ -79,10 +79,11 @@ objected. With the zsh plugin it then waits on your command line:
 - **Edit** it first; ush sees the command that actually ran.
 - **Down** (the arrow key, past the last line of the proposal) explains it: the model says what
   each part does, what it reads and changes, and what is risky, together with what ush's policy
-  says. The proposal stays on the line. `ush explain COMMAND` does the same for any command line.
-- **Esc** removes it, so you can start from scratch; ush then knows you didn't run it. Esc does
-  this only while a proposal is on the line; otherwise it keeps its usual meaning. (In vi mode,
-  use Ctrl-U.) Typing a new `// …` over it also tells ush you didn't run it.
+  says. The explanation appears above the command; the cursor stays in the command, so you can
+  still edit it, and Enter runs it. `ush explain COMMAND` explains any command line.
+- **Esc** closes the explanation, or else removes the proposal, so you can start from scratch;
+  ush then knows you didn't run it. Esc does this only while a proposal is on the line; otherwise
+  it keeps its usual meaning. (In vi mode, use Ctrl-U.) Typing a new `// …` over it also tells ush you didn't run it.
 
 While a proposed command runs, ush records its output through a pipe, so colours and pagers are off
 for that one command. Commands that need the terminal (`less`, `top`, editors) are proposed as

@@ -12,6 +12,69 @@ top. The format is defined in [SDLC](../../docs/SDLC.md#done-entries).
 
 ---
 
+## 2026-10-28 20:11 — Explanations above the command; proposals pre-filled in a session
+
+TODO items: 2.20. PR: see below.
+
+Agent: Opus 5.5, reasoning: not exposed, subagents: none.
+
+### Implementation notes
+
+- **The report:** "the behavior hasn't changed, i chose propose but the proposal isn't prepared on
+  the command line, i have to copy it manually. there's also no explanation." There were two
+  causes:
+  - The plugin still isn't in the user's `~/.zshrc`, so `//` in the shell can't fill the line.
+    Adding it is the user's step; the AI's attempt to append the line was blocked by a
+    permission check.
+  - The history showed the user working in the `ush>` session. There the pre-fill used Python's
+    readline `insert_text` in a hook. A pty probe with the installed Python 3.13 showed that with
+    libedit (macOS) neither the pre-input nor the startup hook puts text on the line.
+- **The user's spec for the explanation**, given in two messages:
+  - "the cursor should be still on the line so the command can be changed, but esc closes the
+    explanation, enter executes the command";
+  - "the command explanation is to be above the command after the // instruction".
+- **Plugin:**
+  - The explanation goes into `PREDISPLAY`, display-only text that zle draws between the prompt and
+    the command, ending in `→ ` before the command. Putting it into the prompt instead would let a
+    model's `$(…)` run under `PROMPT_SUBST`.
+  - "explaining…" shows (`zle -M`) while the model answers.
+  - Esc clears an explanation first; a second Esc removes the proposal.
+  - `zle-line-finish` clears it, so the accepted line stays clean in the scrollback.
+- **Session:** `Terminal.read_line(prompt, prefill)` edits the proposal with `zsh -f -c` and
+  `vared`, with the same Down and Esc widgets. `ush explain` runs as the same Python, isolated if
+  ush is. The line comes back on a pipe whose descriptor number is passed to the script, since
+  `pass_fds` keeps the number. `vared` exits 1 when cancelled, and 2 without zle, which falls back
+  to a plain prompt.
+- **Also recorded:** ROAD gets the user's idea of shell history as context, with the data loss
+  prevention filter; ushgo TODO 1.12 includes the session pre-fill.
+- **Test harness:** the pty reader now waits for the expected text plus 0.5 s of quiet. That is
+  longer than `KEYTIMEOUT`: an Esc followed within 0.4 s by Enter is Alt-Enter, which inserted a
+  newline in one probe. It also stops at the end of output, which macOS reports as an empty read,
+  and the sessions set `TERM` (without it zle shows newlines as `\n` on one scrolling line).
+  `test_zsh_plugin` went from 159 s to 44 s.
+- **Validation:** `test_zsh_plugin`, 13 tests OK in 44 s. Among them:
+  - the explanation index comes before `→ echo one`;
+  - editing with the explanation shown, Esc closing only the explanation, Enter running
+    `echo one two` and recording it;
+  - a second Esc removing the proposal;
+  - `SessionPrefillTest` (3): pre-filled and edited, Esc clearing, Down explaining (no provider
+    reachable) and Esc closing.
+  - Full suite below.
+
+### Deviations
+
+- The user offered to defer the session pre-fill to the Go port ("if it is too complicated to make
+  it work from python"), then pointed at `vared`. It was not complicated, so it is in this change.
+
+### Insights
+
+- zsh is already a dependency, and its line editor is the one users know. Using `vared` for the
+  session gives the same keys as the plugin without a Python line editor.
+- In a real terminal a multi-line `PREDISPLAY` behaves like a multi-line prompt. Under a dumb or
+  unset `TERM`, zle falls back to one line.
+
+---
+
 ## 2026-10-28 19:33 — Explain a proposal: Down, or `ush explain`
 
 TODO items: 2.19. PR: see below (with 2.18).

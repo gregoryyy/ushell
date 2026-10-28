@@ -48,6 +48,7 @@ _ush_rewrite() {
 
 _ush_line_finish() {
   local rewritten
+  (( _ush_explained )) && PREDISPLAY=
   rewritten=$(_ush_rewrite "$BUFFER") && BUFFER=$rewritten
 }
 
@@ -87,6 +88,7 @@ _ush() {
 typeset -g _ush_dir= _ush_state= _ush_mode= _ush_line= _ush_tee= _ush_out= _ush_err=
 typeset -ga _ush_saved=()   # the key bindings a proposal replaced, as `bindkey -L` prints them
 typeset -gA _ush_orig=()    # key sequence -> the widget it had
+typeset -gi _ush_explained=0  # an explanation is shown above the proposal
 zmodload -F zsh/zselect b:zselect 2>/dev/null
 
 _ush_precmd() {
@@ -136,11 +138,18 @@ _ush_end_capture() {
 
 # Two keys act on a proposal while it is on the command line, and only then; their own bindings
 # come back as soon as the line is run, cleared, or abandoned:
-# - Esc removes it, to start from scratch; `//` then hears that it didn't run. Only in the emacs
-#   keymap: in vi mode Esc switches to command mode (Ctrl-U clears the line there).
-# - Down, past the last line of the proposal, explains it (`ush explain`, with the model); the
-#   proposal stays on the line. Elsewhere Down does what it did before.
+# - Down, past the last line of the proposal, explains it (`ush explain`, with the model). The
+#   explanation shows above the command, as display-only text (PREDISPLAY); the cursor stays in
+#   the command, to edit it or run it with Enter. Elsewhere Down does what it did before.
+# - Esc closes the explanation, or else removes the proposal, to start from scratch; `//` then
+#   hears that it didn't run. Only in the emacs keymap: in vi mode Esc switches to command mode
+#   (Ctrl-U clears the line there).
 _ush_discard() {
+  if (( _ush_explained )); then
+    _ush_explained=0
+    PREDISPLAY=
+    return
+  fi
   _ush_state=
   BUFFER= CURSOR=0
   _ush_keys_restore
@@ -150,9 +159,13 @@ _ush_discard() {
 _ush_explain() {
   if [[ $_ush_state == offered && $HISTNO == $HISTCMD && $RBUFFER != *$'\n'* &&
         -n ${BUFFER//[[:space:]]/} ]]; then
-    zle -I
-    print
-    command ${USH_BIN:-ush} explain -- "$BUFFER" </dev/null
+    zle -M "ush: explaining…"
+    zle -R
+    local text
+    text=$(command ${USH_BIN:-ush} explain -- "$BUFFER" 2>&1 </dev/null)
+    zle -M ''
+    _ush_explained=1
+    PREDISPLAY=$'\n'"$text"$'\n'"Esc closes this · Enter runs the command"$'\n'"→ "
   else
     local widget=${_ush_orig[$KEYS]:-down-line-or-history}
     [[ $widget == undefined-key ]] || zle $widget
@@ -173,6 +186,7 @@ _ush_keys_bind() {
 }
 
 _ush_keys_restore() {
+  _ush_explained=0
   (( ${#_ush_saved} )) || return 0
   local line
   bindkey -M emacs -r $'\e'
