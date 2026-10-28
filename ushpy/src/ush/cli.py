@@ -20,7 +20,7 @@ from .policy import classify
 from .provider import (API_URL, AnthropicProvider, OllamaProvider, Provider, ProviderError,
                        Turn, ollama_remote_host)
 from .redact import redact
-from .ui import Terminal
+from .ui import Terminal, visible
 
 USAGE = """\
 ush, the you shell: ask in natural language, get the commands that answer it.
@@ -454,7 +454,7 @@ def _session(agent: Agent, ui: Terminal, factory: ProviderFactory, follow_up: bo
     offer = ""
     while True:
         try:
-            line = ui.read_line("ush> ", prefill=offer)
+            line = ui.read_line("ush> ", prefill=offer, session=True)
         except KeyboardInterrupt:
             ui.finish_answer()
             ui.err.write("\n")
@@ -616,9 +616,11 @@ def _history(args: list[str], history: History) -> int:
         n = int(args[1])
     for entry in history.recent(n):
         stamp = time.strftime("%Y-%m-%d %H:%M", time.localtime(entry.time))
-        print(f"{entry.id}  {stamp}  [{entry.outcome}]  // {entry.request}")
+        print(f"{entry.id}  {stamp}  [{entry.outcome}]  // {visible(entry.request)}")
         for step in entry.steps:
-            first = step.command.splitlines()[0] if step.command else ""
+            # split("\n"), not splitlines(): that also splits at \r and U+2028, hiding the rest
+            lines = step.command.split("\n") if step.command else [""]
+            first = visible(lines[0]) + (" …" if len(lines) > 1 else "")
             label = f"{step.language} script" if step.kind == "script" else "$"
             status = "" if step.exit_code is None else f" → exit {step.exit_code}"
             print(f"    {step.decision:9} {label} {first}{status}")

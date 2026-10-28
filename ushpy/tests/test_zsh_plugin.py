@@ -246,6 +246,21 @@ class ZshProposeTest(TempDirTest):
         self.assertNotIn("EXPLAIN", out[7] + out[8])
         self.assertIn('"^[[B" down-line-or-history', out[8])
 
+    def test_up_closes_the_explanation_and_is_history_otherwise(self):
+        out = self.session([
+            ("echo earlier\r", "PROMPT> "),
+            ("// capture echo one\r", "PROMPT> echo one"),
+            ("\x1b[B", "EXPLAIN"),
+            ("\x1b[A", "echo one"),   # Up: closes the explanation, the proposal stays
+            ("\r", "PROMPT> "),
+            ("//\r", "PROMPT> "),
+            ("\x1b[A", "//"),          # Up without a proposal: history
+            ("\x15bindkey -M main $'\\e[A'\r", "PROMPT> "),
+        ])
+        self.assertNotIn("EXPLAIN", out[3])
+        self.assertEqual(self.records(out[5])[0], "0\necho one\n")
+        self.assertIn('"^[[A" up-line-or-history', out[7])
+
     def test_second_esc_removes_the_explained_proposal(self):
         out = self.session([
             ("// capture echo one\r", "PROMPT> echo one"),
@@ -307,6 +322,11 @@ class SessionPrefillTest(TempDirTest):
         out = self.edit([("\x1b", ""), ("ls\r", "END")])
         self.assertIn("GOT'ls'", out[2])
 
+    def test_up_closes_the_explanation(self):
+        out = self.edit([("\x1b[B", "cannot reach Ollama"), ("\x1b[A", "echo prefilled"),
+                         ("\r", "END")])
+        self.assertIn("GOT'echo prefilled'", out[3])
+
     def test_down_explains_and_esc_closes_the_explanation(self):
         out = self.edit([("\x1b[B", "cannot reach Ollama"), ("\x0c", "echo prefilled"),
                          ("\x1b", "echo prefilled"), ("\r", "END")])
@@ -314,6 +334,42 @@ class SessionPrefillTest(TempDirTest):
         self.assertLess(plain.index("cannot reach Ollama"), plain.rindex("→ echo prefilled"))
         self.assertNotIn("ush> ", plain)  # the explanation takes the prompt's place
         self.assertIn("GOT'echo prefilled'", out[4])
+
+
+@unittest.skipUnless(ZSH, "zsh not installed")
+class SessionTest(TempDirTest):
+    """The `ush>` session reads every line with zsh's line editor: arrow keys work, Up recalls
+    earlier lines (before, Python's plain input() echoed ^[[A), Ctrl-D ends it."""
+
+    def test_up_recalls_earlier_lines(self):
+        src = os.path.join(os.path.dirname(PLUGIN), "..", "src")
+        pid, fd = pty.fork()
+        if pid == 0:
+            os.environ.update({"PYTHONPATH": src, "HOME": self.tmp, "NO_COLOR": "1",
+                               "TERM": "xterm-256color",
+                               "XDG_CONFIG_HOME": os.path.join(self.tmp, "config"),
+                               "XDG_STATE_HOME": os.path.join(self.tmp, "state"),
+                               "USH_BASE_URL": "http://127.0.0.1:9"})
+            os.chdir(self.tmp)
+            os.execv(sys.executable, [sys.executable, "-m", "ush"])
+        try:
+            read = ZshPluginTest._read
+            read(fd, "ush> ")
+            os.write(fd, b"echo first-$((40+2))\r")
+            read(fd, "ush> ")
+            os.write(fd, b"\x1b[A")
+            recalled = read(fd, "first")
+            os.write(fd, b"\r")
+            again = read(fd, "ush> ")
+            os.write(fd, b"\x04")  # Ctrl-D on an empty line ends the session
+            end = read(fd, "")
+        finally:
+            os.close(fd)
+            _, status = os.waitpid(pid, 0)
+        self.assertNotIn("^[[A", recalled)
+        self.assertIn("echo first-$((40+2))", recalled)
+        self.assertIn("first-42", again)
+        self.assertEqual(os.waitstatus_to_exitcode(status), 0, end)
 
 
 if __name__ == "__main__":

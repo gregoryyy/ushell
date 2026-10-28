@@ -62,7 +62,7 @@ read-only commands itself and asks before anything else ([Agent mode](#agent-mod
 | `ush //REQUEST` | the same as `// REQUEST`, without the plugin's `//` shortcut |
 | `ush --new //REQUEST` | start over instead of continuing this shell's conversation |
 | `ush --run //REQUEST` | [agent mode](#agent-mode): ush runs the commands itself, then offers follow-up questions |
-| `ush` | a session: `// TEXT` asks, proposals appear at the `ush>` prompt (with the same Down and Esc), any other line runs as a command whose output becomes context, `exit` or Ctrl-D ends |
+| `ush` | a session, with zsh's line editing and history (Up): `// TEXT` asks, proposals appear at the `ush>` prompt (with the same keys), any other line runs as a command whose output becomes context, `exit` or Ctrl-D ends |
 | `… \| ush //explain this` | piped text becomes context for the request (up to 200 KB) |
 | `sudo ush //…` | commands run as root; see [Using sudo](#using-sudo) |
 
@@ -83,6 +83,7 @@ objected. With the zsh plugin it then waits on your command line:
   notes on what it reads, changes and risks, ush's own verdict, and where the command was sent.
   The explanation appears above the command; the cursor stays in the command, so you can still
   edit it, and Enter runs it. `ush explain [-v] COMMAND` explains any command line.
+- **Up** closes the explanation too; otherwise it is your history, as always.
 - **Esc** closes the explanation, or else removes the proposal, so you can start from scratch;
   ush then knows you didn't run it. Esc does this only while a proposal is on the line; otherwise
   it keeps its usual meaning. (In vi mode, use Ctrl-U.) Typing a new `// …` over it also tells ush you didn't run it.

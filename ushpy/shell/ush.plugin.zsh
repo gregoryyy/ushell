@@ -141,6 +141,7 @@ _ush_end_capture() {
 # - Down, past the last line of the proposal, explains it (`ush explain`, with the model). The
 #   explanation shows above the command, as display-only text (PREDISPLAY); the cursor stays in
 #   the command, to edit it or run it with Enter. Elsewhere Down does what it did before.
+# - Up closes the explanation; without one it is history, as always.
 # - Esc closes the explanation, or else removes the proposal, to start from scratch; `//` then
 #   hears that it didn't run. Only in the emacs keymap: in vi mode Esc switches to command mode
 #   (Ctrl-U clears the line there).
@@ -154,6 +155,16 @@ _ush_discard() {
   BUFFER= CURSOR=0
   _ush_keys_restore
   zle -M "ush: proposal removed"
+}
+
+_ush_up() {
+  if (( _ush_explained )); then
+    _ush_explained=0
+    PREDISPLAY=
+  else
+    local widget=${_ush_orig[$KEYS]:-up-line-or-history}
+    [[ $widget == undefined-key ]] || zle $widget
+  fi
 }
 
 _ush_explain() {
@@ -176,11 +187,15 @@ _ush_keys_bind() {
   local key line
   _ush_saved=("$(bindkey -M emacs -L $'\e')")
   bindkey -M emacs $'\e' _ush_discard
-  for key in $'\e[B' $'\eOB'; do
+  for key in $'\e[B' $'\eOB' $'\e[A' $'\eOA'; do
     line=$(bindkey -M main -L $key)
     _ush_saved+=("$line")
     _ush_orig[$key]=${${(z)line}[-1]}
-    bindkey -M main $key _ush_explain
+    if [[ $key == *B ]]; then
+      bindkey -M main $key _ush_explain
+    else
+      bindkey -M main $key _ush_up
+    fi
   done
 }
 
@@ -191,6 +206,8 @@ _ush_keys_restore() {
   bindkey -M emacs -r $'\e'
   bindkey -M main -r $'\e[B'
   bindkey -M main -r $'\eOB'
+  bindkey -M main -r $'\e[A'
+  bindkey -M main -r $'\eOA'
   for line in $_ush_saved; do
     [[ -n $line ]] && eval "$line"
   done
@@ -212,4 +229,5 @@ then
   add-zsh-hook zshexit _ush_exit
   zle -N _ush_discard
   zle -N _ush_explain
+  zle -N _ush_up
 fi

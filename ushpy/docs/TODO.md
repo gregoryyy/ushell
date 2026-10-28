@@ -149,6 +149,11 @@ DONE has an entry for it.
   lines; `{}` is literal in the policy, so `find -exec … {} +` names `-exec`. Acceptance: CLI
   tests (brief exactly the parts, verbose in full, hint only for the key, the proposal's -v), the
   order on a full redraw in a real zsh and in the session editor, policy tests for `{}`.
+- [x] 2.22 Arrow keys in the session, Up on an explanation: the `ush>` session reads every line
+  with zsh's `vared` (history of the session's lines, Ctrl-D ends it); before, lines without a
+  proposal went to Python's plain `input()`, which echoed `^[[A`. Up closes an explanation, in
+  the session and in the plugin, and is history otherwise. Acceptance: a real `ush` session in a
+  pty (Up recalls and reruns a line, Ctrl-D ends it), Up in the plugin and the session editor.
 
 ## 3. Release
 
