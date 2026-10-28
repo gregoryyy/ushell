@@ -1,8 +1,28 @@
 # wish security profile and browser obstacles
 
-Status: proposed requirements, 2026-10-13. This describes the intended boundaries
-and their limits; it is not a security assessment of an implemented system.
-Read alongside [IDEA.md](IDEA.md) and [TECH.md](TECH.md).
+Status: proposed requirements; phase scope updated 2026-10-14. This describes
+the intended boundaries and their limits; it is not a security assessment of an
+implemented system.
+Read alongside [IDEA.md](IDEA.md) and [ARCH.md](ARCH.md).
+
+## Applying this profile to the two phases
+
+[ROAD.md](ROAD.md) starts with files, byte/text shell commands, one notebook,
+and optional AI translation. Phase 1 needs checked file paths and operations,
+runtime/credential isolation, safe output, bounded execution, version conflicts,
+and separate AI-disclosure permission. Implement these with a small checked file
+adapter and notebook bridge; no public resource-handle protocol is required.
+
+Evaluate just-bash as an interpreter dependency. Its callbacks and filesystem
+interfaces must reach only the authority intentionally supplied by wish. Run the
+interpreter outside the trusted credential/UI origin and test its actual isolation
+and cancellation behavior; library limits do not replace the application's checks.
+
+Server, external-tab, and hardware sections apply when those phase 2 adapters are
+selected. Their authorization, isolation, and lifecycle requirements remain intact.
+The original generalized grant/lease model below describes the broader profile;
+phase 1 implements only the subjects, paths, operations, and limits it actually
+exposes. Security tests repeat for every released profile and candidate.
 
 wish executes user code and AI-generated commands against files, datasets, live
 tools, and optional server resources. Its central security requirement is that

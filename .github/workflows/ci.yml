@@ -1,0 +1,124 @@
+# Runs on every PR and on main. `just ci` runs the same jobs locally (tools/ci/README.md) while
+# GitHub Actions doesn't start jobs for this account, so keep to what it supports: run steps without
+# expressions, `if:` with success(), failure() or always(), a matrix of lists whose values appear
+# only in names, runs-on and `with`, and the actions it maps (checkout, setup-python, setup-uv,
+# setup-go, gitleaks). No live model calls and no real sudo: tests use fake providers and a fake sudo.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Relative links and images in all Markdown files.
+  links:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      # Actions pinned by commit.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13"
+      - name: Check links
+        run: python tools/check-links.py
+
+  # The Python ush suite on each supported platform and the oldest and newest supported Python (TODO
+  # 1.9, 2.3). Locally only this machine's platform runs.
+  ushpy:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python: ["3.10", "3.13"]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ matrix.python }}
+      # Ubuntu runners lack zsh; macOS and developer machines have it.
+      - name: Install zsh
+        run: command -v zsh >/dev/null || { sudo apt-get update && sudo apt-get install -y zsh; }
+      - name: Test
+        working-directory: ushpy
+        run: PYTHON=python ./scripts/test.sh
+
+  # The Go ush (ushgo): format, vet and tests on each supported platform. Locally only this
+  # machine's platform runs, with the machine's Go if it is the version asked for.
+  ushgo:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    defaults:
+      run:
+        working-directory: ushgo
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: "1.27"
+          cache: false
+      - name: Test
+        run: ./scripts/test.sh
+
+  # The local CI's own code (tools/ci/).
+  tools:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: tools/ci
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          python-version: "3.13"
+      # Pinned versions, resolved as of 2026-10-12 (at least two weeks old).
+      - name: Lint
+        run: uvx ruff@0.17.2 check .
+      - name: Format
+        run: uvx ruff@0.17.2 format --check .
+      - name: Types
+        run: uv run --no-project --exclude-newer 2026-10-12 --with pyright==1.1.414 --with pyyaml==6.0.2 --with types-pyyaml==6.0.12.20240917 --with pytest==9.1.1 pyright
+      - name: Tests
+        run: uv run --no-project --exclude-newer 2026-10-12 --with pytest==9.1.1 --with pyyaml==6.0.2 python -m pytest -q
+
+  # Secret scanning over the history; .gitleaksignore lists the synthetic test tokens.
+  secrets:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    # On a PR the action lists the PR's commits through the API, which needs pull-requests: read.
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      # Free for personal accounts; an organization would need GITLEAKS_LICENSE.
+      - uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_ENABLE_COMMENTS: false
