@@ -3,3 +3,5 @@
 de2a5b48d54ed5640d8c2a339a9cdfb8216f91b2:ush/tests/test_redact.py:gitlab-pat:18
 de2a5b48d54ed5640d8c2a339a9cdfb8216f91b2:ush/tests/test_redact.py:jwt:19
 de2a5b48d54ed5640d8c2a339a9cdfb8216f91b2:ush/tests/test_redact.py:aws-access-token:14
+# The widely published example JWT in the redaction corpus (ushpy/tests/test_security.py), not a credential.
+7a0f94307b112d0600d9be88029fc4c0fa45cee8:ushpy/tests/test_security.py:jwt:277

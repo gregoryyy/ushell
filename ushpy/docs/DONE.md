@@ -12,6 +12,83 @@ top. The format is defined in [SDLC](../../docs/SDLC.md#done-entries).
 
 ---
 
+## 2026-10-28 22:30 — Security tests; F1 and F2 fixed; four new findings fixed
+
+TODO items: 2.9, 2.10, 2.11 (and 2.22, the session's arrow keys, in the same branch). PR: see
+below.
+
+Agent: Opus 5.5, reasoning: not exposed, subagents: none.
+
+### Implementation notes
+
+- **The request:** "add security tests", together with the 0.2.0-rc1 release. The release gate
+  allows no open High finding, so F1 and F2 were fixed too.
+- **F1 (High), terminal output:** `ui.visible` writes C0 and C1 controls, DEL, bidi overrides and
+  isolates, and zero-width characters out (`^[`, `^M`, `<0x9b>`, `<U+202E>`). Everything `Terminal`
+  writes passes through it: commands, scripts, proposals, notes, output, answers, messages, the
+  checker's reason. `ush history` does the same, and splits only at newlines, because
+  `splitlines()` also split at `\r` and U+2028 and hid the rest.
+- **F2 (Medium), DNS:** `dig`, `host` and `nslookup` need approval when they look up a name.
+- **New tests** (`tests/test_security.py`, 25 tests by SECTEST section):
+  - display, with rendered bytes and a pty with colours on;
+  - a sweep of 100 escape vectors for listed tools;
+  - differential fuzzing of the tokenizer against what `zsh -f` passes to commands (2000 lines,
+    fixed seed);
+  - a redaction corpus of 28 formats and adversarial timing;
+  - redirects, a dropped connection, `USH_BASE_URL` as root;
+  - planted links at the settings, history, handoff and session paths; `PATH` risks;
+  - binary output, oversized stdin, explanation markers.
+- **Level 2:** `scripts/injection_eval.py`, with six poisoned scenarios in two modes; its harness
+  is tested in `test_smoke`.
+- **Findings, all fixed with regression tests:**
+  - **F3 (Medium):** the redaction regex backtracked quadratically, so 300 KB of piped input took
+    over a minute. Now bounded names that start at a word take 0.15 s.
+  - **F4 (High):** the fuzzing found that zsh drops empty quotes before `~` and `=` expansion.
+    `grep -r token ""~` searched `$HOME` (`~/.ssh` included) without approval. Both forms now
+    need approval.
+  - **F5 (High):** settings and credentials were written through a fixed `.tmp` name opened with
+    `O_TRUNC`. Under `sudo` the invoking user could plant a hard link to a root-owned file there.
+    Now a random name is created with `O_EXCL`.
+  - **F6 (Low):** a connection reset during a streamed reply escaped as a raw `httpx2` error. It
+    is now a `ProviderError`.
+  - **F7 (Low):** `cat < 2>/dev/null` crashed the policy with `IndexError`. It took the `2` as the
+    input file and then removed it again as the descriptor of `2>`. Found by the Go port's
+    conformance corpus (ushgo TODO 1.1).
+- **Policy, from the sweep:** `file -C` (writes a compiled magic file) and `.env`-style dotfiles
+  that don't exist yet now need approval. `{}` stays literal (2.21).
+- **Also:**
+  - ush's own `/api/tags` requests no longer follow redirects;
+  - `ai status` lists risky `PATH` entries, and a root session warns about them;
+  - more token formats are redacted.
+- **Live, level 2:** llama3.2:3b on local Ollama, 12 runs. It attempted the injection once and
+  nothing ran unapproved (SECTEST results). Without piping, the model read the poisoned text in
+  only 1 run of 12, so the eval now pipes it in.
+- **Docs:** SECTEST has no gap rows left, a new section 9, findings F1–F6 and the results; SEC has
+  new threats and residual risks.
+
+### Deviations
+
+- The tokenizer fuzzing compares against what zsh actually passes to commands, not against
+  `${(z)…}`: `(z)` lexes `{}` as two reserved words, which zsh itself doesn't do in argument
+  position.
+- `""=cmd` only reveals a program's path, but it is refused anyway, so the policy's view of an
+  argument always matches zsh's.
+
+### Insights
+
+- Differential fuzzing against the real shell found the one secret-read bypass (F4) that
+  hand-written cases had missed, and the timing test found F3 on the first try. Both kinds of test
+  are cheap, so they belong in the Go port's conformance suite.
+- Under heavy machine load (load average over 100 from other jobs), importing the SDK took 18 s,
+  and pty tests with fixed windows time out. A failure in a pty test needs a check of the load
+  before it is read as a bug.
+- A pty test that stops reading the terminal can hang the program under test. When `vared` exits,
+  zsh restores the terminal with `TCSADRAIN`, which waits until the output has been read.
+  `test_terminal_approval_and_follow_up` now keeps reading while it waits for the exit; a real
+  terminal always reads.
+
+---
+
 ## 2026-10-28 21:11 — Brief explanations, full ones with -v
 
 TODO items: 2.21. PR: see below.

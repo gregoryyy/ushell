@@ -74,15 +74,15 @@ DONE has an entry for it.
   and `just ush` for development. Acceptance: mock-API request shape, misconfiguration
   and remote-URL refusals before any request, honest banner; live run against a local
   Ollama; SEC updated.
-- [ ] 2.9 Neutralise control characters (C0/C1, ANSI/OSC, bidi overrides, zero-width)
+- [x] 2.9 Neutralise control characters (C0/C1, ANSI/OSC, bidi overrides, zero-width)
   in everything ush writes to the terminal: commands and scripts in the approval
   prompt, command output, and answers (SECTEST F1). Acceptance: rendered-bytes tests
   and a pty test show a `\r`/escape-sequence command visibly; no raw sequence reaches
   the terminal.
-- [ ] 2.10 Close DNS exfiltration through auto-approved `dig`/`host`/`nslookup`
+- [x] 2.10 Close DNS exfiltration through auto-approved `dig`/`host`/`nslookup`
   (SECTEST F2), e.g. approval for names the model chose. Acceptance: negative policy
   tests; SEC residual risk updated.
-- [ ] 2.11 Fill the remaining gaps in [SECTEST.md](SECTEST.md): injection corpus
+- [x] 2.11 Fill the remaining gaps in [SECTEST.md](SECTEST.md): injection corpus
   and opt-in model-in-the-loop evals (free on a local Ollama model), tokenizer
   differential fuzzing against zsh, a GTFOBins sweep, redaction vectors, redirect,
   `USH_BASE_URL` under root, planted symlinks, binary output, and oversized stdin.
@@ -149,6 +149,11 @@ DONE has an entry for it.
   lines; `{}` is literal in the policy, so `find -exec … {} +` names `-exec`. Acceptance: CLI
   tests (brief exactly the parts, verbose in full, hint only for the key, the proposal's -v), the
   order on a full redraw in a real zsh and in the session editor, policy tests for `{}`.
+- [x] 2.22 Arrow keys in the session, Up on an explanation: the `ush>` session reads every line
+  with zsh's `vared` (history of the session's lines, Ctrl-D ends it); before, lines without a
+  proposal went to Python's plain `input()`, which echoed `^[[A`. Up closes an explanation, in
+  the session and in the plugin, and is history otherwise. Acceptance: a real `ush` session in a
+  pty (Up recalls and reruns a line, Ctrl-D ends it), Up in the plugin and the session editor.
 
 ## 3. Release
 

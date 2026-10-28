@@ -112,6 +112,10 @@ class AnthropicProvider:
                 continue
             except anthropic.APIError as exc:
                 raise self._error(exc) from None
+            except Exception as exc:
+                if _transport(exc):
+                    raise self._connection(exc) from None
+                raise
         if message is None:
             raise ProviderError("the model produced unreadable tool input three times")
         content = [b.to_dict() for b in message.content]
@@ -129,7 +133,14 @@ class AnthropicProvider:
                 messages=[{"role": "user", "content": text}])
         except self._anthropic.APIError as exc:
             raise self._error(exc) from None
+        except Exception as exc:
+            if _transport(exc):
+                raise self._connection(exc) from None
+            raise
         return "".join(b.text for b in message.content if b.type == "text")
+
+    def _connection(self, exc: Exception) -> ProviderError:
+        return ProviderError("the connection to the provider failed while reading its reply")
 
     def _error(self, exc: Any) -> ProviderError:
         a = self._anthropic
@@ -188,6 +199,22 @@ class OllamaProvider(AnthropicProvider):
         return super()._error(exc)
 
 
+def _transport(exc: Exception) -> bool:
+    """An HTTP transport error the SDK lets through (a reset while a streamed reply is read)."""
+    return isinstance(exc, OSError) or type(exc).__module__.split(".")[0] in (
+        "httpx", "httpx2", "httpcore", "httpcore2")
+
+
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, *args, **kwargs):
+        return None  # a redirect becomes an HTTPError: a local endpoint stays local
+
+
+def local_opener() -> urllib.request.OpenerDirector:
+    """For requests to the local Ollama: no proxies, no redirects (SECTEST §5)."""
+    return urllib.request.build_opener(urllib.request.ProxyHandler({}), _NoRedirect())
+
+
 def ollama_remote_host(base_url: str, model: str, timeout: float = 2.0) -> Optional[str]:
     """Where Ollama sends requests for `model`: its cloud host, or None for a local model.
 
@@ -196,7 +223,7 @@ def ollama_remote_host(base_url: str, model: str, timeout: float = 2.0) -> Optio
     """
     name, _, tag = model.partition(":")
     guess = "https://ollama.com" if "cloud" in tag or name.endswith("-cloud") else None
-    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+    opener = local_opener()
     try:
         with opener.open(f"{base_url}/api/tags", timeout=timeout) as response:
             models = json.load(response).get("models", [])

@@ -268,6 +268,32 @@ def save_settings(ident: Identity, settings: Settings) -> str:
     return path
 
 
+def path_risks(path: Optional[str] = None, uid: Optional[int] = None) -> list[str]:
+    """PATH entries through which another program could stand in for a listed one (SECTEST §2):
+    relative or empty entries and world-writable directories; as root, also group-writable
+    directories and directories not owned by root (a Homebrew prefix owned by the user, say). A
+    sticky bit doesn't help: anyone may still create a new file there. Missing directories are
+    skipped."""
+    path = os.environ.get("PATH", "") if path is None else path
+    uid = os.geteuid() if uid is None else uid
+    risks: list[str] = []
+    for entry in dict.fromkeys(path.split(":")):
+        if not entry or not os.path.isabs(entry):
+            risks.append(f"{entry or '(empty)'}: relative")
+            continue
+        try:
+            info = os.stat(entry)
+        except OSError:
+            continue
+        if info.st_mode & 0o002:
+            risks.append(f"{entry}: writable by everyone")
+        elif uid == 0 and info.st_mode & 0o020:
+            risks.append(f"{entry}: writable by its group")
+        elif uid == 0 and info.st_uid != 0:
+            risks.append(f"{entry}: owned by uid {info.st_uid}")
+    return risks
+
+
 # ---------------------------------------------------------------------------
 # Private files
 
@@ -287,13 +313,30 @@ def _chown_to_owner(path: str, ident: Identity) -> None:
 
 
 def _write_private(path: str, text: str, ident: Identity) -> None:
-    tmp = path + ".tmp"
-    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW, 0o600)
-    with os.fdopen(fd, "w", encoding="utf-8") as f:
-        f.write(text)
-    if ident.is_root and ident.via_sudo:
-        _chown_to_owner(tmp, ident)
-    os.replace(tmp, path)
+    """Write via a new temporary file and rename. The temporary name is random and created with
+    O_EXCL: under sudo, root writes into a directory the invoking user controls, where a planted
+    name, a symlink or a hard link to a root-owned file, must never be opened (SECTEST §6)."""
+    for _ in range(100):
+        tmp = f"{path}.{os.urandom(6).hex()}.tmp"
+        try:
+            fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+            break
+        except FileExistsError:
+            continue
+    else:
+        raise ConfigError(f"cannot create a temporary file next to {path}")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(text)
+        if ident.is_root and ident.via_sudo:
+            _chown_to_owner(tmp, ident)
+        os.replace(tmp, path)
+    except BaseException:
+        try:
+            os.remove(tmp)
+        except OSError:
+            pass
+        raise
 
 
 def read_private(path: str, allowed_owners: set[int]) -> Optional[str]:

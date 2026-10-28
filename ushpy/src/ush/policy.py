@@ -106,7 +106,10 @@ def _check_paths(words: list[str], recursive: bool) -> Optional[str]:
     mistaken for reading a file named "token".
     """
     for word in words:
-        if word.startswith("-") or not word or not ("/" in word or os.path.lexists(word)):
+        # A dotfile name that looks secret (.env, .env.local) counts even before it exists.
+        named = word.startswith(".") and (bool(SECRET_NAME_PATTERNS.match(word)) or
+                                          word in SECRET_COMPONENTS)
+        if word.startswith("-") or not word or not ("/" in word or os.path.lexists(word) or named):
             continue
         path = os.path.realpath(word)
         if _is_secret(path):
@@ -273,6 +276,14 @@ def _ip(args: list[str]) -> Optional[str]:
     return "ip would change network configuration" if mutating & set(args) else None
 
 
+def _dns(args: list[str]) -> Optional[str]:
+    """A name looked up reaches the resolver and the name's own servers, so it can carry data out
+    (SECTEST F2): a lookup needs approval. Options alone (dig -v) don't look anything up."""
+    if any(not a.startswith(("-", "+")) for a in args):
+        return "a DNS lookup sends the name to outside servers; the name can carry data"
+    return None
+
+
 def _positional_at_most(n: int) -> Validator:
     def check(args: list[str]) -> Optional[str]:
         if len([a for a in args if not a.startswith("-")]) > n:
@@ -294,7 +305,7 @@ def _all(*validators: Validator) -> Validator:
 COMMANDS: dict[str, tuple[str, Validator]] = {
     # metadata and system state
     "ls": (META, _any), "du": (META, _any), "df": (META, _any), "stat": (META, _any),
-    "file": (META, _any), "wc": (META, _any), "find": (META, _find), "tree": (META, _any),
+    "file": (META, _forbid("--compile", letters="C")), "wc": (META, _any), "find": (META, _find), "tree": (META, _any),
     "which": (META, _any), "whereis": (META, _any), "type": (META, _any),
     "basename": (META, _any), "dirname": (META, _any), "realpath": (META, _any),
     "readlink": (META, _any), "pwd": (META, _any), "cd": (META, _any),
@@ -313,8 +324,8 @@ COMMANDS: dict[str, tuple[str, Validator]] = {
     "md5": (META, _any), "md5sum": (META, _any), "shasum": (META, _any),
     "sha256sum": (META, _any), "cksum": (META, _any),
     "netstat": (META, _any), "ss": (META, _any), "ip": (META, _ip),
-    "ifconfig": (META, _ifconfig), "dig": (META, _any), "host": (META, _any),
-    "nslookup": (META, _any),
+    "ifconfig": (META, _ifconfig), "dig": (META, _dns), "host": (META, _dns),
+    "nslookup": (META, _dns),
     # macOS
     "diskutil": (META, _prefix_in(("list",), ("info",), ("apfs", "list"),
                                   ("apfs", "listSnapshots"), ("apfs", "listVolumeGroups"))),
@@ -473,8 +484,11 @@ def _word(command: str, i: int) -> tuple[Token, int]:
             raise Unsupported("uses brace expansion")
         elif c == "#" and i == start:
             raise Unsupported("contains a comment")
-        elif c == "=" and i == start:
-            raise Unsupported("uses = expansion")
+        elif c == "=" and not "".join(literal):
+            raise Unsupported("uses = expansion")  # also after empty quotes: ""=ls is =ls
+        elif c == "~" and i != start and not "".join(literal):
+            # zsh drops the empty quotes first, so ""~ is the home directory (SECTEST F4)
+            raise Unsupported("uses ~ after empty quotes")
         else:
             magic = magic or c in "*?["
             literal.append(c)
@@ -637,11 +651,13 @@ def classify(command: str, rules: tuple[tuple[str, ...], ...] = ()) -> Verdict:
 
     commands: list[list[str]] = [[]]
     sudo = False
+    appended = -1   # the last word token added to a command (not taken as a redirect target)
     i = 0
     while i < len(tokens):
         tok = tokens[i]
         if not tok.op:
             commands[-1].extend(tok.words)
+            appended = i
             i += 1
             continue
         target = tokens[i + 1] if i + 1 < len(tokens) and not tokens[i + 1].op else None
@@ -649,9 +665,9 @@ def classify(command: str, rules: tuple[tuple[str, ...], ...] = ()) -> Verdict:
             commands.append([])
         elif tok.text in OUTPUT_REDIRECTS or tok.text == ">&":
             previous = tokens[i - 1] if i else None
-            if previous and not previous.op and previous.adjacent_op and \
+            if previous and appended == i - 1 and previous.adjacent_op and \
                     len(previous.words) == 1 and previous.words[0].isdigit():
-                commands[-1].pop()  # the file descriptor of "2>"
+                commands[-1].pop()  # the file descriptor of "2>" (not a target: "< 2>x", F7)
             if target is None:
                 return _reject("has a redirection without a target")
             if not (target.words == ("/dev/null",) or
