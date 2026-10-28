@@ -9,6 +9,48 @@ defined in [SDLC](../../docs/SDLC.md#done-entries).
 
 ---
 
+## 2026-10-29 00:40 — The tag moved to the merge of #24; default branch main
+
+TODO items: 2.5 (still open: `govulncheck`). PR: #25.
+
+Agent: Opus 5.5, reasoning: not exposed, subagents: none.
+
+### Implementation notes
+
+- **The tag:**
+  - The user's request: "the tag should be on this commit", "the merged one".
+  - The agent moved `v0.2.0-rc1` from b19db18 to b4f9d82, the merge of #24: it deleted the remote
+    tag and pushed the new one.
+  - No GitHub release existed yet.
+  - b4f9d82 differs from b19db18 only in five documentation files, and its tree is #24's head
+    (2181c90).
+- **Archives at the moved tag:**
+  - `scripts/release.sh 0.2.0-rc1` gives new checksums, because the archive times come from the
+    tagged commit:
+    - `0cf6ba4f…` darwin-arm64
+    - `d634cc9f…` darwin-amd64
+    - `09a03e74…` linux-arm64
+    - `a7af5212…` linux-amd64
+  - The `ush` binaries inside are byte-identical to the ones the gate checked at b19db18
+    (`cmp` on darwin-arm64 and linux-amd64), and to the one installed on the user's machine. The
+    previous entry's checksums are superseded; its test results stand for the same code.
+- **Default branch:**
+  - The user asked why GitHub showed no licence. The default branch was still
+    `feature/wish-planning-process`, which has no `LICENSE`.
+  - At the user's request, `gh repo edit --default-branch main`; GitHub now reports the MIT
+    License.
+
+### Deviations
+
+- None.
+
+### Insights
+
+- Tagging a merge commit and then merging the gate record moves the release commit. Next time,
+  the gate record goes in before the tag, or the tag waits for it.
+
+---
+
 ## 2026-10-29 00:35 — Tag v0.2.0-rc1 and the release gate on it
 
 TODO items: 2.3, 2.5 (both still open: `govulncheck`), 2.1.2 (shown at the tag), 2.8 (new).
