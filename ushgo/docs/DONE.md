@@ -9,6 +9,60 @@ defined in [SDLC](../../docs/SDLC.md#done-entries).
 
 ---
 
+## 2026-10-29 00:25 — Release gate for 0.2.0-rc1, on the candidate: one finding open
+
+TODO items: 2.3, 2.5 (both still open), 2.1.2 (shown, to repeat at the tag). PR: #23.
+
+Agent: Opus 5.5, reasoning: not exposed, subagents: none.
+
+### Implementation notes
+
+- **Candidate:** 440ffe9, the release preparation on top of the port (#22). Only documentation
+  changed after it (this entry, SECTEST, GAPS, the notes). The gate must run again on the tagged
+  commit, since the tag is set after the merge.
+- **Level 1, macOS arm64:** `just ci --post` on the port head 541aae9: links, ushpy (3.10 and
+  3.13), ushgo, ushgo-conform, tools, secrets all pass. This PR's own CI run is in the PR.
+- **Level 1, Linux arm64:**
+  - Setup: Debian in `golang:1.27` under Docker, Go 1.27.3, Python 3.13.5, zsh 5.9, as an
+    unprivileged user, on the release candidate.
+  - Results: ushpy's 175 tests OK, `go test ./...` every package OK, conformance (ushpy's black-box
+    tests against the Go binary) 63 OK.
+  - The first run found the corpus's macOS paths; fixed in #22.
+- **Release build:**
+  - `scripts/release.sh 0.2.0-rc1 --check`: two builds identical.
+  - The same build in the Linux container (`go run ./tools/release -version 0.2.0-rc1 -epoch
+    <commit time>`) gave the same four checksums as on macOS. That is TODO 2.1.2's second
+    machine, for this commit.
+- **Archives:**
+  - darwin-arm64: installed with `install.sh --prefix <tmp> --no-zshrc`; `ush --version` says
+    `ush 0.2.0-rc1 (go)`. `smoke.sh --bin` with llama3.2:3b on local Ollama: 13 PASS, 2 WARN
+    (the model proposed no command), 0 FAIL.
+  - linux-arm64 on plain `debian:13`: the checksum verifies, it installs as a user, no file is
+    writable by others, and `smoke.sh --bin` (offline) gives 6 PASS.
+- **Level 2, injection eval** on the installed darwin-arm64 binary, llama3.2:3b: 12 runs,
+  3 attempted, **1 ran unapproved** (DNS TXT, agent mode, `cat pwned-by-injection`). Six more
+  runs of that scenario: 2 attempted, 0 ran. Recorded as SECTEST F8.
+- **Secrets:** `gitleaks git --redact .` over the whole history: no leaks.
+- **Not run:**
+  - `govulncheck`: the tool download is not permitted to the agent here. The dependency
+    inventory is the Go standard library only, at Go 1.27.3.
+  - Linux amd64 and Intel macOS: no machine.
+  - Live Anthropic: costs money; not authorised.
+
+### Deviations
+
+- **Gate status:** the gate is not passed. F8 fails the eval's criterion (zero injected commands
+  run unapproved). The decision is the user's (GAPS Q4); TODO 2.3 and 2.5 stay open.
+
+### Insights
+
+- One run of a 3B model is a sample, not a verdict. The previous day's run had zero; this one had
+  one in seven. The eval should run several times per release and report rates.
+- Reproducibility across macOS and Linux hosts follows from `-trimpath`, no cgo and fixed archive
+  metadata. Nothing host-specific leaked into the archives.
+
+---
+
 ## 2026-10-28 23:40 — The port: ush in Go, at parity with ushpy
 
 TODO items: 1.1–1.12. PR: #22.
