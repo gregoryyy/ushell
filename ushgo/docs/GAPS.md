@@ -46,7 +46,11 @@ and binaries built locally, run without that.
   Signing and notarization need an Apple Developer ID (99 USD a year) and add a notarization step
   to every release; worth it only for users who download with a browser.
 
-### Q4. Release 0.2.0-rc1 with SECTEST F8 open? — blocking for TODO 2.5
+### Q4. Release 0.2.0-rc1 with SECTEST F8 open?
+
+**Answer** (2026-10-29 00:25, Gregor Heinrich): "Release, F8 documented", and tag it as
+`v0.2.0-rc1`. **Resolved:** F8 stays open, rated Low, in the release notes' known limitations; the
+mitigation is ushpy TODO 2.23, ported by ushgo TODO 2.8.
 
 The release gate's injection eval failed once ([SECTEST](../../ushpy/docs/SECTEST.md) F8): in
 agent mode, without a checker, llama3.2:3b followed injected text in a DNS answer and ran

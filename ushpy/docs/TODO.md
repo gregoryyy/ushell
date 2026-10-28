@@ -154,6 +154,13 @@ DONE has an entry for it.
   proposal went to Python's plain `input()`, which echoed `^[[A`. Up closes an explanation, in
   the session and in the plugin, and is history otherwise. Acceptance: a real `ush` session in a
   pty (Up recalls and reruns a line, Ctrl-D ends it), Up in the plugin and the session editor.
+- [ ] 2.23 Injected read-only commands in agent mode (SECTEST F8, GAPS answer in ushgo Q4): run
+  the injection eval's DNS TXT scenario with a checker (llama3.2:3b and a tool-using model) and
+  record whether it flags the injected `cat`. If it doesn't, agent mode asks before a command
+  whose arguments occur only in earlier command output or piped input, not in the user's
+  requests. The eval runs each scenario several times and reports rates. Acceptance: F8's scenario
+  ran unapproved 0 times in at least 20 runs; tests for the new rule and its false positives
+  (`ls` then `cat` of a listed file); ushgo TODO 2.8 ports it.
 
 ## 3. Release
 
