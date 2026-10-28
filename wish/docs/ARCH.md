@@ -1,7 +1,7 @@
 # wish architecture
 
 Status: proposed phase 1 architecture, 2026-10-14; runtime features are not
-implemented. [PHASES.md](PHASES.md) defines the lean starting scope and conditional
+implemented. [ROAD.md](ROAD.md) defines the lean starting scope and conditional
 phase 2 ideas. Product behavior is in [IDEA.md](IDEA.md), security boundaries in
 [SEC.md](SEC.md), and component research in [SOTA.md](SOTA.md).
 
@@ -169,7 +169,7 @@ The original full concept proposed typed record/object pipelines and a uniform
 resource-handle API across files, datasets, tools, devices, and compute. These are
 optional research directions. Internal types and IDs remain useful, but a new
 public protocol needs an acceptance example and migration plan before adoption.
-[PHASES.md](PHASES.md) and TODO 8.5 record that decision gate.
+[ROAD.md](ROAD.md) and TODO 8.5 record that decision gate.
 
 ## Acceptance
 

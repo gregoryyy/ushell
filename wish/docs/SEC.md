@@ -7,7 +7,7 @@ Read alongside [IDEA.md](IDEA.md) and [ARCH.md](ARCH.md).
 
 ## Applying this profile to the two phases
 
-[PHASES.md](PHASES.md) starts with files, byte/text shell commands, one notebook,
+[ROAD.md](ROAD.md) starts with files, byte/text shell commands, one notebook,
 and optional AI translation. Phase 1 needs checked file paths and operations,
 runtime/credential isolation, safe output, bounded execution, version conflicts,
 and separate AI-disclosure permission. Implement these with a small checked file

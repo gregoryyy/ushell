@@ -4,8 +4,8 @@
 
 .DS_Store
 
-# ush development environment
-ush/.venv/
+# ushpy development environment
+ushpy/.venv/
 __pycache__/
 *.pyc
 
@@ -13,3 +13,10 @@ __pycache__/
 .ci/
 .ruff_cache/
 .pytest_cache/
+
+# Local settings and keys (.env.template documents them).
+.env
+.env.*
+!.env.template
+# Go release archives (just ushgo-release)
+ushgo/dist/

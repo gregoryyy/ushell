@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from workflow import WorkflowError, condition, jobs_of, matrix, parse, runs_here
+from workflow import WorkflowError, condition, go_matches, jobs_of, matrix, parse, runs_here
 
 CI = Path(__file__).resolve().parents[2] / ".github" / "workflows" / "ci.yml"
 SETUP = "      - uses: actions/setup-python@v7"
@@ -27,19 +27,25 @@ def test_the_repository_workflow_maps_completely() -> None:
     jobs = jobs_of(parse(CI.read_text(encoding="utf-8")))
     assert [j.key for j in jobs] == [
         "links",
-        "ush-ubuntu-latest-3.10",
-        "ush-ubuntu-latest-3.13",
-        "ush-macos-latest-3.10",
-        "ush-macos-latest-3.13",
+        "ushpy-ubuntu-latest-3.10",
+        "ushpy-ubuntu-latest-3.13",
+        "ushpy-macos-latest-3.10",
+        "ushpy-macos-latest-3.13",
+        "ushgo-ubuntu-latest",
+        "ushgo-macos-latest",
         "tools",
         "secrets",
     ]
     by_key = {j.key: j for j in jobs}
-    ush = by_key["ush-macos-latest-3.10"]
-    assert ush.name == "ush (macos-latest, 3.10)" and ush.runs_on == "macos-latest"
+    ush = by_key["ushpy-macos-latest-3.10"]
+    assert ush.name == "ushpy (macos-latest, 3.10)" and ush.runs_on == "macos-latest"
     assert [s.kind for s in ush.steps] == ["checkout", "setup-python", "shell", "shell"]
-    assert ush.steps[1].python == "3.10" and ush.steps[3].cwd == "ush"
+    assert ush.steps[1].python == "3.10" and ush.steps[3].cwd == "ushpy"
     assert [s.kind for s in by_key["secrets"].steps] == ["checkout", "secrets"]
+    ushgo = by_key["ushgo-macos-latest"]
+    assert ushgo.name == "ushgo (macos-latest)"
+    assert [s.kind for s in ushgo.steps] == ["checkout", "setup-go", "shell"]
+    assert ushgo.steps[1].go == "1.27" and ushgo.steps[2].cwd == "ushgo"
     tools = by_key["tools"]
     assert tools.steps[1].kind == "setup-uv" and tools.steps[1].python == "3.13"
     assert all(s.cwd == "tools/ci" for s in tools.steps if s.kind == "shell")
@@ -48,9 +54,16 @@ def test_the_repository_workflow_maps_completely() -> None:
 def test_only_this_platforms_matrix_entries_run_here() -> None:
     jobs = jobs_of(parse(CI.read_text(encoding="utf-8")))
     here = [j.key for j in jobs if runs_here(j, "Darwin")]
-    assert here == ["links", "ush-macos-latest-3.10", "ush-macos-latest-3.13", "tools", "secrets"]
+    assert here == [
+        "links",
+        "ushpy-macos-latest-3.10",
+        "ushpy-macos-latest-3.13",
+        "ushgo-macos-latest",
+        "tools",
+        "secrets",
+    ]
     on_linux = [j.key for j in jobs if runs_here(j, "Linux")]
-    assert "ush-ubuntu-latest-3.10" in on_linux and "ush-macos-latest-3.10" not in on_linux
+    assert "ushpy-ubuntu-latest-3.10" in on_linux and "ushpy-macos-latest-3.10" not in on_linux
 
 
 def test_an_unknown_matrix_runner_is_an_error() -> None:
@@ -142,3 +155,10 @@ def test_an_expression_in_an_action_steps_env_is_left_to_github() -> None:
     )
     (job,) = jobs_of(parse(wf(steps)))
     assert job.steps[0].kind == "secrets"
+
+
+def test_go_versions_match_exactly_or_by_prefix() -> None:
+    assert go_matches("1.27", "go1.27.3") and go_matches("1.27.3", "go1.27.3")
+    assert go_matches(None, "go1.20") and go_matches("", "go1.27.3")
+    assert not go_matches("1.27", "go1.26.9") and not go_matches("1.2", "go1.27.3")
+    assert not go_matches("1.27", "")

@@ -19,7 +19,7 @@ programs and explicit permissions. A broader shared resource model is conditiona
 phase 2 work; a custom language or typed pipeline is not the first prototype's goal.
 Browser-side computation, AI-generated commands, and bring-your-own-key access are
 not individually new.
-[PHASES.md](PHASES.md) separates the starting scope from later ideas.
+[ROAD.md](ROAD.md) separates the starting scope from later ideas.
 
 ## Method and interpretation
 
@@ -329,7 +329,7 @@ wish's phase 1 differentiation is a **usable file/shell/notebook workflow** with
 inspectable, replayable AI-generated commands and checked access. The phase 2
 opportunity is to extend it to live pages and explicitly selected server resources.
 This is an integration goal, not a new Bash dialect or type system. The architecture
-is defined in [ARCH.md](ARCH.md), and its scope in [PHASES.md](PHASES.md).
+is defined in [ARCH.md](ARCH.md), and its scope in [ROAD.md](ROAD.md).
 
 The distinctions below are design intentions inferred from the reviewed tools,
 not demonstrated advantages of a working wish implementation. Existing products

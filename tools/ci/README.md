@@ -14,7 +14,8 @@ stays the one definition of CI; the local run reads it.
 | Job | What it checks |
 | --- | --- |
 | `links` | relative links and images in all Markdown files (`tools/check-links.py`) |
-| `ush` | the ush suite (`ush/scripts/test.sh`) on Ubuntu and macOS × Python 3.10 and 3.13 |
+| `ushpy` | the Python ush suite (`ushpy/scripts/test.sh`) on Ubuntu and macOS × Python 3.10 and 3.13 |
+| `ushgo` | the Go ush (`ushgo/scripts/test.sh`: gofmt, vet, tests) on Ubuntu and macOS, Go 1.27 |
 | `tools` | the local CI's own code (`tools/ci/`): ruff, format, pyright, its tests |
 | `secrets` | gitleaks over the history; [.gitleaksignore](../../.gitleaksignore) lists synthetic test tokens |
 
@@ -31,13 +32,15 @@ stays the one definition of CI; the local run reads it.
    `GITHUB_SHA`, `GITHUB_WORKSPACE` and `GITHUB_STEP_SUMMARY`. `if:` takes `success()`,
    `failure()` and `always()`. The job's `timeout-minutes` applies.
 3. **A matrix, by platform.** `strategy.matrix` with lists of values expands into one job per
-   entry, named as GitHub names them (`ush (macos-latest, 3.10)`). Matrix values may appear in a
+   entry, named as GitHub names them (`ushpy (macos-latest, 3.10)`). Matrix values may appear in a
    job's `name` and `runs-on` and a step's `name` and `with`. When the matrix chooses the runner,
    only the entries for this machine's platform run; the others are listed as "not run here".
    A job with a fixed runner (`ubuntu-24.04`) runs on this machine as its stand-in.
 4. **Actions mapped.** `actions/checkout` is the worktree. `actions/setup-python` takes an
    installed Python of the asked version, found by `uv python find` (no downloads), and links it
-   first on `PATH` as `python` and `python3`. `astral-sh/setup-uv` sets `UV_PYTHON`.
+   first on `PATH` as `python` and `python3`. `astral-sh/setup-uv` sets `UV_PYTHON`. `actions/setup-go` takes the machine's `go` if `go env GOVERSION`
+   matches the asked version or prefix (`1.27` matches `go1.27.3`; `brew install go`), and sets
+   `GOTOOLCHAIN=local` so Go downloads no other toolchain.
    `gitleaks/gitleaks-action` runs the `gitleaks` binary over the history up to the commit
    (`brew install gitleaks`).
 5. **Reduced environment.** Steps see only `PATH`, `HOME`, `USER`, `LOGNAME`, locale and `TMPDIR`,

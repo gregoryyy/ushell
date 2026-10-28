@@ -3,7 +3,7 @@
 wish is the web interactive shell.
 
 Status: phased design proposal, 2026-10-14. Runtime commands are not implemented.
-[PHASES.md](PHASES.md) defines the active lean phase 1 and conditional phase 2.
+[ROAD.md](ROAD.md) defines the active lean phase 1 and conditional phase 2.
 Phase 1 uses files, ordinary byte/text pipes, one notebook, and BYOK `//` translation;
 the broader page, Wasm, server, and device ideas below belong to phase 2.
 
@@ -47,7 +47,7 @@ An actual camera, serial device, or other user hardware needs the browser's own
 permission flow and a dedicated adapter. Browser virtualization does not imply
 unrestricted access to the host machine.
 
-The phased scope is defined in [PHASES.md](PHASES.md), the technical model in
+The phased scope is defined in [ROAD.md](ROAD.md), the technical model in
 [ARCH.md](ARCH.md), trust boundaries in [SEC.md](SEC.md), and related tools in
 [SOTA.md](SOTA.md). Phase 1 works with files and internal object IDs; the original
 generic resource-handle model is an optional future design, not a prerequisite.
@@ -314,5 +314,5 @@ Phase 2 can add workspace pages, JavaScript/Wasm commands, selected data service
 remote storage/compute, search/recall, external tabs, and devices. Implement each
 only for a selected use case. Typed pipelines, public resource handles, and a
 uniform local/server placement model remain optional research directions even in
-phase 2. [PHASES.md](PHASES.md) defines the decision gates and [TODO.md](../TODO.md)
+phase 2. [ROAD.md](ROAD.md) defines the decision gates and [TODO.md](TODO.md)
 tracks implementation without claiming these commands already exist.

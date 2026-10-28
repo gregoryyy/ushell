@@ -38,7 +38,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Literal
 
-from workflow import Job, LocalStep, WorkflowError, jobs_of, parse, runs_here
+from workflow import Job, LocalStep, WorkflowError, go_matches, jobs_of, parse, runs_here
 
 ROOT = Path(__file__).resolve().parents[2]
 WORKFLOW = ".github/workflows/ci.yml"
@@ -181,6 +181,8 @@ def run_step(
             return True, ""
         case "setup-python":
             return setup_python(step.python, env, bin_dir, ctx.tmp, note)
+        case "setup-go":
+            return setup_go(step.go, env, note)
         case "secrets":
             if shutil.which("gitleaks") is None:
                 note("gitleaks is not installed: brew install gitleaks")
@@ -224,6 +226,26 @@ def setup_python(
         link.symlink_to(executable)
     note(f"Python {version} at {executable}; workflow asks for {request}")
     return True, f"Python {version}"
+
+
+def setup_go(
+    wanted: str | None, env: dict[str, str], note: Callable[[str], None]
+) -> tuple[bool, str]:
+    """The machine's Go, if it is the version the workflow asks for. GOTOOLCHAIN=local keeps Go
+    from downloading another toolchain; the patch version is this machine's."""
+    go = shutil.which("go", path=env.get("PATH"))
+    if go is None:
+        note("Go is not installed: brew install go")
+        return False, "Go missing"
+    found = subprocess.run(
+        [go, "env", "GOVERSION"], env=env, capture_output=True, text=True, check=False
+    ).stdout.strip()
+    if not go_matches(wanted, found):
+        note(f"Go {found or 'of unknown version'} at {go}; the workflow asks for {wanted}")
+        return False, f"Go {wanted} missing"
+    env["GOTOOLCHAIN"] = "local"
+    note(f"{found} at {go}; workflow asks for {wanted or 'any'}")
+    return True, found
 
 
 def blocked_shims(bin_dir: Path) -> None:
