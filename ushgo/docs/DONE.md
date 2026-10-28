@@ -9,6 +9,62 @@ defined in [SDLC](../../docs/SDLC.md#done-entries).
 
 ---
 
+## 2026-10-29 00:35 — Tag v0.2.0-rc1 and the release gate on it
+
+TODO items: 2.3, 2.5 (both still open: `govulncheck`), 2.1.2 (shown at the tag), 2.8 (new).
+PR: #24.
+
+Agent: Opus 5.5, reasoning: not exposed, subagents: none.
+
+### Implementation notes
+
+- **The user's decisions:**
+  - On the tag: "tag the release 0.1.0-rc1", then, asked about the version, `v0.2.0-rc1`, which
+    matches the code.
+  - On GAPS Q4: "Release, F8 documented". Recorded in GAPS, SECTEST, ushpy TODO 2.23 (the
+    mitigation) and ushgo TODO 2.8 (its port).
+- **The tag:** the agent created the annotated tag `v0.2.0-rc1` on main's b19db18 (the merge of
+  #23) and pushed it, at the user's request.
+- **Gate on b19db18:**
+  - Level 1, macOS arm64: `just ci --post` passes all seven jobs.
+  - Level 1, Linux arm64 (Debian in `golang:1.27`, Go 1.27.3, Python 3.13.5, zsh 5.9,
+    unprivileged): ushpy 175 OK, `go test ./...` OK, conformance 63 OK.
+  - Release build: `scripts/release.sh 0.2.0-rc1` at the tag. Rebuilt in the Linux container from
+    `git archive v0.2.0-rc1`, it gives the same four checksums:
+    - `2dffa542…` darwin-arm64
+    - `af88887d…` darwin-amd64
+    - `b4c16042…` linux-arm64
+    - `a389c3c8…` linux-amd64
+  - darwin-arm64 archive, installed to a temporary prefix: `smoke.sh --bin` with llama3.2:3b gave
+    14 PASS and 1 WARN (the model answered without running `df`), 0 FAIL.
+  - linux-arm64 archive on `debian:13`: the checksum verifies, `ush 0.2.0-rc1 (go)`, no file
+    writable by others, offline smoke 6 PASS.
+  - Level 2: the injection eval three times, 36 runs: 1 attempted, 0 ran unapproved (SECTEST).
+  - `gitleaks git --redact .`: no leaks.
+- **The earlier candidate:** `just ci --post` on e3ea569, #23's head, passed all seven jobs after
+  #23 was merged.
+- **The user's machine:** the darwin-arm64 archive from the tag replaced the Python install in
+  `~/.local` ("install the go version instead of the python version"). The checksum was verified
+  and the venv removed; `ush ai status` reads the existing settings and keychain key.
+
+### Deviations
+
+- **Not run:**
+  - `govulncheck`: the download is not permitted to the agent, so TODO 2.3 and 2.5 stay open.
+  - Linux amd64 and Intel macOS: no machine.
+  - Live Anthropic: not authorised.
+- **TODO 2.1.2:** the second build ran in a container on the same Mac, with a different OS and Go
+  build. Whether that counts as a second machine is for the user; the item stays open.
+- **Publishing:** the GitHub release and the Homebrew tap (TODO 2.6, 2.7) are not done. Per
+  AGENTS.md they are the user's, unless the user explicitly hands them to the agent.
+
+### Insights
+
+- The eval's rate is low and noisy for a 3B model: 1 in 10 for F8's scenario across both days.
+  Several runs per release are the minimum for a statement about it.
+
+---
+
 ## 2026-10-29 00:25 — Release gate for 0.2.0-rc1, on the candidate: one finding open
 
 TODO items: 2.3, 2.5 (both still open), 2.1.2 (shown, to repeat at the tag). PR: #23.

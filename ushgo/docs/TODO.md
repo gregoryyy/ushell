@@ -107,9 +107,10 @@ against `zsh -f` (ushpy `test_security`).
   `share/man/man1`.
 - [ ] 2.5 0.2.0-rc1, the first release, of the Go binaries at parity (user, 2026-10-28): version
   0.2.0-rc1 in both implementations, release notes, the release gate (2.3) on the tagged commit.
-  The AI prepares; the user tags and publishes. Blocked on GAPS Q4 (SECTEST F8, found by the gate
-  on the candidate, 2026-10-29).
+  The AI prepares; the user tags and publishes. GAPS Q4 answered 2026-10-29: release with SECTEST
+  F8 documented. Tag `v0.2.0-rc1` on b19db18, pushed by the agent at the user's request.
 - [ ] 2.6 GitHub release from the tag: the four archives and `SHA256SUMS` attached, the notes, the
   install line for curl users.
 - [ ] 2.7 Homebrew tap: a formula that builds `ush` from the tagged source with Go
   (`brew install gregoryyy/ush/ush`); the tap repository `homebrew-ush` is created by the user.
+- [ ] 2.8 Port ushpy TODO 2.23: agent mode asks before an injected read-only command (SECTEST F8).
