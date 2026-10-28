@@ -58,6 +58,8 @@ sandbox.
 | The user runs a harmful proposal by habit | ush runs nothing itself; changes and commands the policy can't verify are marked in yellow, with the checker's objection if one is configured | `test_propose` (notes) |
 | Another user or a planted link reads or swaps the handoff files | The plugin's `mktemp -d` directory (0700); ush refuses a directory that isn't the user's, is open to others, or is a link, and reads `ran` and `output` only as regular files without following links | `test_propose` (HandoffTest) |
 | Captured output kept on disk | `output` lives only until the next `//` (then deleted) or shell exit; the saved conversation is 0600 in the state directory and expires after an hour; history keeps no output | `test_propose` (sessions) |
+| An explanation (`ush explain`, Down) sends more than the user expects | Only the command line, and for a proposal the last request and its purpose; redacted; the command between random-tag markers as data; nothing runs; `-v` shows the destination | `test_cli` (explain tests) |
+| The installer changes `~/.zshrc` without consent | It asks, only from a terminal; `--zshrc` or `--no-zshrc` decide explicitly; never as root or twice; only appends one `source` line | `test_install` |
 | User aliases or rc files changing command meaning | Commands run with `zsh -f` | `test_execute` |
 
 ## Residual risks

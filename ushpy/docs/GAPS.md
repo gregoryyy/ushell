@@ -15,6 +15,10 @@ not to ask; check them and correct any that are wrong. The rules for this file a
 
 ### Q1. Which licence? — blocking for TODO 3.1
 
+**Answer** (2026-10-28 21:20, Gregor Heinrich): MIT.
+
+**Resolved:** [LICENSE](../../LICENSE) at the repository root.
+
 The repository has no licence file, so nobody else may use, change or redistribute ush. A release
 needs one. ush's dependencies (the Anthropic SDK and its tree) are MIT, Apache-2.0, BSD-3-Clause
 and PSF-2.0, so any of the common choices is compatible.
@@ -23,6 +27,13 @@ and PSF-2.0, so any of the common choices is compatible.
   prefer the shortest licence; GPL-3.0-or-later if derived tools must stay open.
 
 ### Q2. How is ush distributed? — blocking for TODO 3.1
+
+**Answer** (2026-10-28 21:20, Gregor Heinrich): asked to choose between a GitHub release, a GitHub
+release with a Homebrew tap, and a tag only: "try all three options". 0.2.0-rc1 ships the Go
+binaries at parity (asked separately: "Go binaries at parity").
+
+**Resolved:** release plan in ushgo TODO 2.5–2.7: a tag, a GitHub release with the archives and
+`SHA256SUMS`, and a Homebrew tap formula (the tap repository is created by the user).
 
 `install.sh` copies ush into a venv today, per user or root-owned. Other channels need their own
 packaging and maintenance.

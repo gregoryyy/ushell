@@ -37,6 +37,12 @@ machine and the model.
   the plugin records the exit status and output, and `//` continues: ush proposes the
   next command or answers. Changes, commands ush can't verify as read-only, and the
   checker's objections are marked in yellow. Without the plugin, ush prints the proposal.
+- **Down explains, Esc removes.** While a proposal is on the line, Down shows above it
+  what each part does and what it accesses (files and network, read and write); `-v` adds a
+  summary, notes, and ush's own verdict. Esc closes the explanation, or else removes the
+  proposal. Both keys keep their usual meaning otherwise. `ush explain COMMAND` explains any
+  command line; in a session (`ush`), proposals are pre-filled at the `ush>` prompt with the
+  same keys.
 - **Agent mode** (`ush --run //REQUEST`, or `mode: run`): ush runs the commands itself,
   answers, and offers follow-ups. `ush` alone starts a session, where `// TEXT` asks and
   any other line runs as an ordinary command whose output becomes context. The rest of

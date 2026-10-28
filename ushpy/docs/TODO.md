@@ -118,7 +118,7 @@ DONE has an entry for it.
   over; proposals with control characters are refused. Ported by ushgo TODO 1.12.
   - [x] 2.17.1 Implementation and automated tests: agent, handoff, CLI end to end, the plugin in a
     real zsh, smoke checks; ARCH, SEC, guides, READMEs, SMOKE (M11–M15).
-  - [ ] 2.17.2 Manual checks M11–M15 by the user with a real model, and a live smoke run in
+  - [ ] 2.17.2 Manual checks M11–M18 by the user with a real model, and a live smoke run in
     propose mode.
 - [x] 2.18 Plugin setup and Esc: both installers offer to add the plugin to `~/.zshrc`
   (`shell/zshrc.sh`: asks only from a terminal, `--zshrc`/`--no-zshrc`, never twice or as root);

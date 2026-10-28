@@ -35,6 +35,9 @@ Two implementations of a security-critical policy double the review work and can
 
 ### Q3. How is the Go binary distributed on macOS? — blocking for TODO 2.1.3
 
+**Answer** (2026-10-28 21:20, Gregor Heinrich): "try all three options": a tag, a GitHub release
+with the archives, and a Homebrew tap. No signing for now. **Resolved:** TODO 2.1.3, 2.5–2.7.
+
 macOS refuses to run an unsigned binary that a browser downloaded (quarantine). Downloads with curl,
 and binaries built locally, run without that.
 

@@ -42,6 +42,8 @@ carries the key, which changes the security profile ([SEC](SEC.md)).
 The repository has no licence file. The same question for ush is [ush GAPS](../../ushpy/docs/GAPS.md)
 Q1; one answer covers both.
 
+**Answer** (2026-10-28 21:20, Gregor Heinrich): MIT. **Resolved:** [LICENSE](../../LICENSE).
+
 ## Assumptions
 
 | ID | Assumption | Where it matters | Correction |
