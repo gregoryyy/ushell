@@ -107,7 +107,8 @@ against `zsh -f` (ushpy `test_security`).
   `share/man/man1`.
 - [ ] 2.5 0.2.0-rc1, the first release, of the Go binaries at parity (user, 2026-10-28): version
   0.2.0-rc1 in both implementations, release notes, the release gate (2.3) on the tagged commit.
-  The AI prepares; the user tags and publishes.
+  The AI prepares; the user tags and publishes. Blocked on GAPS Q4 (SECTEST F8, found by the gate
+  on the candidate, 2026-10-29).
 - [ ] 2.6 GitHub release from the tag: the four archives and `SHA256SUMS` attached, the notes, the
   install line for curl users.
 - [ ] 2.7 Homebrew tap: a formula that builds `ush` from the tagged source with Go
