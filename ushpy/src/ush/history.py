@@ -23,6 +23,7 @@ class Step:
     purpose: str = ""
     decision: str = ""              # auto | approved | edited | declined | dry-run | explicit | skipped
     check: str = ""                 # the checker's verdict: ok | flag: reason | none: reason
+    rule: str = ""                  # the user's allow rule that let it run without approval
     exit_code: Optional[int] = None
     timed_out: bool = False
     duration: float = 0.0

@@ -3,7 +3,7 @@ import unittest
 from unittest import mock
 
 from helpers import TempDirTest
-from ush.policy import classify
+from ush.policy import classify, parse_rule
 
 AUTO = [
     "df -h",
@@ -149,3 +149,44 @@ class SecretPathTest(TempDirTest):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class AllowRuleTest(TempDirTest):
+    """The user's allowlist extends the table for unknown commands and never widens it."""
+
+    RULES = (("git", "status"), ("kubectl", "get"), ("terraform", "plan"))
+
+    def test_rules_let_matching_commands_run(self):
+        for command, rule in (("git status", "git status"), ("git status -sb", "git status"),
+                              ("kubectl get pods -A | head", "kubectl get"),
+                              ("git status && kubectl get ns", "git status, kubectl get"),
+                              ("/usr/bin/git status", "git status")):
+            with self.subTest(command=command):
+                verdict = classify(command, self.RULES)
+                self.assertTrue(verdict.auto, verdict.reason)
+                self.assertEqual(verdict.rule, rule)
+        self.assertEqual(classify("df -h", self.RULES).rule, "")  # the table, not a rule
+
+    def test_rules_are_prefixes_of_words(self):
+        for command in ("git push", "git statusx", "git", "kubectl delete pod x",
+                        "kubectl --context prod get pods", "terraform apply"):
+            with self.subTest(command=command):
+                self.assertFalse(classify(command, self.RULES).auto)
+        self.assertFalse(classify("git status").auto)  # no rules, no exception
+
+    def test_the_rest_of_the_policy_still_applies(self):
+        for command in ("git status > out.txt", "git status $(rm -rf ~)", "git status; rm x",
+                        "git status `id`", "GIT_DIR=x git status", "git status &",
+                        "/tmp/evil/git status", "git status ~/.ssh/id_ed25519",
+                        "sudo git status", "git status | sh"):
+            with self.subTest(command=command):
+                self.assertFalse(classify(command, self.RULES).auto)
+
+    def test_rules_cannot_name_runners_table_commands_or_syntax(self):
+        for text in ("bash", "sh -c", "env", "xargs", "python3.12", "perl -e", "sudo", "find",
+                     "sed", "awk", "rm", "ssh", "osascript", "", "-rf", "git $(x)", "git *",
+                     "git 'status'", "./git status", "/usr/bin/git status", "a b c d e f g h i"):
+            with self.subTest(rule=text), self.assertRaises(ValueError):
+                parse_rule(text)
+        self.assertEqual(parse_rule("  kubectl   get "), ("kubectl", "get"))
+

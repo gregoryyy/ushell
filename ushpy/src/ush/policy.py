@@ -39,6 +39,7 @@ class Verdict:
     auto: bool
     reason: str = ""
     sudo: bool = False
+    rule: str = ""          # the user's allow rule that let a command run, if one did
 
 
 def _reject(reason: str, sudo: bool = False) -> Verdict:
@@ -507,7 +508,71 @@ def _tokens(command: str) -> list[Token]:
     return tokens
 
 
-def _simple_command(words: list[str]) -> Verdict:
+# ---------------------------------------------------------------------------
+# The user's allowlist: rules that let commands the table doesn't know run without approval.
+# A rule is a command name and leading arguments ("git status", "kubectl get"); it matches a
+# simple command whose words start with it. Rules extend the table and never override it: a
+# command the table knows keeps its validator, and commands that run other commands can't be
+# allowed, since that would allow anything. Everything else in the policy still applies: shell
+# syntax, redirections, secret paths, the model's "change", --confirm, and the checker.
+
+RULE_WORD = re.compile(r"^[A-Za-z0-9._:@%+=,-]+$")
+RULE_WORDS = 8
+RUNNERS = frozenset({
+    "sh", "bash", "zsh", "dash", "ksh", "mksh", "fish", "csh", "tcsh", "busybox",
+    "env", "sudo", "doas", "su", "xargs", "nice", "nohup", "timeout", "time", "exec", "eval",
+    "source", ".", "command", "builtin", "watch", "parallel", "script", "expect", "chroot",
+    "ssh", "osascript", "open", "launchctl", "at", "batch", "crontab", "screen", "tmux",
+    "python", "perl", "ruby", "node", "deno", "bun", "php", "lua", "tclsh", "R", "Rscript",
+    "java", "go", "make", "npm", "npx", "pip", "uv", "uvx", "git-shell",
+})
+INTERPRETER = re.compile(r"^(python|perl|ruby|node|php|lua|pip)[0-9.]*$")
+# Commands whose purpose is to change or send something. A rule would let an injected "read"
+# claim run them unasked; ush asks for them every time.
+CHANGERS = frozenset({
+    "rm", "rmdir", "mv", "cp", "ln", "dd", "install", "mkfs", "newfs", "fdisk", "truncate",
+    "shred", "srm", "chmod", "chown", "chgrp", "chflags", "xattr", "touch", "mkdir", "tee",
+    "kill", "killall", "pkill", "shutdown", "reboot", "halt", "systemctl", "service",
+    "rsync", "scp", "sftp", "ftp", "curl", "wget", "nc", "ncat", "socat", "telnet", "mail",
+    "sendmail", "security", "passwd", "useradd", "userdel", "usermod", "dscl", "visudo",
+})
+
+
+def parse_rule(text: str) -> tuple[str, ...]:
+    """The rule's words; ValueError with the reason if `text` can't be an allow rule."""
+    words = tuple(text.split())
+    if not words:
+        raise ValueError("an allow rule needs a command name")
+    if len(words) > RULE_WORDS:
+        raise ValueError(f"an allow rule has at most {RULE_WORDS} words")
+    for word in words:
+        if not RULE_WORD.match(word):
+            raise ValueError(f"{word!r}: allow rules are plain words, without paths, quotes, "
+                             "globs, variables, or shell syntax")
+    name = words[0]
+    if name.startswith("-"):
+        raise ValueError("an allow rule starts with a command name")
+    if name in RUNNERS or INTERPRETER.match(name):
+        raise ValueError(f"{name} runs other commands or code, so allowing it would allow "
+                         "anything")
+    if name in CHANGERS:
+        raise ValueError(f"{name} changes or sends data; ush asks before it every time")
+    if name in COMMANDS:
+        raise ValueError(f"{name} is in ush's own read-only table; its check decides, and a rule "
+                         "can't widen it")
+    return words
+
+
+def _allowed(name: str, args: list[str], rules: tuple[tuple[str, ...], ...]) -> str:
+    """The rule that allows this simple command, or ""."""
+    words = [name, *args]
+    for rule in rules:
+        if words[:len(rule)] == list(rule):
+            return " ".join(rule)
+    return ""
+
+
+def _simple_command(words: list[str], rules: tuple[tuple[str, ...], ...] = ()) -> Verdict:
     if not words:
         return _reject("empty command in a pipeline or list")
     if re.match(r"^[A-Za-z_][A-Za-z0-9_]*=", words[0]):
@@ -532,7 +597,13 @@ def _simple_command(words: list[str]) -> Verdict:
         return Verdict(True)
     entry = COMMANDS.get(name)
     if entry is None:
-        return _reject(f"{name} is not a known read-only command")
+        rule = _allowed(name, args, rules)
+        if not rule:
+            return _reject(f"{name} is not a known read-only command")
+        reason = _check_paths(args, recursive=False)
+        if reason:
+            return _reject(reason)
+        return Verdict(True, rule=rule)
     kind, validator = entry
     reason = validator(args)
     if reason:
@@ -544,8 +615,9 @@ def _simple_command(words: list[str]) -> Verdict:
     return Verdict(True)
 
 
-def classify(command: str) -> Verdict:
-    """Return whether `command` (one shell command line) may run without approval."""
+def classify(command: str, rules: tuple[tuple[str, ...], ...] = ()) -> Verdict:
+    """Return whether `command` (one shell command line) may run without approval. `rules` is
+    the user's allowlist (parse_rule); a root session passes none."""
     if not command.strip():
         return _reject("empty command")
     if "\n" in command or "\r" in command:
@@ -592,9 +664,12 @@ def classify(command: str) -> Verdict:
             return _reject(f"uses shell syntax {tok.text!r}")
         i += 1
 
+    used = []
     for words in commands:
-        verdict = _simple_command(words)
+        verdict = _simple_command(words, rules)
         sudo = sudo or verdict.sudo
         if not verdict.auto:
             return _reject(verdict.reason, sudo)
-    return Verdict(True)
+        if verdict.rule and verdict.rule not in used:
+            used.append(verdict.rule)
+    return Verdict(True, rule=", ".join(used))

@@ -2,8 +2,8 @@ import json
 import os
 import unittest
 
-from helpers import (SYNTHETIC_KEY, TempDirTest, last_tool_results, results_text, script_use,
-                     text, tool_use)
+from helpers import (SYNTHETIC_KEY, TempDirTest, fake_identity, last_tool_results,
+                     results_text, script_use, text, tool_use)
 from ush.agent import TOOLS
 from ush.provider import Turn, echo_content
 from ush.ui import Choice
@@ -212,6 +212,37 @@ class EchoContentTest(unittest.TestCase):
                          ["text", "fallback", "text", "y"])
         plain = [{"type": "text", "text": "x"}]
         self.assertIs(echo_content(plain), plain)
+
+
+
+class AllowRuleAgentTest(TempDirTest):
+    def test_a_rule_runs_its_command_and_says_so(self):
+        agent, provider, ui, history = self.make_agent([
+            [tool_use("hostname-tool status", ident="t1")], [text("done")]])
+        agent.settings.add_rule("hostname-tool status")
+        agent.ask("status please")
+        # It ran without a prompt (the command doesn't exist, so zsh reports that).
+        self.assertIn("Exit status 127", results_text(last_tool_results(provider)))
+        step = history.find("last").steps[0]
+        self.assertEqual((step.decision, step.rule), ("auto", "hostname-tool status"))
+        self.assertEqual(ui.reasons, [])
+        self.assertIn("allowed by your rule: hostname-tool status", ui.err.getvalue())
+
+    def test_a_change_or_root_still_asks(self):
+        agent, _, ui, _ = self.make_agent([
+            [tool_use("hostname-tool status", effect="change", ident="t1")], [text("done")]],
+            choices=[Choice("no")])
+        agent.settings.add_rule("hostname-tool status")
+        agent.ask("x")
+        self.assertEqual(len(ui.reasons), 1)
+
+        agent, _, ui, _ = self.make_agent([
+            [tool_use("hostname-tool status", ident="t1")], [text("done")]],
+            choices=[Choice("no")])
+        agent.settings.add_rule("hostname-tool status")
+        agent.ident = fake_identity(self.tmp, uid=0)
+        agent.ask("x")
+        self.assertIn("not a known read-only command", ui.reasons[0])
 
 
 if __name__ == "__main__":

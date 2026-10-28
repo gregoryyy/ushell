@@ -102,6 +102,12 @@ DONE has an entry for it.
   statuses, examples. One source in the repository; `install.sh` installs it to
   `share/man/man1`, and the Go release archive carries it (ushgo TODO 2.4). Acceptance: `man ush`
   after either install; a test that every option in `ush help` appears in the page.
+- [x] 2.15 User allowlist: `ush allow [add|remove RULE]`, `allow` in the settings file. A rule
+  (command name and leading words) lets commands the table doesn't know run without approval;
+  refused for table commands, runners and interpreters, commands that change or send data, and
+  shell syntax; not used as root; history and the prompt name the rule. No blacklist mode (ARCH,
+  GAPS Q5). Ported by ushgo TODO 1.11. Acceptance: policy, settings, agent and CLI tests,
+  including refusals and root; SEC and SECTEST updated.
 
 ## 3. Release
 

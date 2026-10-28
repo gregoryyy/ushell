@@ -52,6 +52,7 @@ model) needs only one command line it misclassifies.
 | Option smuggling through globs and variables (`find *` with a file named `-delete`) | Covered: `test_glob_cannot_smuggle_options` |
 | Write or exec options of listed tools (`find -exec/-fprint`, `sed -i/w/e`, `sort -o`, `awk system()`, `xxd -r`, `git -c core.pager=…`, `tar --checkpoint-action`, `man -P`, `env`/`xargs`/`nice`/`timeout` wrappers) | Partly covered per validator in `test_policy`; **systematic GTFOBins sweep: TODO 2.11** |
 | Differential fuzzing: random command lines split by ush's tokenizer and by `zsh -f` (`${(z)…}`); any disagreement on a line the policy accepts is a failure | **Gap, TODO 2.11** |
+| User allow rules: a rule for a runner, an interpreter, a table command or a writing command; prefix tricks (`git statusx`, options before the subcommand); shell syntax, redirections, secret paths, `sudo`, root sessions with a rule | Covered: `AllowRuleTest`, `AllowRuleAgentTest`, `AllowSettingsTest`, `test_allow_rules_are_listed_added_and_removed` |
 | `PATH` hijack: a `df` earlier on `PATH` than `/bin` (e.g. `.` or a user-writable directory) | Residual risk in SEC; **test: warn when PATH contains writable or relative entries, TODO 2.11** |
 
 ## 3. Display integrity: what the user approves is what runs

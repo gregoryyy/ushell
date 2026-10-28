@@ -44,6 +44,7 @@ execution, and limited disclosure. ush is not a sandbox.
 | Anthropic key sent to Ollama | The Ollama client uses a fixed placeholder key | `test_provider` (key absent from the request) |
 | Prompt injection steers the model to an auto-approved command that leaks or harms (e.g. DNS exfiltration, F2) | Optional checker model (`check.py`) judges each proposal against the user's requests only, never output or piped input; flag, unclear reply, or error → approval needed; its input is redacted and tagged with random markers | `test_check`: flag gates a read-only command, no verdict fails closed, OK never approves, no output/piped input/secrets in its input, marker tags; `test_cli` end to end |
 | The checker sends data to a provider the user didn't expect | `provider:model` named in the banner and `ai status` (Anthropic, local, or an Ollama cloud host); as root only the settings file counts | `test_cli` checker disclosure; `test_config` checker settings |
+| A user allow rule widens the policy (an injected `read` claim runs `rm`, `curl`, or `sh -c` unasked) | Rules only for commands the table doesn't know; refused for runners, interpreters, and commands that change or send data; plain words only; prefix match on words; the rest of the policy, the model's `change`, `--confirm`, and the checker still apply; settings file only, not used as root | `test_policy` `AllowRuleTest`; `test_agent` `AllowRuleAgentTest`; `test_config` `AllowSettingsTest`; `test_cli` allow |
 | Runaway or hanging commands | stdin `/dev/null`, per-command timeout (≤ `max_timeout`), process-group kill, output limit, step limit per request | `test_execute`, `test_agent` step limit |
 | Aborted or interrupted requests leave a broken conversation | Every `tool_use` answered; Ctrl-C kills the process group | `test_agent` abort/truncation/refusal |
 | Root running user-writable code | `install.sh --prefix /usr/local` for root-owned installs; launcher uses `python -I` (ignores `PYTHON*`, user site, cwd) | Manual; documented |
@@ -70,6 +71,9 @@ execution, and limited disclosure. ush is not a sandbox.
   which an injection can use to leak data through DNS names (SECTEST F2).
 - **Terminal output is not filtered** (SECTEST F1): escape sequences in a command or its
   output can change what the approval prompt shows. Fix planned in TODO 2.9.
+- **An allow rule is the user's judgement.** A rule such as `git` allows every `git` subcommand,
+  including ones that write (`git clean -fdx`) if the model calls them `read`. Narrow rules
+  (`git status`) are safe; ush can't tell which subcommands of an unknown tool write.
 - **The checker is a model too.** It judges the proposal text, which an injection controls, so
   a proposal can be shaped to look harmless or carry text aimed at the checker. Small models miss
   attacks (qwen2.5:1.5b let 3 of 4 pass, SECTEST) and raise false alarms. It narrows what runs

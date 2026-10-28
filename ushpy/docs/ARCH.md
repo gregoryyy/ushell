@@ -96,6 +96,29 @@ This matters because shells expand before the command runs. `find *` in a direct
 holding a file named `-delete` becomes `find -delete`, and `$VAR` may hold an option.
 `shlex` was tried first and rejected because it loses quoting information.
 
+### The user's allowlist
+
+`ush allow add WORDS` (TODO 2.15) stores a rule in the settings file. A simple command whose words
+start with a rule's words runs without approval if the table doesn't know the command; every other
+condition above still holds, and so do the model's `change`, `--confirm`, and the checker. The
+verdict names the rule, the prompt line says "allowed by your rule", and history records it.
+
+Rules are refused when they would widen the policy instead of extending it: commands the table
+already validates (a rule `find` would skip `find`'s check for `-delete`), commands that run other
+commands or code (shells, `env`, `xargs`, `sudo`, interpreters), commands whose purpose is to
+change or send data (`rm`, `chmod`, `curl`, `scp`, …; a forged `read` claim would run them unasked),
+and words with shell syntax, quotes, globs, or paths. Rules come only from the settings file, not
+the environment, and a root session uses none: they were given for the user's own account.
+
+**No blacklist mode** (2026-10-28). A mode in which everything runs except listed commands would
+turn the policy around, from "known safe" to "not known dangerous". It fails open on everything
+nobody thought of: a renamed binary, an interpreter, `find -exec`, `awk 'BEGIN{system()}'`, `env
+rm`, `git -c core.pager=…`, a tool installed yesterday, and every shell trick the tokenizer has to
+reject today. A model steered by injected text only needs one such command. The command table plus
+the allowlist covers the wish behind it, fewer prompts, without that failure mode. A deny list that
+can only add friction (always ask, or never run, even when approved) is safe and may come later
+(GAPS Q5).
+
 ## Decisions
 
 - **Python with the official Anthropic SDK (pinned 2.3.0, hashed lock file)** rather

@@ -12,6 +12,46 @@ top. The format is defined in [SDLC](../../docs/SDLC.md#done-entries).
 
 ---
 
+## 2026-10-28 10:23 — User allowlist; no blacklist mode
+
+TODO items: 2.15 (ported by ushgo TODO 1.11); new GAPS Q5 and A7. PR:
+[#11](https://github.com/gregoryyy/ushell/pull/11) (stacked on #10).
+
+Agent: Opus 5.5, reasoning: not exposed, subagents: none.
+
+### Implementation notes
+
+- `policy.py`: `parse_rule` (plain words, at most 8; refused for commands in the table, runners
+  and interpreters, and commands that change or send data), `classify(command, rules)` lets a
+  simple command the table doesn't know run if its words start with a rule; secret paths are still
+  checked; `Verdict.rule` names the rule(s).
+- `config.py`: `allow` in the settings file, `add_rule`, `remove_rule`, `allow_rules`; an invalid
+  rule in the file is a ConfigError. No environment variable.
+- `agent.py`: rules from the settings, none as root; the prompt line says "allowed by your rule";
+  `Step.rule` in history. `cli.py`: `ush allow [add|remove RULE]`, the rule count in `ai status`,
+  rules in `replay`.
+- Docs: README, ARCH ("The user's allowlist", and why no blacklist mode), SEC (threat row,
+  residual risk of broad rules), SECTEST, GAPS Q5 (deny rules that only add friction, proposed),
+  A7; ushgo TODO 1.11; root ROAD.
+- **Validation:** `just ushpy-test`: 104 tests OK (96 before); new tests: `AllowRuleTest` (4: matching, prefix
+  semantics, the rest of the policy, refused rules), `AllowSettingsTest`, `AllowRuleAgentTest` (2:
+  a rule runs and is shown and recorded; a `change` or a root session still asks), and the CLI
+  test for `ush allow` and `ai status`. `just ci`: see the PR.
+
+### Deviations
+
+- None from the request; the refusal list for writing commands goes beyond "a whitelist" because a
+  rule for `rm` would let a forged `read` claim run it.
+
+### Insights
+
+- The model's `effect` claim narrows but never widens, so a rule only matters for commands the
+  model calls `read`; that is also why rules for writing commands are refused, not merely warned.
+- A single-word rule for a multi-purpose tool (`git`) allows its writing subcommands; the README
+  shows narrow rules, and SEC records the risk.
+
+---
+
 ## 2026-10-28 09:59 — User smoke test
 
 TODO items: 2.1.1 (2.1 and 2.1.2 stay open for the user's paid run). PR: [#8](https://github.com/gregoryyy/ushell/pull/8) (stacked on #7).

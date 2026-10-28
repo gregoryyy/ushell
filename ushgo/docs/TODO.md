@@ -62,6 +62,9 @@ In dependency order: the packages that don't depend on others first.
 - [ ] 1.10 Conformance: ush's black-box tests (`test_cli`, `test_zsh_plugin`, the pty approval
   tests) run against a binary chosen by an environment variable, and pass for both. Acceptance: a
   CI job runs them against the Go binary; the smoke test passes with a local model.
+- [ ] 1.11 Allow rules (ushpy TODO 2.15): `ush allow`, the `allow` setting, `parse_rule`'s
+  refusals, prefix matching, not used as root. Acceptance: ushpy's `AllowRuleTest` cases in the
+  policy corpus; the CLI tests for `ush allow` pass against the Go binary.
 
 ## 2. Release
 

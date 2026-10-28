@@ -42,6 +42,13 @@ machine and the model.
   `~/.ssh`, keychains, `.env`). ush shows the command and the reason; you answer
   `y`, `n` (optionally with a reason for the assistant), `e` to edit, or `a` to abort.
   The assistant's own claim that a command is read-only never bypasses this check.
+- **Your allowlist:** `ush allow add kubectl get` lets commands ush doesn't know run
+  without approval when they start with those words (`kubectl get pods -A`). Rules
+  extend ush's table and never widen it: they can't name commands it already checks
+  (`find`, `sed`), commands that run other commands (`sh`, `env`, `xargs`, `python`),
+  or commands that change or send data (`rm`, `curl`). Shell syntax, redirections,
+  secret files, a command the assistant marks as a change, `--confirm`, and the
+  checker still ask. Under `sudo`, rules are not used.
 - **Interpretation:** the model sees exit status and bounded output (secrets
   redacted), then explains the finding, key numbers, and next steps.
 - **Replay without AI:** `ush history` lists requests and the commands they ran;
@@ -136,6 +143,7 @@ ush [OPTIONS]                start a session
 ush ai configure [--file]    set the provider, API key or Ollama URL, model, and effort
 ush ai status                show provider, model, key source, and paths
 ush ai clear-key             remove the stored API key
+ush allow [add|remove RULE]  list, add, or remove commands that may run without approval
 ush history [-n N]           list recent requests and the commands they ran
 ush replay ID|last [-n]      run those commands again, without AI
 
@@ -150,7 +158,7 @@ Without a terminal (cron, CI), ush cannot ask for approval. It runs read-only
 commands only and declines the rest.
 
 Settings live in `~/.config/ush/config.json` (`provider`, `model`, `effort`,
-`ollama_url`, `ollama_model`, `checker`, `max_steps`, `command_timeout`, `max_timeout`,
+`ollama_url`, `ollama_model`, `checker`, `allow`, `max_steps`, `command_timeout`, `max_timeout`,
 `output_limit`, `show_lines`). The default model
 is `claude-opus-5-5` with effort `medium`. Refusals fall back server-side to a
 model Anthropic selects (`fallbacks: "default"`).

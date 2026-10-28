@@ -89,6 +89,7 @@ class Settings:
     ollama_url: str = OLLAMA_URL
     ollama_model: str = ""         # no default: it must be a model the user has pulled
     checker: str = ""              # "provider:model" of the checker model (check.py); "" is off
+    allow: list = field(default_factory=list)   # the user's allow rules (policy.parse_rule)
     max_steps: int = 30
     command_timeout: int = 120     # default seconds per command
     max_timeout: int = 900         # upper bound a request may ask for
@@ -111,6 +112,11 @@ class Settings:
             s.ollama_model = data["ollama_model"]
         if isinstance(data.get("checker"), str):
             s.set_checker(data["checker"])
+        if data.get("allow") is not None:
+            if not isinstance(data["allow"], list):
+                raise ConfigError("allow must be a list of rules such as \"git status\"")
+            for rule in data["allow"]:
+                s.add_rule(rule if isinstance(rule, str) else "")
         for name, low, high in (("max_steps", 1, 200), ("command_timeout", 1, 3600),
                                 ("max_timeout", 1, 7200), ("output_limit", 1000, 500_000),
                                 ("show_lines", 0, 10_000)):
@@ -122,7 +128,7 @@ class Settings:
     def to_dict(self) -> dict:
         return {"provider": self.provider, "model": self.model, "effort": self.effort,
                 "ollama_url": self.ollama_url, "ollama_model": self.ollama_model,
-                "checker": self.checker, "max_steps": self.max_steps,
+                "checker": self.checker, "allow": list(self.allow), "max_steps": self.max_steps,
                 "command_timeout": self.command_timeout, "max_timeout": self.max_timeout,
                 "output_limit": self.output_limit, "show_lines": self.show_lines}
 
@@ -158,6 +164,28 @@ class Settings:
             raise ConfigError(f"checker {value!r} is not provider:model, e.g. ollama:qwen3:4b or "
                               "anthropic:claude-haiku-5-5")
         self.checker = f"{provider}:{model}"
+
+    def add_rule(self, text: str) -> str:
+        """Add an allow rule; returns it normalised. ConfigError if it can't be a rule."""
+        from .policy import parse_rule
+        try:
+            rule = " ".join(parse_rule(text))
+        except ValueError as exc:
+            raise ConfigError(f"allow rule {text!r}: {exc}") from None
+        if rule not in self.allow:
+            self.allow.append(rule)
+        return rule
+
+    def remove_rule(self, text: str) -> bool:
+        rule = " ".join(text.split())
+        if rule in self.allow:
+            self.allow.remove(rule)
+            return True
+        return False
+
+    @property
+    def allow_rules(self) -> tuple[tuple[str, ...], ...]:
+        return tuple(tuple(rule.split()) for rule in self.allow)
 
     @property
     def checker_provider(self) -> str:

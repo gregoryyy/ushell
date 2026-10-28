@@ -30,6 +30,8 @@ usage:
                                (keychain on macOS), model, and effort
   ush ai status                show provider, model, key source, and paths
   ush ai clear-key             remove the stored API key
+  ush allow [add|remove RULE]  list, add, or remove commands that may run without
+                               approval, e.g. ush allow add kubectl get
   ush history [-n N]           list recent requests and the commands they ran
   ush replay ID|last [-n]      run those commands again, without AI
   ush help                     show this help
@@ -167,6 +169,8 @@ def _main(argv: list[str], ui: Terminal) -> int:
         return _ai(rest[1:], ui, ident, settings, keys)
     if rest and rest[0] == "history":
         return _history(rest[1:], history)
+    if rest and rest[0] == "allow":
+        return _allow(rest[1:], ui, ident)
     if rest and rest[0] == "replay":
         return _replay(rest[1:], ui, history, settings, options)
     if rest and not rest[0].startswith("//"):
@@ -353,6 +357,8 @@ def _ai(args: list[str], ui: Terminal, ident: Identity, settings: Settings,
             print(f"model:     {settings.model} (effort {settings.effort})")
             print(f"key:       {mask(key) + ' from ' + source if key else 'not configured'}")
         print(f"checker:   {checker_disclosure(settings) if settings.checker else 'off'}")
+        print(f"allow:     {len(settings.allow)} rule(s), see `ush allow`" +
+              (" (not used as root)" if ident.is_root and settings.allow else ""))
         print(f"user:      {ident.name}" + (f" (key and settings of {ident.owner_name})"
                                               if ident.via_sudo else ""))
         print(f"settings:  {os.path.join(ident.config_dir(), 'config.json')}")
@@ -364,6 +370,30 @@ def _ai(args: list[str], ui: Terminal, ident: Identity, settings: Settings,
         ui.info("removed key from " + ", ".join(removed) if removed else "no stored key found")
         return 0
     raise ConfigError(f"unknown ai command {action!r}; use configure, status, or clear-key")
+
+
+def _allow(args: list[str], ui: Terminal, ident: Identity) -> int:
+    """The allowlist in the settings file (environment overrides are not saved)."""
+    settings = load_settings(ident)
+    action, rule = (args[0], " ".join(args[1:])) if args else ("list", "")
+    if action == "list":
+        if not settings.allow:
+            ui.info("no allow rules; only ush's own read-only commands run without approval")
+        for rule in settings.allow:
+            print(rule)
+        if ident.is_root and settings.allow:
+            ui.info("as root, these rules are not used")
+        return 0
+    if action not in ("add", "remove") or not rule:
+        raise ConfigError("usage: ush allow [list | add RULE | remove RULE]")
+    if action == "add":
+        rule = settings.add_rule(rule)
+        ui.info(f"allowed without approval: {rule} … (still asks for a change, a redirection, "
+                "a secret file, or --confirm)")
+    elif not settings.remove_rule(rule):
+        raise ConfigError(f"no allow rule {rule!r}; see `ush allow`")
+    save_settings(ident, settings)
+    return 0
 
 
 def _ollama_models(url: str) -> list[str]:
@@ -427,7 +457,7 @@ def _replay_step(step: Step, ui: Terminal, settings: Settings, options: Options,
         auto, reason = False, "scripts always need approval"
     else:
         ui.show_command(step.command, step.purpose, "")
-        verdict = classify(step.command)
+        verdict = classify(step.command, () if identity().is_root else settings.allow_rules)
         auto = verdict.auto and not options.confirm_all
         reason = verdict.reason or "--confirm asks for every command"
     if dry_run:

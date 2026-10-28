@@ -248,13 +248,15 @@ class Agent:
         purpose = " ".join(str(args["purpose"]).split())[:200]
         if name == "run_command":
             command = args["command"].strip()
-            verdict = classify(command)
+            # A root session uses no allow rules: they were given for the user's own account.
+            verdict = classify(command, () if self.ident.is_root else self.settings.allow_rules)
             auto = verdict.auto and args["effect"] == "read" and not self.options.confirm_all
             reason = (verdict.reason or
                       ("marked as a change" if args["effect"] == "change" else "") or
                       ("--confirm asks for every command" if self.options.confirm_all else ""))
-            step = Step("command", command, purpose=purpose)
-            self.ui.show_command(command, purpose, "")
+            step = Step("command", command, purpose=purpose, rule=verdict.rule if auto else "")
+            self.ui.show_command(command, purpose,
+                                 f"allowed by your rule: {verdict.rule}" if step.rule else "")
         else:
             command, auto, reason = args["source"], False, "scripts always need approval"
             step = Step("script", command, language=args["language"], purpose=purpose)

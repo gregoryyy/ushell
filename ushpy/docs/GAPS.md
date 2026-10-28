@@ -3,7 +3,7 @@
 Open questions and explicit assumptions for ush. **Questions** are for the user to answer.
 **Assumptions** are what the documents currently take for granted because they seemed clear enough
 not to ask; check them and correct any that are wrong. The rules for this file are in
-[SDLC](../../docs/SDLC.md#work-items). Status: 2026-10-27 14:52.
+[SDLC](../../docs/SDLC.md#work-items). Status: 2026-10-28 10:23.
 
 - Answers carry date, time and author: `**Answer** (2026-10-27 15:10, Gregor Heinrich): …`. Short
   answers are fine. A changed answer goes on top; earlier ones stay below it, struck through.
@@ -46,6 +46,16 @@ second or so per command; with Anthropic it costs a small request per command.
 - **Proposed:** keep it off by default; `ush ai configure` offers it, and the README recommends a
   local model of 3B or more once the corpus (TODO 2.11) shows one that misses no attack in it.
 
+### Q5. Should ush have a blacklist mode?
+
+Asked by the user on 2026-10-28 together with the allowlist (TODO 2.15). A blacklist mode would run
+everything except listed commands without approval.
+
+- **Proposed:** no. It fails open on every command nobody listed, and an injected instruction needs
+  only one ([ARCH](ARCH.md#the-users-allowlist)). Instead, if wanted: deny rules that only add
+  friction, `ask` (always ask, even when the table would run it) and `never` (refuse even
+  when approved), for commands a user wants extra protection from (`rm -rf`, `diskutil erase`).
+
 ## Assumptions
 
 | ID | Assumption | Where it matters | Correction |
@@ -56,3 +66,4 @@ second or so per command; with Anthropic it costs a small request per command.
 | A4 | Anthropic's default model stays `claude-opus-5-5` with effort `medium`, even though it is the most expensive choice. | `config.py`, README | |
 | A5 | "An adversarial model to check the proposed implementation that takes independent sources; it can be a small model" (2026-10-27) means a runtime checker: a second model that judges each command or script the assistant proposes, from independent input (the user's requests only, not the output the assistant read). Not a reviewer of code changes in this repository. | TODO 2.13, [ARCH](ARCH.md), `check.py` | |
 | A6 | The checker is off unless configured: it needs a model, adds a request per command, and small models raise false alarms. | `config.py`, README | |
+| A7 | Allow rules are for the user's own account; a root session (`sudo ush`) uses none, even the invoking user's. | `agent.py`, `cli.py` | |

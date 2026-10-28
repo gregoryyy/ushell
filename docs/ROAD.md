@@ -52,8 +52,9 @@ release ships the Go binary.
 
 ## 3. ush for daily use
 
-- A user allowlist of commands that run without approval, on top of the built-in read-only table
-  (next ushpy item, with its ushgo item).
+- A user allowlist of commands that run without approval, on top of the built-in read-only table:
+  done in ushpy (TODO 2.15), to port (ushgo TODO 1.11). No blacklist mode; deny rules that only
+  add friction may follow (ushpy GAPS Q5).
 - A broader built-in command table from real sessions (ushpy TODO 2.4), each command with negative
   tests.
 - An OS sandbox for auto-approved commands (2.6): `sandbox-exec` on macOS, Landlock or namespaces

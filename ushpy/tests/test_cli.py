@@ -149,6 +149,21 @@ class CliTest(TempDirTest):
         history = self.ush("history").stdout
         self.assertIn("declined", history)
 
+    def test_allow_rules_are_listed_added_and_removed(self):
+        self.assertIn("no allow rules", self.ush("allow").stderr)
+        added = self.ush("allow", "add", "kubectl", "get")
+        self.assertEqual(added.returncode, 0, added.stderr)
+        self.assertEqual(self.ush("allow").stdout, "kubectl get\n")
+        self.assertIn("allow:     1 rule(s)", self.ush("ai", "status").stdout)
+        refused = self.ush("allow", "add", "bash")
+        self.assertEqual(refused.returncode, 2)
+        self.assertIn("runs other commands", refused.stderr)
+        self.assertEqual(self.ush("allow", "remove", "kubectl", "get").returncode, 0)
+        self.assertEqual(self.ush("allow").stdout, "")
+        self.assertEqual(self.ush("allow", "remove", "kubectl", "get").returncode, 2)
+        # Rules come only from the settings file, never from the environment.
+        self.assertEqual(self.ush("allow", env={"USH_ALLOW": "git"}).stdout, "")
+
     def test_ollama_misconfiguration_fails_before_any_request(self):
         with MockAPI([]) as api:
             no_model = self.ush("//x", env={"USH_PROVIDER": "ollama", "USH_OLLAMA_URL": api.url})

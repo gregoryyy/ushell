@@ -269,3 +269,20 @@ class EnvTemplateTest(unittest.TestCase):
                     s.set_model(value)
                     self.assertEqual(s.active_model, value)
 
+
+class AllowSettingsTest(TempDirTest):
+    def test_rules_round_trip_and_bad_rules_are_refused(self):
+        s = Settings()
+        self.assertEqual(s.add_rule(" kubectl  get "), "kubectl get")
+        s.add_rule("kubectl get")
+        self.assertEqual(s.allow, ["kubectl get"])
+        self.assertEqual(Settings.from_dict(s.to_dict()).allow_rules, (("kubectl", "get"),))
+        for bad in ("bash", "rm", "find", "git $(x)"):
+            with self.subTest(rule=bad), self.assertRaises(ConfigError):
+                s.add_rule(bad)
+        for data in ({"allow": "git status"}, {"allow": ["git status", "sh"]}, {"allow": [3]}):
+            with self.subTest(data=data), self.assertRaises(ConfigError):
+                Settings.from_dict(data)
+        self.assertTrue(s.remove_rule("kubectl   get"))
+        self.assertFalse(s.remove_rule("kubectl get"))
+
