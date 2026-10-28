@@ -18,3 +18,5 @@ __pycache__/
 .env
 .env.*
 !.env.template
+# Go release archives (just ushgo-release)
+ushgo/dist/

@@ -4,7 +4,7 @@ Plan for ushgo, the Go port of ush: the approach is in [ARCH](ARCH.md), what cha
 in [SEC](SEC.md), the phases in [ROAD](ROAD.md), open questions in [GAPS](GAPS.md), and progress in
 [DONE](DONE.md). The process is [SDLC](../../docs/SDLC.md); the rules in
 [AGENTS.md](../../AGENTS.md) take precedence. IDs are ushgo's own, independent of ush's and wish's.
-Status: 2026-10-28 09:59.
+Status: 2026-10-28 10:17.
 
 Status: `[ ]` open, `[x]` done. Tags:
 - *(decision)*: a choice to make and record in DONE before the dependent work starts.
@@ -68,7 +68,19 @@ In dependency order: the packages that don't depend on others first.
 - [ ] 2.1 Static release builds for macOS and Linux on arm64 and amd64 (`-trimpath`,
   `CGO_ENABLED=0`), an installer for a root-owned copy, checksums. Acceptance: reproducible from
   the tag on a second machine.
+  - [x] 2.1.1 `tools/release` and `scripts/release.sh VERSION [--check]` (`just ushgo-release`):
+    one `ush-VERSION-OS-ARCH.tar.gz` per target with the binary, `install.sh`, the zsh plugin and
+    a README, plus `SHA256SUMS`; deterministic (no build ID or paths, fixed order, owners and
+    times from the commit). Acceptance: tests for the packing, version checks, two full builds
+    identical, the host binary runs and reports the version, the installer puts files where
+    ushpy's does and none writable by others.
+  - [ ] 2.1.2 The same checksums from the same tag on a second machine (Linux CI once Actions runs,
+    or by hand).
+  - [ ] 2.1.3 *(decision)* macOS distribution: signing and notarization with an Apple Developer ID,
+    a Homebrew tap that builds from source, or neither (GAPS Q3).
 - [x] 2.2 *(decision)* Which implementation is maintained after parity: both, Go as the
   deliverable, Python as the experimental implementation (GAPS Q2, 2026-10-28).
 - [ ] 2.3 Release gate per [AGENTS.md](../../AGENTS.md) and [SEC](SEC.md): conformance on each
   supported OS, ush SECTEST levels 1 and 2 on the binary, `govulncheck`, secret scan.
+- [ ] 2.4 The man page `ush.1` (ushpy TODO 2.14) in the release archive, installed to
+  `share/man/man1`.

@@ -21,7 +21,7 @@ effect.
 | --- | --- | --- |
 | **Behavioural drift.** The two implementations decide differently on a command line, so a command ush asks about runs unasked in ushgo. | One corpus of command lines with expected decisions, run against both policies; differential fuzzing (`go test -fuzz`) of the tokenizer against `zsh -f`. A difference that auto-approves where ush asks fails the build. | 1.1, 1.10 |
 | **Go toolchain and modules.** A dependency or the toolchain is compromised. | `go.sum` pins every module; Go's checksum database verifies them; `govulncheck` before each release; `GOTOOLCHAIN=local` in tests and CI, so no toolchain is fetched. Each dependency's licence and maturity in [ARCH](ARCH.md). | 2.3 |
-| **Release binaries.** A binary differs from the source. | Reproducible builds (`-trimpath`, fixed `-ldflags`), checksums published with the release; the release gate in [AGENTS.md](../../AGENTS.md) runs on the built binaries. | 2.1, 2.3 |
+| **Release binaries.** A binary differs from the source, or an archive is altered. | Deterministic builds (`tools/release`: `-trimpath`, no build ID, no symbols, fixed archive order, owners and times from the commit), so anyone can rebuild a tag and compare `SHA256SUMS`; the installer writes nothing writable by others. Unsigned on macOS (GAPS Q3). | 2.1 (2.1.1 done), 2.3 |
 | **Shared files with ush.** ushgo writes settings, keys or history that ush then trusts. | The same validation as ush on every read (0600 files, owner, no symlinks); the conformance tests cover the file formats. | 1.4, 1.5 |
 
 ## Release gate

@@ -25,6 +25,11 @@ ushpy-test:
 ushgo-test:
     @ushgo/scripts/test.sh
 
+# Build the Go release archives into ushgo/dist/, e.g. `just ushgo-release 0.1.0` (`--check` to
+# build twice and compare). Building only; publishing a release is a human's step.
+ushgo-release version *args:
+    @ushgo/scripts/release.sh {{version}} {{args}}
+
 # Check relative links and images in all Markdown files
 links:
     @python3 tools/check-links.py

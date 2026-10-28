@@ -40,13 +40,14 @@ than waiting for it. Step 4 starts when the user decides (wish GAPS Q1); the pro
 In order: fix F1, terminal escape sequences in the approval prompt (ushpy TODO 2.9); close F2, DNS
 exfiltration by auto-approved lookups (2.10); fill the security test gaps (2.11). Then the paid smoke
 test and manual checks by the user (2.1.2), the keychain under sudo (2.2), distribution (ushpy GAPS
-Q2), and the release gate (3.1). Each fix gets its ushgo item in the same PR.
+Q2), a man page (2.14), and the release gate (3.1). Each fix gets its ushgo item in the same PR.
 
 ## 2. ush in Go
 
 Port in dependency order: policy, redaction, execution, configuration, history, provider, agent,
 terminal, command line, conformance (ushgo TODO 1.1–1.10). Release builds for macOS and Linux on
-arm64 and amd64 (ushgo TODO 2.1), then the release gate on the binaries (2.3). From then on, a ush
+arm64 and amd64 (ushgo TODO 2.1; the deterministic build exists, distribution on macOS is ushgo
+GAPS Q3), the man page (2.4), then the release gate on the binaries (2.3). From then on, a ush
 release ships the Go binary.
 
 ## 3. ush for daily use

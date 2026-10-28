@@ -9,6 +9,51 @@ defined in [SDLC](../../docs/SDLC.md#done-entries).
 
 ---
 
+## 2026-10-28 10:17 — Deterministic release build
+
+TODO items: 2.1.1 (2.1 stays open for 2.1.2, a second machine, and 2.1.3, macOS distribution). New:
+2.4 (man page in the archive), GAPS Q3. PR: [#10](https://github.com/gregoryyy/ushell/pull/10)
+(stacked on #9).
+
+Agent: Opus 5.5, reasoning: not exposed, subagents: none.
+
+### Implementation notes
+
+- `tools/release` (Go, standard library only): builds `cmd/ush` for darwin and linux on arm64 and
+  amd64 (`CGO_ENABLED=0`, `-trimpath`, `-buildvcs=false`, `-s -w -buildid=`, version stamped),
+  packs each with `install.sh`, `README.txt` and the zsh plugin from `ushpy/shell/` into
+  `ush-VERSION-OS-ARCH.tar.gz` with `archive/tar` and `compress/gzip` (members sorted, owner 0, no
+  names, timestamps from `-epoch`, no gzip name or time), writes `SHA256SUMS`; `-check` builds twice
+  and compares. It finds the module root itself.
+- `scripts/release.sh VERSION [--check]` and `just ushgo-release`: epoch from the commit time;
+  refuses a real build with uncommitted changes in `ushgo/` or the plugin. `ushgo/dist/` ignored.
+- `packaging/install.sh`: the same places as ushpy's installer, atomic replace of the binary, mode
+  755/644; `packaging/README.txt`: contents, checksum check, macOS quarantine note.
+- Docs: README (release build), ARCH (decision: Go's archive writer, flags, install places), SEC
+  (release-binaries row), GAPS Q3 (macOS: Homebrew tap proposed vs. signing and notarization),
+  TODO 2.1.1–2.1.3 and 2.4; ushpy TODO 2.14 (man page); root ROAD.
+- **Validation:** `scripts/test.sh`: ok; `tools/release` tests: packing deterministic and ordered,
+  epoch matters, owners and times fixed, member and directory names without paths, versions
+  checked, two full builds identical, the host binary from the archive prints `ush 1.2.3 (go)`, the
+  installer into a scratch prefix leaves nothing writable by others (13.7 s). `scripts/release.sh
+  0.0.1 --check`: "reproducible: two builds are identical". Build of all four: 1.9 s (warm cache);
+  archives 0.65–0.75 MB; the darwin/arm64 binary 1.6 MB, linked only to `libSystem` and
+  `libresolv`. `just ci`: see the PR.
+
+### Deviations
+
+- Not yet tested: the same checksums on a second machine (2.1.2); the Linux CI job will show it
+  when Actions runs, since the test builds twice there too, but not across machines.
+
+### Insights
+
+- The stub binary is 1.6 MB against a 69 MB Python venv; with the Anthropic SDK and the policy the
+  binary will grow, but stays one file that root can own.
+- Shell `tar` would have tied the archive bytes to the build machine's tar; the standard library
+  removes that dependency at the cost of about 120 lines.
+
+---
+
 ## 2026-10-28 09:59 — The command is `ush`; Go is the deliverable
 
 TODO items: 0.3, 2.2. GAPS Q2 resolved. PR: [#8](https://github.com/gregoryyy/ushell/pull/8) (stacked on #7).

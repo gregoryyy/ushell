@@ -19,6 +19,20 @@ just ushgo-test                         # from the repository root: gofmt, go ve
 cd ushgo && go build -o ush ./cmd/ush   # writes ./ush
 ```
 
+### Release build
+
+```sh
+just ushgo-release 0.1.0                # or scripts/release.sh 0.1.0: archives in ushgo/dist/
+scripts/release.sh 0.1.0 --check        # build twice, compare, keep nothing
+```
+
+One `ush-VERSION-OS-ARCH.tar.gz` per platform (macOS and Linux, arm64 and amd64), each with the
+binary, `install.sh`, the zsh plugin and a README, plus `SHA256SUMS`. The build is deterministic:
+the same commit and version give the same checksums on any machine, so anyone can check a release
+against the source. It takes about two seconds for all four with a warm build cache; an archive is about 0.7 MB today. To
+install from an archive: `tar -xzf ush-….tar.gz && ush-…/install.sh` (or `sudo … --prefix
+/usr/local`). Publishing a release is a human's step.
+
 `scripts/test.sh` sets `GOTOOLCHAIN=local`, so Go never downloads another toolchain, and
 `CGO_ENABLED=0`, so the binary is static.
 

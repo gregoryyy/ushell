@@ -97,6 +97,11 @@ DONE has an entry for it.
   makes the command need approval; OK never approves; disclosed in the banner and `ai status`.
   Acceptance: agent, parser, settings, provider (`complete`) and end-to-end tests; a live run on a
   local model recorded in SECTEST; SEC updated.
+- [ ] 2.14 A man page, `ush.1`, for the command in both implementations: synopsis, the `//`
+  forms, options, subcommands, environment (`USH_*`), files, what leaves the machine, exit
+  statuses, examples. One source in the repository; `install.sh` installs it to
+  `share/man/man1`, and the Go release archive carries it (ushgo TODO 2.4). Acceptance: `man ush`
+  after either install; a test that every option in `ush help` appears in the page.
 
 ## 3. Release
 

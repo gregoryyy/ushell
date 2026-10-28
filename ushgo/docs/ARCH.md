@@ -73,6 +73,16 @@ implementations are the command `ush`.
   differ. Porting ush's own tokenizer (about 110 lines, built for exactly the `zsh -f` rules the policy
   needs) keeps the decisions equal by construction. Proposed: port it, and use `mvdan.cc/sh` only if
   the differential tests show the port can't keep up.
+- **2026-10-28: release builds with Go's own archive writer** (`tools/release`, TODO 2.1.1).
+  `tar` differs between macOS (bsdtar) and Linux (GNU tar) in headers and options, so archives
+  built on two machines would differ; `archive/tar` and `compress/gzip` from the standard library
+  give the same bytes everywhere. Binaries: `CGO_ENABLED=0`, `-trimpath`, `-buildvcs=false`,
+  `-ldflags "-s -w -buildid= -X main.version=…"`. Archive members: the binary, `install.sh`, the
+  zsh plugin from `ushpy/shell/` (one plugin for both implementations) and a README; timestamps
+  are the commit time. The installer uses the same places as ushpy's (`~/.local/bin`,
+  `~/.local/share/ush`; `PREFIX/bin`, `PREFIX/lib/ush`), so the plugin line in `~/.zshrc` stays
+  valid when switching implementations. On macOS a Go binary links `libSystem` and `libresolv`
+  from the system, as every macOS program does; nothing else.
 - **CI:** the `ushgo` job in [ci.yml](../../.github/workflows/ci.yml) runs `scripts/test.sh` on
   Ubuntu and macOS with `actions/setup-go`; the local CI maps that action to the machine's Go when
   its version matches ([tools/ci/README.md](../../tools/ci/README.md)).

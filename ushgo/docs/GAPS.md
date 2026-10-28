@@ -3,7 +3,7 @@
 Open questions and explicit assumptions for ushgo. **Questions** are for the user to answer.
 **Assumptions** are what the documents currently take for granted; check them and correct any
 that are wrong. The rules for this file are in [SDLC](../../docs/SDLC.md#work-items). Status:
-2026-10-28 09:59.
+2026-10-28 10:17.
 
 ## Questions
 
@@ -32,6 +32,16 @@ Two implementations of a security-critical policy double the review work and can
 - **Resolved** (2026-10-28 09:59, agent): both are maintained; the command is `ush` in both; Python
   is experimental, Go the deliverable, with equivalent functionality. [ARCH](ARCH.md#decisions),
   [SDLC](../../docs/SDLC.md#ush-one-command-two-implementations), TODO 0.3 and 2.2.
+
+### Q3. How is the Go binary distributed on macOS? — blocking for TODO 2.1.3
+
+macOS refuses to run an unsigned binary that a browser downloaded (quarantine). Downloads with curl,
+and binaries built locally, run without that.
+
+- **Proposed:** a Homebrew tap that builds from the tagged source (no signing needed, `brew
+  upgrade` for updates), plus the release archives with checksums for Linux and for curl users.
+  Signing and notarization need an Apple Developer ID (99 USD a year) and add a notarization step
+  to every release; worth it only for users who download with a browser.
 
 ## Assumptions
 
