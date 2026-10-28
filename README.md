@@ -4,17 +4,26 @@ Shells that share one command paradigm: ordinary commands run as typed, and a su
 with `//` is a natural-language request. The AI turns it into real shell commands that are shown,
 checked, and executed. Both use the user's own AI API key, or a local model.
 
-| Project | Where it runs | Status |
+| Project | What | Status |
 | --- | --- | --- |
-| [ush](ushpy/README.md) | zsh on the user's machine, optionally under `sudo`; Python, the experimental implementation | Version 0.1 implemented; not yet released |
-| [ushgo](ushgo/README.md) | The same `ush` command, compiled in Go: the deliverable | Set up; answers no requests yet |
+| **ush** | The `//` shell for zsh on your machine, optionally under `sudo`; one command, two implementations | |
+| ↳ [ushpy](ushpy/README.md) | ush in Python: the experimental implementation, where features are tried first | Version 0.1 implemented; not yet released |
+| ↳ [ushgo](ushgo/README.md) | ush in Go: the compiled deliverable, one static binary | Set up; answers no requests yet |
 | [wish](wish/README.md) | Browser workspace: files, notebooks, live tools | Design documents; not implemented |
+
+What comes next, across the projects, is in the roadmap: [docs/ROAD.md](docs/ROAD.md).
 
 ## ush
 
 ush brings `//` to zsh. Ask in plain language; ush investigates with real Unix commands, interprets
-the output, and answers, with follow-up questions in the same context. It needs zsh, Python 3.10 or
-newer, and an Anthropic API key or a local model in Ollama.
+the output, and answers, with follow-up questions in the same context. Read-only commands run
+immediately; anything else is shown for approval first. It uses an Anthropic API key or a local
+model in Ollama, and an optional second model can check each proposed command.
+
+`ush` is one command with two implementations that must behave the same: Python in `ushpy/` and Go
+in `ushgo/`. `ush --version` says which one you have (`(python)` or `(go)`). Features land in Python
+first and are then ported to Go; releases ship the Go binary once it passes the same black-box tests
+([SDLC](docs/SDLC.md#ush-one-command-two-implementations)). Until then, install the Python one.
 
 ```sh
 cd ushpy && ./install.sh         # installs ~/.local/bin/ush; prints the zsh plugin line
@@ -22,22 +31,24 @@ ush ai configure                 # provider, model, and key (macOS keychain or a
 ush //find out why my machine does not have enough disk space
 ```
 
-Read-only commands run immediately; anything else is shown for approval first. See
-[ushpy/README.md](ushpy/README.md) for the plugin, `sudo` use, local models, and what is sent to the
-provider. Its plan and records are in [ushpy/docs/](ushpy/docs/): [TODO](ushpy/docs/TODO.md),
-[ROAD](ushpy/docs/ROAD.md), [ARCH](ushpy/docs/ARCH.md), [SEC](ushpy/docs/SEC.md),
-[GAPS](ushpy/docs/GAPS.md), and [DONE](ushpy/docs/DONE.md).
+To check an installed `ush` of either implementation, run the user smoke test
+([SMOKE](ushpy/docs/SMOKE.md)): `ushpy/scripts/smoke.sh` offline, then with
+`--provider ollama --model …` on a local model, or `--bin PATH` for another binary.
 
-To check an installed `ush`, run the user smoke test ([SMOKE](ushpy/docs/SMOKE.md)):
-`ushpy/scripts/smoke.sh` offline, then with `--provider ollama --model …` on a local model.
+### ushpy: Python
 
-## ushgo
+The reference for behaviour and the place to try features: zsh plugin, `sudo` use, local models,
+the checker model, and what is sent to the provider are described in
+[ushpy/README.md](ushpy/README.md). Its plan and records are in [ushpy/docs/](ushpy/docs/):
+[TODO](ushpy/docs/TODO.md), [ROAD](ushpy/docs/ROAD.md), [ARCH](ushpy/docs/ARCH.md),
+[SEC](ushpy/docs/SEC.md), [SECTEST](ushpy/docs/SECTEST.md), [GAPS](ushpy/docs/GAPS.md), and
+[DONE](ushpy/docs/DONE.md). It needs Python 3.10 or newer.
 
-ushgo is the same `ush` command implemented in Go, and the version users will install: one static
-binary, with no interpreter or installed packages for root to trust under `sudo`, and no two-second
-start while a Python SDK loads. The Python implementation is where features are tried first; ushgo
-then gets each one, so both behave the same, checked by the same black-box tests and the same smoke
-test ([docs/SDLC.md](docs/SDLC.md#ush-one-command-two-implementations)).
+### ushgo: Go
+
+The version users will install: one static binary, with no interpreter or installed packages for
+root to trust under `sudo`, and no two-second start while a Python SDK loads. Today it answers
+`--version` and `--help` only; the port goes module by module, policy first.
 
 ```sh
 just ushgo-test                                  # gofmt, go vet, go test (Go 1.27: brew install go)
@@ -45,8 +56,7 @@ cd ushgo && go build -o ush ./cmd/ush            # writes ./ush
 ./ush --version                                  # ush 0.0.0-dev (go)
 ```
 
-Today it answers `--version` and `--help` only; the port goes module by module, policy first. See
-[ushgo/README.md](ushgo/README.md) and its plan in [ushgo/docs/](ushgo/docs/):
+See [ushgo/README.md](ushgo/README.md) and its plan in [ushgo/docs/](ushgo/docs/):
 [TODO](ushgo/docs/TODO.md), [ROAD](ushgo/docs/ROAD.md), [ARCH](ushgo/docs/ARCH.md),
 [SEC](ushgo/docs/SEC.md), [GAPS](ushgo/docs/GAPS.md), and [DONE](ushgo/docs/DONE.md).
 
@@ -61,9 +71,10 @@ pipes, JSON/CSV, and one Python notebook, starting from an evaluation of just-ba
 
 ## How the work is organised
 
-Each project keeps the same documents in its `docs/` folder: TODO (the plan, with stable numbered
-items), DONE (the progress log, newest first), ARCH, ROAD, SEC, and GAPS (the questions only the
-user can answer). [docs/SDLC.md](docs/SDLC.md) describes the process. Work happens on branches and
+Each project (ushpy, ushgo, wish) keeps the same documents in its `docs/` folder: TODO (the plan,
+with stable numbered items), DONE (the progress log, newest first), ARCH, ROAD, SEC, and GAPS (the
+questions only the user can answer). [docs/SDLC.md](docs/SDLC.md) describes the process and
+[docs/ROAD.md](docs/ROAD.md) the roadmap across projects. Work happens on branches and
 merges through human-reviewed GitHub PRs; AI never merges ([AGENTS.md](AGENTS.md)). Every feature
 needs tests, and every release needs fresh security checks.
 
@@ -71,6 +82,7 @@ needs tests, and every release needs fresh security checks.
 AGENTS.md                 rules for contributors and agents: human merges, tests, security, releases
 CLAUDE.md                 points to AGENTS.md
 docs/SDLC.md              the development process shared by all projects
+docs/ROAD.md              the roadmap across projects
 ushpy/                    ush in Python, experimental: README, docs/, src/, tests/, shell/
 ushgo/                    ush in Go, the deliverable: README, docs/, cmd/ush/, scripts/
 wish/                     browser workspace: README, docs/
@@ -84,17 +96,18 @@ tools/                    PDF build scripts, the Markdown link checker, local CI
 just                      # list recipes
 just ush-test             # both implementations: ushpy-test and ushgo-test
 just ushpy-test           # Python: unit, integration, and zsh tests
-just ushgo-test           # ushgo: gofmt, go vet, go test
+just ushgo-test           # Go: gofmt, go vet, go test
 just links                # check relative links in all Markdown files
 just ci                   # the CI workflow, locally, on a clean checkout of HEAD
-just ush '//…'            # ush from source with the settings in .env (.env.template)
+just ush '//…'            # the Python ush from source with the settings in .env (.env.template)
 ```
 
-CI ([ci.yml](.github/workflows/ci.yml)) runs the link check, the ush suite on
-Ubuntu and macOS with Python 3.10 and 3.13, the local CI's own tests, and a gitleaks
-secret scan. GitHub Actions doesn't start jobs for this account at the moment, so
-`just ci --post` runs the workflow on the developer's machine and reports to the PR
-as commit statuses; see [tools/ci/README.md](tools/ci/README.md).
+CI ([ci.yml](.github/workflows/ci.yml)) runs the link check, the ushpy suite on
+Ubuntu and macOS with Python 3.10 and 3.13, the ushgo suite on Ubuntu and macOS with
+Go 1.27, the local CI's own tests, and a gitleaks secret scan. GitHub Actions doesn't
+start jobs for this account at the moment, so `just ci --post` runs the workflow on the
+developer's machine and reports to the PR as commit statuses; see
+[tools/ci/README.md](tools/ci/README.md).
 
 ## Document PDFs
 

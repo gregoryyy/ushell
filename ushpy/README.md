@@ -4,6 +4,11 @@ ush brings wish's `//` paradigm to zsh on your own machine. Ask in plain languag
 ush investigates with real Unix commands and short helper scripts, interprets the
 output, and answers. You can then ask follow-up questions in the same context.
 
+This directory, `ushpy/`, is the Python implementation of `ush`: the experimental one, where
+features are tried first. The Go implementation in [ushgo/](../ushgo/README.md) is the same command
+and will be the one releases ship; both must behave the same
+([SDLC](../docs/SDLC.md#ush-one-command-two-implementations)).
+
 ```console
 $ ush //find out why my machine does not have enough disk space and visual tools don't seem to get anywhere
 ush · claude-opus-5-5 · requests and command output go to Anthropic, secrets redacted
