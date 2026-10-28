@@ -7185,7 +7185,7 @@
    "command": "sed -n p .* '' /etc/ssh/sshd_config \\  ~/docs",
    "rules": false,
    "auto": false,
-   "reason": "reads a secret location (/private/etc/ssh/sshd_config)",
+   "reason": "reads a secret location (/etc/ssh/sshd_config)",
    "sudo": false,
    "rule": ""
   },
@@ -10353,7 +10353,7 @@
    "command": ".* < /etc/ssh/sshd_configa.txt",
    "rules": false,
    "auto": false,
-   "reason": "reads a secret location (/private/etc/ssh/sshd_configa.txt)",
+   "reason": "reads a secret location (/etc/ssh/sshd_configa.txt)",
    "sudo": false,
    "rule": ""
   },
@@ -10513,7 +10513,7 @@
    "command": "cat .* -delete /etc/ssh/sshd_config",
    "rules": false,
    "auto": false,
-   "reason": "reads a secret location (/private/etc/ssh/sshd_config)",
+   "reason": "reads a secret location (/etc/ssh/sshd_config)",
    "sudo": false,
    "rule": ""
   },

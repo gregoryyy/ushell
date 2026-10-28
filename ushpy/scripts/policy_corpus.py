@@ -92,6 +92,7 @@ def corpus() -> dict:
     lines += fuzz_lines()
     with tempfile.TemporaryDirectory(prefix="ush-corpus-") as tmp:
         root = os.path.realpath(tmp)
+        etc = os.path.realpath("/etc")  # /private/etc on macOS; the corpus holds /etc
         for path in FIXTURE:
             full = os.path.join(root, path)
             if path.endswith("/"):
@@ -114,7 +115,8 @@ def corpus() -> dict:
                     seen.add((line, bool(rule_set)))
                     v = classify(line, rule_set)
                     cases.append({"command": line, "rules": bool(rule_set), "auto": v.auto,
-                                  "reason": v.reason.replace(root, "$ROOT"), "sudo": v.sudo,
+                                  "reason": v.reason.replace(root, "$ROOT").replace(etc + "/", "/etc/"),
+                                  "sudo": v.sudo,
                                   "rule": v.rule})
                 parsed = []
                 for text in RULE_TEXTS:
