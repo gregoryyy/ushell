@@ -464,6 +464,11 @@ def _word(command: str, i: int) -> tuple[Token, int]:
             value, i = _variable(command, i)  # zsh neither splits nor globs the value
             literal.append(value)
             pattern.append(glob.escape(value))
+        elif c == "{" and command.startswith("{}", i):
+            literal.append("{}")  # empty braces are literal in zsh: find -exec ... {} +
+            pattern.append(glob.escape("{}"))
+            i += 2
+            continue
         elif c in "{}":
             raise Unsupported("uses brace expansion")
         elif c == "#" and i == start:

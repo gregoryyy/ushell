@@ -77,10 +77,12 @@ objected. With the zsh plugin it then waits on your command line:
 - **Enter** runs it in your shell, as if you had typed it: `cd` and variables persist, and it lands
   in your shell history. ush records the exit status and the output for the next `//`.
 - **Edit** it first; ush sees the command that actually ran.
-- **Down** (the arrow key, past the last line of the proposal) explains it: the model says what
-  each part does, what it reads and changes, and what is risky, together with what ush's policy
-  says. The explanation appears above the command; the cursor stays in the command, so you can
-  still edit it, and Enter runs it. `ush explain COMMAND` explains any command line.
+- **Down** (the arrow key, past the last line of the proposal) explains it: what each part of
+  the command does, and what it accesses: files and network, read and write, and whether
+  personal data or secrets end up hidden or exposed. With `-v` (`ush -v` for a session, or `ush -v //…`) you also get a summary,
+  notes on what it reads, changes and risks, ush's own verdict, and where the command was sent.
+  The explanation appears above the command; the cursor stays in the command, so you can still
+  edit it, and Enter runs it. `ush explain [-v] COMMAND` explains any command line.
 - **Esc** closes the explanation, or else removes the proposal, so you can start from scratch;
   ush then knows you didn't run it. Esc does this only while a proposal is on the line; otherwise
   it keeps its usual meaning. (In vi mode, use Ctrl-U.) Typing a new `// …` over it also tells ush you didn't run it.
@@ -159,7 +161,7 @@ A model name starting with `claude-` is Anthropic's, any other is Ollama's; `ant
 | `-n`, `--dry-run` | agent mode, showing what it would run; run nothing |
 | `-c`, `--confirm` | agent mode: ask before every command, read-only ones included |
 | `-1`, `--once` | agent mode: answer, then stop (no follow-ups) |
-| `-v`, `--verbose` | show complete command output (default: the first 12 lines) |
+| `-v`, `--verbose` | full explanations (summary, parts, notes, ush's verdict); in agent mode, complete command output (default: the first 12 lines) |
 | `-m`, `--model M` | model for this run |
 | `-e`, `--effort L` | Anthropic effort: `low`, `medium`, `high`, `xhigh`, `max` |
 | `-k`, `--checker MODEL` | checker for this run (`claude-haiku-5-5`, `llama3.2:3b`, `off`) |
@@ -172,7 +174,7 @@ A model name starting with `claude-` is Anthropic's, any other is Ollama's; `ant
 | `ush ai status` | what is configured, and where things are |
 | `ush ai clear-key` | remove the stored API key |
 | `ush allow [add\|remove RULE]` | your allowlist |
-| `ush explain COMMAND…` | explain a command line with the model, without running it |
+| `ush explain [-v] COMMAND…` | explain a command line with the model, without running it |
 | `ush history [-n N]` | recent requests and the commands they ran (default 10) |
 | `ush replay ID\|last [-n]` | run those commands again, without AI, through the same approval checks |
 | `ush help`, `ush --version` | usage; version and implementation |

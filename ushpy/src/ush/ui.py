@@ -30,6 +30,7 @@ class Terminal:
         self._tty: Optional[TextIO] = None
         self._answer_open = False
         self._status_open = False
+        self.verbose = False   # -v: explanations from the line editor in full
 
     # -- styling -----------------------------------------------------------
     def _style(self, code: str, text: str) -> str:
@@ -144,7 +145,7 @@ class Terminal:
             return None
         self._end_answer()
         if prefill:
-            line = _vared(prompt, prefill, tty)
+            line = _vared(prompt, prefill, tty, self.verbose)
             if line is not None:
                 return line
         if tty is sys.stdin:
@@ -186,48 +187,53 @@ zmodload zsh/zle 2>/dev/null || exit 2
 line=$1 prompt=$2 out=$3
 typeset -ga ush=("${@[4,-1]}")
 typeset -gi explained=0
+# The prompt is drawn as PREDISPLAY, so an explanation can take its place above the command.
+_ush_init() {
+  PREDISPLAY=$prompt
+}
 _ush_esc() {
   if (( explained )); then
     explained=0
-    PREDISPLAY=
+    PREDISPLAY=$prompt
   else
     BUFFER= CURSOR=0
   fi
 }
 _ush_down() {
   if [[ $RBUFFER != *$'\n'* && -n ${BUFFER//[[:space:]]/} ]]; then
-    zle -M "ush: explaining…"
+    PREDISPLAY="ush: explaining…"$'\n'"→ "
     zle -R
     local text
-    text=$("${ush[@]}" explain -- "$BUFFER" 2>&1 </dev/null)
-    zle -M ''
+    text=$("${ush[@]}" explain --inline -- "$BUFFER" 2>&1 </dev/null)
     explained=1
-    PREDISPLAY=$'\n'"$text"$'\n'"Esc closes this · Enter runs the command"$'\n'"→ "
+    PREDISPLAY="$text"$'\n'"→ "
   else
     zle down-line-or-history
   fi
 }
 _ush_finish() {
-  PREDISPLAY=
+  PREDISPLAY=$prompt
 }
 zle -N _ush_esc
 zle -N _ush_down
+zle -N zle-line-init _ush_init
 zle -N zle-line-finish _ush_finish
 bindkey -e
 bindkey $'\e' _ush_esc
 bindkey $'\e[B' _ush_down
 bindkey $'\eOB' _ush_down
-vared -p "$prompt" line || exit 1
+vared -p '' line || exit 1
 print -rn -- "$line" >&$out
 """
 
 
-def _vared(prompt: str, prefill: str, tty: TextIO) -> Optional[str]:
+def _vared(prompt: str, prefill: str, tty: TextIO, verbose: bool) -> Optional[str]:
     """Edit `prefill` with zsh's vared; "" if cancelled, None if zsh can't edit here."""
     zsh = shutil.which("zsh")
     if not zsh:
         return None
-    ush = [sys.executable, *(["-I"] if sys.flags.isolated else []), "-m", "ush"]
+    ush = [sys.executable, *(["-I"] if sys.flags.isolated else []), "-m", "ush",
+           *(["-v"] if verbose else [])]
     streams = {} if tty is sys.stdin else {"stdin": tty, "stdout": tty, "stderr": tty}
     read, write = os.pipe()
     try:

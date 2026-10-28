@@ -12,6 +12,63 @@ top. The format is defined in [SDLC](../../docs/SDLC.md#done-entries).
 
 ---
 
+## 2026-10-28 21:11 — Brief explanations, full ones with -v
+
+TODO items: 2.21. PR: see below.
+
+Agent: Opus 5.5, reasoning: not exposed, subagents: none.
+
+### Implementation notes
+
+- **The request:** the user's transcript of Down in an `ush>` session (Sonnet), marking as "only
+  for verbose mode" the empty prompt line, the banner, ush's policy line, the summary paragraph,
+  the notes, and the key hint; "this can be started with ush --verbose or -v".
+- **Form:** `EXPLAIN_SYSTEM` asks for four parts under fixed English headers: `Summary:`,
+  `Parts:` (one line per part), `Access:` (files and network, each read and write, and
+  anonymization where it applies), `Notes:`. `brief()` keeps Parts and Access, as corrected by
+  the user ("add access: file and network read / write is good. note anonymization if
+  applicable"), and shows the whole answer if the model didn't keep the form.
+- **Verbose** comes from `ush -v` (session, passed to the line editor), from `ush -v //…` (stored
+  in the proposal, so the plugin's Down picks it up), or from `ush explain -v`. It adds:
+  - the banner and policy line on stderr;
+  - the summary and notes;
+  - with `--inline` (the Down key), the line "Esc closes this · Enter runs the command".
+- **Display:** the progress text "ush: explaining…" now goes into `PREDISPLAY` too, in place of
+  `zle -M`, whose message area left stale lines in the transcript. In the session editor `vared`
+  runs with an empty prompt, and the prompt is drawn as `PREDISPLAY`. The explanation can then
+  take its place, so no empty `ush> ` line stays above it; the line-init and line-finish hooks put
+  the prompt back.
+- **Policy:** the transcript's note "not verified as read-only: uses brace expansion" was wrong for
+  `-exec du -h {} +`. Empty braces are literal in zsh (`print -r -- {} a{}b {a,b}` prints
+  `{} a{}b a b`), so the tokenizer now keeps `{}` literal, and the reason is "find -exec runs
+  commands or changes files".
+- **Validation:**
+  - CLI tests:
+    - brief stdout is exactly the parts, with nothing on stderr;
+    - an answer without the form is shown whole;
+    - `-v explain` and a `-v` proposal show banner, policy, summary and notes;
+    - the hint appears only with `--inline`;
+    - `brief()` cases.
+  - Real zsh, after Ctrl-L so the whole screen is redrawn in order:
+    - the plugin draws prompt, explanation, `→ echo one`;
+    - the session draws explanation, `→ echo prefilled`, and no `ush> `.
+  - Policy: `test_empty_braces_are_literal`, and `ls a{}b` reads as read-only.
+  - Full suite below.
+
+### Deviations
+
+- Brief explanations show no banner, so the destination of the command is disclosed by the
+  request's own banner and in verbose mode, not on every explanation. This is the user's choice.
+
+### Insights
+
+- A fixed answer form with English headers keeps the filter simple and language-independent;
+  falling back to the whole answer means a model that ignores the form loses nothing.
+- Raw terminal output isn't a reliable test of the screen: zle redraws only what changed. Ctrl-L
+  forces a full redraw in order.
+
+---
+
 ## 2026-10-28 20:11 — Explanations above the command; proposals pre-filled in a session
 
 TODO items: 2.20. PR: see below.

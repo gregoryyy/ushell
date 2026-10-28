@@ -14,6 +14,8 @@ from mock_api import MockAPI
 from ush import cli
 
 SRC = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "src")
+EXPLANATION = ("Summary: creates a file.\nParts:\n- `touch FILE`: creates FILE if missing.\n"
+               "Access:\n- files: writes FILE\n- network: none\nNotes: harmless.")
 DEAD_URL = "http://127.0.0.1:9"  # the discard port: nothing listens, a request fails at once
 
 try:
@@ -158,7 +160,7 @@ class CliTest(TempDirTest):
             ([{"type": "tool_use", "id": "p1", "name": "propose_command",
                "input": {"command": f"touch {made}", "purpose": "create the file",
                          "effect": "change", "interactive": False}}], "tool_use"),
-            ([{"type": "text", "text": "touch creates an empty file."}], "end_turn"),
+            ([{"type": "text", "text": EXPLANATION}], "end_turn"),
             ([{"type": "text", "text": "rm deletes."}], "end_turn"),
         ]
         env = {"ANTHROPIC_API_KEY": SYNTHETIC_KEY, "USH_HANDOFF": handoff}
@@ -169,9 +171,10 @@ class CliTest(TempDirTest):
             other = self.ush("explain", "rm", "-rf", f"{self.tmp}/x", f"--token={SYNTHETIC_KEY}",
                              env=env)
         self.assertEqual(proposed.returncode, 0, proposed.stderr)
-        self.assertIn("touch creates an empty file.", proposed.stdout)
-        self.assertIn("explaining, runs nothing", proposed.stderr)
-        self.assertIn("ush's policy: not verified as read-only", proposed.stderr)
+        # Brief by default: only the parts, no banner or policy line.
+        self.assertEqual(proposed.stdout, "Parts:\n- `touch FILE`: creates FILE if missing.\n"
+                                          "Access:\n- files: writes FILE\n- network: none\n")
+        self.assertEqual(proposed.stderr, "")
         self.assertFalse(os.path.exists(made))
         body = api.requests[1]["body"]
         self.assertNotIn("tools", body)
@@ -180,9 +183,45 @@ class CliTest(TempDirTest):
         self.assertIn("for: create the file", sent)
         self.assertIn(f"touch {made}", sent)
         self.assertEqual(other.returncode, 0, other.stderr)
+        self.assertEqual(other.stdout, "rm deletes.\n")  # not in the form: shown whole
         self.assertNotIn(SYNTHETIC_KEY, json.dumps(api.requests[2]["body"]))
         self.assertTrue(os.path.exists(os.path.join(handoff, "proposal")))  # untouched
         self.assertEqual(self.ush("explain").returncode, 2)
+
+    @unittest.skipUnless(HAVE_SDK, "anthropic SDK not installed")
+    def test_verbose_explanations(self):
+        # -v on explain, or on the request whose proposal is explained, shows everything; the
+        # Down key (--inline) adds its hint then.
+        handoff = os.path.join(self.tmp, "ush.explain2")
+        os.mkdir(handoff, 0o700)
+        replies = [
+            ([{"type": "text", "text": EXPLANATION}], "end_turn"),
+            ([{"type": "tool_use", "id": "p1", "name": "propose_command",
+               "input": {"command": "ls", "purpose": "list", "effect": "read",
+                         "interactive": False}}], "tool_use"),
+            ([{"type": "text", "text": EXPLANATION}], "end_turn"),
+        ]
+        env = {"ANTHROPIC_API_KEY": SYNTHETIC_KEY, "USH_HANDOFF": handoff}
+        with MockAPI(replies) as api:
+            env["USH_BASE_URL"] = api.url
+            direct = self.ush("-v", "explain", "touch x", env=env)
+            self.ush("-v", "//list files", env=env)
+            inline = self.ush("explain", "--inline", "--", "ls", env=env)
+        for result in (direct, inline):
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("explaining, runs nothing", result.stderr)
+            self.assertIn("ush's policy:", result.stderr)
+            self.assertIn("Summary: creates a file.", result.stdout)
+            self.assertIn("Notes: harmless.", result.stdout)
+        self.assertNotIn("Esc closes this", direct.stdout)
+        self.assertTrue(inline.stdout.endswith("Esc closes this · Enter runs the command\n"))
+
+    def test_brief_takes_the_parts(self):
+        self.assertEqual(cli.brief(EXPLANATION), "Parts:\n- `touch FILE`: creates FILE if missing."
+                                                 "\nAccess:\n- files: writes FILE\n- network: none")
+        self.assertEqual(cli.brief("Parts:\n- a\nSummary: late"), "Parts:\n- a")
+        self.assertEqual(cli.brief("Notes: x\nAccess: none\nParts:\n- a"), "Parts:\n- a\nAccess: none")
+        self.assertEqual(cli.brief("free text"), "free text")
 
     def test_ai_status_never_prints_the_key(self):
         result = self.ush("ai", "status", env={"ANTHROPIC_API_KEY": SYNTHETIC_KEY})
