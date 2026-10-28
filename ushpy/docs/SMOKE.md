@@ -56,16 +56,21 @@ should see.
 
 | # | Do | Expect |
 | --- | --- | --- |
-| M1 | `ush //create a file named a.txt` and answer `n`, reason "not now" | Not created; the assistant acknowledges the reason |
+| M1 | `ush --run //create a file named a.txt` and answer `n`, reason "not now" | Not created; the assistant acknowledges the reason |
 | M2 | Same request, answer `e` and type `touch b.txt` | `b.txt` exists, `a.txt` doesn't; history says `edited` |
 | M3 | Same request, answer `a` | The request stops; `ush history` says `aborted` |
-| M4 | `ush //count the files under /usr` and press Ctrl-C while it runs | The command stops, ush returns to the prompt, no stray process (`ps`) |
+| M4 | `ush --run //count the files under /usr` and press Ctrl-C while it runs | The command stops, ush returns to the prompt, no stray process (`ps`) |
 | M5 | `ush` (session): `ls`, then `// what did ls show?` | The answer refers to the listing |
 | M6 | With the zsh plugin: `ush //why is my disk full?` unquoted, and a bare `// what is my IP?` | Both reach ush verbatim, `?` and `'` included |
 | M7 | `ush ai configure`, then `ush ai status` | Settings saved; the key masked |
-| M8 | Root-owned install (`sudo ./install.sh --prefix /usr/local`), then `sudo ush //who am I running as?` | Runs as root with your key and settings; the banner says "as root (for you)"; `USH_*` variables ignored |
-| M9 | `printf 'printf "\\033]0;pwned\\007"' > t.sh; ush //run sh t.sh` and approve | Until TODO 2.9: the terminal title changes (SECTEST F1). After 2.9: the sequence is shown, not executed |
-| M10 | `ush -c //how much memory is free?` | Even read-only commands ask (`--confirm`) |
+| M8 | Root-owned install (`sudo ./install.sh --prefix /usr/local`), then `sudo ush --run //who am I running as?` | Runs as root with your key and settings; the banner says "as root (for you)"; `USH_*` variables ignored |
+| M9 | `printf 'printf "\\033]0;pwned\\007"' > t.sh; ush --run //run sh t.sh` and approve | Until TODO 2.9: the terminal title changes (SECTEST F1). After 2.9: the sequence is shown, not executed |
+| M10 | `ush --run -c //how much memory is free?` | Even read-only commands ask (`--confirm`) |
+| M11 | With the plugin: `// how much free space is on /?` | The proposal is on the command line, nothing ran yet |
+| M12 | Press Enter on it, then `//` | It ran in your shell (in `history`); the answer uses its output |
+| M13 | `// make a file named c.txt`, edit the line to `touch d.txt`, Enter, `//` | `d.txt` exists, `c.txt` doesn't; ush mentions the edited command |
+| M14 | `// show me the system log in a pager`, Enter, quit the pager, `//` | The pager worked normally (interactive); ush says it didn't see the output |
+| M15 | `// list my home directory`, then Ctrl-U and `// never mind, what time is it?` | ush knows the listing didn't run |
 
 ## When it fails
 

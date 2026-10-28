@@ -111,6 +111,15 @@ DONE has an entry for it.
 - [x] 2.16 User and admin guides for ushpy ([USER](USER.md), [ADMIN](ADMIN.md)), sharing their
   command sections with ushgo's (ushgo TODO 0.4). Acceptance: `test_docs` fails if a shared
   section differs between the two, or if an option or subcommand in `ush help` is missing.
+- [ ] 2.17 Propose mode, the default (ARCH, GAPS Q6): ush proposes one command at a time and runs
+  nothing; the zsh plugin puts the proposal on the command line and records what the user runs
+  there (command line, exit status, output through `tee` unless interactive); `//` continues the
+  saved per-shell conversation with it; `--run` and `mode: run` keep agent mode; `--new` starts
+  over; proposals with control characters are refused. Ported by ushgo TODO 1.12.
+  - [x] 2.17.1 Implementation and automated tests: agent, handoff, CLI end to end, the plugin in a
+    real zsh, smoke checks; ARCH, SEC, guides, READMEs, SMOKE (M11–M15).
+  - [ ] 2.17.2 Manual checks M11–M15 by the user with a real model, and a live smoke run in
+    propose mode.
 
 ## 3. Release
 

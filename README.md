@@ -15,10 +15,12 @@ What comes next, across the projects, is in the roadmap: [docs/ROAD.md](docs/ROA
 
 ## ush
 
-ush brings `//` to zsh. Ask in plain language; ush investigates with real Unix commands, interprets
-the output, and answers, with follow-up questions in the same context. Read-only commands run
-immediately; anything else is shown for approval first. It uses an Anthropic API key or a local
-model in Ollama, and an optional second model can check each proposed command.
+ush brings `//` to zsh. Ask in plain language; ush proposes the Unix command that answers it and
+puts it on your command line. You run it, and `//` continues with its output: the next command, or
+the answer. ush itself runs nothing, unless you choose agent mode (`--run`): then it investigates on
+its own, running read-only commands at once and showing anything else for approval first. It uses
+an Anthropic API key or a local model in Ollama, and an optional second model can check each
+proposed command.
 
 `ush` is one command with two implementations that must behave the same: Python in `ushpy/` and Go
 in `ushgo/`. `ush --version` says which one you have (`(python)` or `(go)`). Features land in Python

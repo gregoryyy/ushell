@@ -1,12 +1,15 @@
 # ush security model
 
 Status: applies to ush 0.1.0 (2026-10-26), the local Ollama provider (TODO 2.8,
-2026-10-27), and the checker model (TODO 2.13, 2026-10-27). Design: [ARCH.md](ARCH.md).
+2026-10-27), the checker model (TODO 2.13, 2026-10-27), and propose mode (TODO 2.17,
+2026-10-28). Design: [ARCH.md](ARCH.md).
 Security tests and open findings: [SECTEST.md](SECTEST.md).
 
-ush lets an AI model run commands on the user's machine, possibly as root.
-The protections are the user's approval, a conservative read-only policy, bounded
-execution, and limited disclosure. ush is not a sandbox.
+In propose mode (the default) ush runs nothing: an AI model proposes commands, and the user runs
+them in their own shell. In agent mode (`--run`) it lets the model run commands on the user's
+machine, possibly as root. The protections are the user's approval (pressing Enter on a proposal is
+one), a conservative read-only policy, bounded execution, and limited disclosure. ush is not a
+sandbox.
 
 ## Assets
 
@@ -15,6 +18,8 @@ execution, and limited disclosure. ush is not a sandbox.
 - The provider API key.
 - Root privileges when run under sudo.
 - History, which reveals what was investigated.
+- Propose mode's saved conversations (`sessions/`, redacted command output) and the plugin's
+  handoff directory (the proposal, what ran, its output).
 
 ## Trust boundaries
 
@@ -25,7 +30,8 @@ execution, and limited disclosure. ush is not a sandbox.
 | Command output, piped input, file contents | Untrusted data | May carry prompt injection; never grants anything |
 | Environment (`USH_BASE_URL`, `USH_PROVIDER`, `USH_MODEL`, `USH_OLLAMA_URL`, `XDG_*`) under root | Untrusted | Ignored as root |
 | Ollama endpoint and its model list | Trusted for local models only | Must be a loopback address; cloud models are disclosed |
-| Checker model verdicts | Untrusted | A flag or no verdict adds an approval prompt; OK changes nothing |
+| Checker model verdicts | Untrusted | A flag or no verdict adds an approval prompt (a warning on a proposal); OK changes nothing |
+| `USH_HANDOFF` and the files in it | The user's own, if the directory is theirs and closed to others | Used only then and never as root; files read with `O_NOFOLLOW` as regular files |
 | Files ush executes under sudo | Must be root-owned | Root-owned install path documented |
 
 ## Threats and mitigations
@@ -48,6 +54,10 @@ execution, and limited disclosure. ush is not a sandbox.
 | Runaway or hanging commands | stdin `/dev/null`, per-command timeout (≤ `max_timeout`), process-group kill, output limit, step limit per request | `test_execute`, `test_agent` step limit |
 | Aborted or interrupted requests leave a broken conversation | Every `tool_use` answered; Ctrl-C kills the process group | `test_agent` abort/truncation/refusal |
 | Root running user-writable code | `install.sh --prefix /usr/local` for root-owned installs; launcher uses `python -I` (ignores `PYTHON*`, user site, cwd) | Manual; documented |
+| A proposal that hides what it does on the command line (escape sequences, `\r`, bidi overrides, zero-width characters) | Refused before display or handoff; the model is asked to propose it again | `test_propose` (control characters) |
+| The user runs a harmful proposal by habit | ush runs nothing itself; changes and commands the policy can't verify are marked in yellow, with the checker's objection if one is configured | `test_propose` (notes) |
+| Another user or a planted link reads or swaps the handoff files | The plugin's `mktemp -d` directory (0700); ush refuses a directory that isn't the user's, is open to others, or is a link, and reads `ran` and `output` only as regular files without following links | `test_propose` (HandoffTest) |
+| Captured output kept on disk | `output` lives only until the next `//` (then deleted) or shell exit; the saved conversation is 0600 in the state directory and expires after an hour; history keeps no output | `test_propose` (sessions) |
 | User aliases or rc files changing command meaning | Commands run with `zsh -f` | `test_execute` |
 
 ## Residual risks
@@ -78,6 +88,13 @@ execution, and limited disclosure. ush is not a sandbox.
   a proposal can be shaped to look harmless or carry text aimed at the checker. Small models miss
   attacks (qwen2.5:1.5b let 3 of 4 pass, SECTEST) and raise false alarms. It narrows what runs
   unasked; it doesn't replace the policy or the approval prompt.
+- **Propose mode moves the decision to the Enter key.** A proposal looks like something the user
+  typed. An injected proposal (through output of an earlier command) is shown with the same notes as
+  any other, but a user who presses Enter without reading runs it. Policy notes and the checker
+  are advice there, not a gate.
+- **Captured commands run with a pipe as stdout.** Tools that check for a terminal behave
+  differently (no colours, no pager); a command the model wrongly marks non-interactive may wait
+  for input it can't show properly. Ctrl-C stops it as usual.
 - **Small local models** follow injected instructions more readily and call tools less
   reliably. The policy and approval prompt contain them the same way, but answers are
   less trustworthy.

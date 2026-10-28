@@ -15,22 +15,25 @@ run:
 | --- | --- | --- |
 | Runs in | Browser workspace, isolated runtimes | The user's zsh, on the real machine, possibly as root |
 | Resources | Workspace files, notebooks, pages | The whole filesystem and system state |
-| AI output | One validated program per request | An agent loop: command → output → next command → answer |
-| Default execution | Within existing workspace grants | Read-only commands run; everything else needs approval |
-| Follow-up | Edit/replay the program | `//` follow-up questions in the same conversation |
+| AI output | One validated program per request | One proposed command at a time, for the user to run; in agent mode, a loop of commands ush runs |
+| Default execution | Within existing workspace grants | ush runs nothing; the user runs each proposal from their command line. Agent mode (`--run`): read-only commands run, everything else needs approval |
+| Follow-up | Edit/replay the program | `//` continues with what the user ran, or asks a follow-up question |
 
-The agent loop is the main departure. Diagnosing a local problem ("why is my disk
-full?") needs several rounds of looking at real output, which a single generated
-program cannot do. Approval-by-default for anything not provably read-only replaces
-wish's workspace grants, because a local machine has no workspace boundary.
+The step-by-step conversation is the main departure. Diagnosing a local problem ("why is my
+disk full?") needs several rounds of looking at real output, which a single generated program
+cannot do. In propose mode the user runs every round themselves; in agent mode, approval for
+anything not provably read-only replaces wish's workspace grants, because a local machine has no
+workspace boundary.
 
 ## Components
 
 ```text
-zsh ── ush.plugin.zsh ── quotes `ush //…`, `sudo ush //…`, `// …` before parsing
- │
- └─ ush (cli.py) ── session / follow-up loop, subcommands, piped input
-     ├─ agent.py ──── request loop: provider turn → tool_use → policy → approval → execute
+zsh ── ush.plugin.zsh ── quotes `ush //…`, `sudo ush //…`, `// …` before parsing;
+ │                        puts proposals on the command line, records what then ran
+ └─ ush (cli.py) ── propose step, session / follow-up loop, subcommands, piped input
+     ├─ handoff.py ── propose mode: the plugin's handoff directory, saved conversations
+     ├─ agent.py ──── request loop: provider turn → tool_use → policy → approval → execute,
+     │                or in propose mode: → policy and checker notes → proposal
      │   ├─ policy.py ─── read-only classifier (zsh-aware tokenizer, command table, secret paths)
      │   ├─ execute.py ── bounded execution: zsh -f -o pipefail, timeouts, process groups, scrubbed env
      │   ├─ check.py ──── optional checker model: requests + proposal → OK or FLAG
@@ -72,6 +75,50 @@ The conversation is append-only and every `tool_use` receives a `tool_result`:
 declined, skipped, aborted, truncated, and refused turns included. Follow-ups
 therefore remain valid requests, and the thinking blocks echoed back stay valid
 under preserved thinking.
+
+## Propose mode
+
+The default since 2026-10-28 (TODO 2.17). The user's request: "the idea of the ushell is to
+propose specific shell commands and prewrite them to be executed by the user"; their choices are in
+[GAPS](GAPS.md) Q6.
+
+1. `// REQUEST` runs `ush` as in agent mode, but the model has one tool, `propose_command`
+   (`command`, `purpose`, `effect`, `interactive`), and a system prompt that says it runs nothing.
+   The model either proposes one command or answers. ush shows the proposal with notes: a change, a
+   command the policy can't verify as read-only, or the checker's objection. It runs nothing.
+2. **Handoff:** ush writes the proposal into the plugin's handoff directory (`USH_HANDOFF`), and
+   saves the conversation in `sessions/KEY.json`, one per shell.
+3. **On the command line:** the plugin's `precmd` hook pushes the proposal onto the next command line
+   with `print -z`. The user runs it with Enter, edits it, or replaces it.
+4. **Recording what ran:** `preexec` records the line that runs from that prompt, unless it is
+   another `ush` call. Unless the proposal is interactive, it sends the command's stdout and stderr
+   through a FIFO into `tee`. The command still prints to the terminal, and its output lands in the
+   directory. The next `precmd` restores the descriptors, waits for `tee` (at most 2 s), and writes
+   the exit status and command line.
+5. **Continuing:** `//`, or a new `// TEXT`, restores the conversation. It answers the pending
+   `propose_command` with what ran: the same or an edited command, the exit status, a changed
+   working directory, and the redacted output (bounded head and tail), or that nothing ran. The
+   model then proposes the next command or answers.
+
+**Without the plugin**, ush prints the proposal, and the conversation is keyed by the parent
+process. The next `ush //` tells the model that ush can't know what ran.
+
+**In a session** (`ush`), the proposal is pre-filled at the `ush>` prompt through readline. A line
+the user runs there answers it, with output.
+
+**As root**, there is no handoff: the plugin creates none, and ush ignores `USH_HANDOFF`. The
+proposal is printed, for the user to run as root.
+
+**Why the user's own shell, not ush:**
+- The command runs exactly as the user's shell would run it, aliases and all.
+- `cd` and variables persist.
+- It lands in the shell history.
+- Nothing runs that the user didn't start with Enter.
+
+**What it costs:**
+- While a captured command runs, its stdout is a pipe, not the terminal. Colours and pagers turn
+  off, which is why the model marks full-screen and prompting commands as interactive.
+- Each round needs a keystroke.
 
 ## The read-only policy
 
@@ -155,6 +202,16 @@ can only add friction (always ask, or never run, even when approved) is safe and
   request without tools or thinking (`complete`), and is disclosed in the banner. Dry runs and
   `replay` don't call it. Why not more: letting the checker approve, or show its reason to the main
   model, would give an injection a target to optimise against.
+- **Propose mode is the default; agent mode is a flag** (TODO 2.17, 2026-10-28), at the user's
+  direction (GAPS Q6).
+  - The read-only policy and the checker still run, but only to annotate a proposal, since the
+    user runs it.
+  - Proposals with control characters, bidi overrides or zero-width characters are refused before
+    they reach the command line (the proposal side of SECTEST F1).
+  - Output capture uses `tee` in the user's shell rather than a pty wrapper (`script`), so the
+    command runs in that shell itself.
+  - The saved conversation holds redacted output. It is a per-user, 0600 file that expires after
+    an hour; history still keeps no output.
 - **Name:** `wsh` (Wave Terminal's CLI) and `zish` (an active Zig shell) were taken.
   `ush`, "the you shell", collides only with small, unrelated npm/PyPI packages.
 

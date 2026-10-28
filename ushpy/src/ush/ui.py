@@ -78,6 +78,13 @@ class Terminal:
         if note:
             self._emit(self.dim(f"  {note}"))
 
+    def show_proposal(self, command: str, purpose: str, notes: list[str]) -> None:
+        """A proposed command: the user runs it, not ush. Warnings in yellow."""
+        self._emit(self._style("36", "→ ") + self.bold(command) +
+                   (self.dim(f"   # {purpose}") if purpose else ""))
+        for note in notes:
+            self._emit(self._style("33", f"  {note}"))
+
     def show_script(self, language: str, source: str, purpose: str, note: str) -> None:
         self._emit(self._style("36", f"$ {language} script") +
                    (self.dim(f"   # {purpose}") if purpose else ""))
@@ -125,17 +132,22 @@ class Terminal:
     def can_prompt(self) -> bool:
         return self._terminal() is not None
 
-    def read_line(self, prompt: str) -> Optional[str]:
-        """Read one line; None on end of input."""
+    def read_line(self, prompt: str, prefill: str = "") -> Optional[str]:
+        """Read one line; None on end of input. `prefill` is put on the line to edit, where
+        readline is available (a session in propose mode)."""
         tty = self._terminal()
         if tty is None:
             return None
         self._end_answer()
         if tty is sys.stdin:
+            hook = _prefill(prefill)
             try:
                 return input(prompt)
             except EOFError:
                 return None
+            finally:
+                if hook is not None:
+                    hook.set_pre_input_hook(None)
         self.err.write(prompt)
         self.err.flush()
         line = tty.readline()
@@ -161,3 +173,20 @@ class Terminal:
                 edited = self.read_line("  command: ")
                 if edited and edited.strip():
                     return Choice("edit", edited.strip())
+
+
+def _prefill(text: str):
+    """Put `text` on the next input() line; returns the readline module to reset, or None."""
+    if not text:
+        return None
+    try:
+        import readline
+    except ImportError:
+        return None
+
+    def insert() -> None:
+        readline.insert_text(text)
+        readline.redisplay()
+
+    readline.set_pre_input_hook(insert)
+    return readline

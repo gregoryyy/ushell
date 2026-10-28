@@ -15,21 +15,28 @@ machines, see the [admin guide](ADMIN.md). Status: 2026-10-28 10:23.
 
 ## What ush does
 
-You ask a question about your machine in plain language. ush investigates with real commands, reads
-their output, and answers. Commands it can verify as read-only run immediately; everything else is
-shown to you first and runs only if you approve.
+You ask about your machine, or for a task, in plain language. ush proposes the shell command that
+answers it and puts it on your command line. You read it, edit it if you like, and run it with
+Enter, in your own shell. Then `//` continues: ush sees what you ran and its output, and proposes the
+next command or answers. ush itself runs nothing.
 
 ```console
-$ ush //why is my disk full?
-ush · claude-opus-5-5 · requests and command output go to Anthropic, secrets redacted
-$ df -h /   # free space on the startup volume
-  └ exit 0, 0.1s
-$ du -xsh ~/Library/* 2>/dev/null | sort -h | tail -8   # largest folders in Library
-  └ exit 0, 41.2s
-Most of the space is in ~/Library/Developer (71 GB) and local Time Machine snapshots (96 GB) ...
-follow up with // QUESTION, run a command, or press Enter to finish
-ush> // which of the Xcode folders can I delete safely?
+$ // why is my disk full?
+ush · claude-opus-5-5 · proposes, you run · requests and command output go to Anthropic, secrets redacted
+First, how full each volume is.
+→ df -h / /System/Volumes/Data   # free space on the startup volumes
+on your command line: Enter runs it, or edit it first · then // continues
+$ df -h / /System/Volumes/Data
+Filesystem        Size    Used   Avail Capacity  ...
+$ //
+The data volume is 97% full. Next, the largest folders in your home.
+→ du -xsh ~/* 2>/dev/null | sort -h | tail -8   # largest folders in your home
+$ du -xsh ~/* 2>/dev/null | sort -h | tail -8
+...
 ```
+
+If you'd rather have ush investigate on its own, use agent mode, `ush --run //…`: it then runs
+read-only commands itself and asks before anything else ([Agent mode](#agent-mode)).
 
 ## First steps
 
@@ -48,18 +55,43 @@ ush> // which of the Xcode folders can I delete safely?
 
 | You type | What happens |
 | --- | --- |
-| `ush //REQUEST` | ush answers, then offers follow-up questions in the same context |
-| `// REQUEST` (with the plugin) | the same, without typing `ush` |
-| `ush` | a session: `// TEXT` asks, any other line runs as a command whose output becomes context, `exit` or Ctrl-D ends |
+| `// REQUEST` (with the plugin) | ush proposes a command on your command line, or answers |
+| `//` | continue: ush gets what you ran (command, exit status, output) and proposes the next one |
+| `// TEXT` after a proposal | continue with a remark or a new question, e.g. `// that's the wrong disk` |
+| `ush //REQUEST` | the same as `// REQUEST`, without the plugin's `//` shortcut |
+| `ush --new //REQUEST` | start over instead of continuing this shell's conversation |
+| `ush --run //REQUEST` | [agent mode](#agent-mode): ush runs the commands itself, then offers follow-up questions |
+| `ush` | a session: `// TEXT` asks, proposals appear at the `ush>` prompt, any other line runs as a command whose output becomes context, `exit` or Ctrl-D ends |
 | `… \| ush //explain this` | piped text becomes context for the request (up to 200 KB) |
 | `sudo ush //…` | commands run as root; see [Using sudo](#using-sudo) |
 
 Without the plugin, quote requests (`ush '//why is my disk full?'`): otherwise zsh interprets `?`,
-`'` and `*` before ush sees them. In a follow-up, an empty line ends the conversation.
+`'` and `*` before ush sees them.
 
-## Approving commands
+## Proposals
 
-ush runs a command without asking only if all of these hold:
+A proposal shows the command, its purpose, and in yellow what deserves a second look: that it
+changes something, that ush's policy can't verify it as read-only, or that the checker model
+objected. With the zsh plugin it then waits on your command line:
+- **Enter** runs it in your shell, as if you had typed it: `cd` and variables persist, and it lands
+  in your shell history. ush records the exit status and the output for the next `//`.
+- **Edit** it first; ush sees the command that actually ran.
+- **Ignore** it: clear the line (Ctrl-U) or type something else. A new `// …` tells ush you didn't
+  run it.
+
+While a proposed command runs, ush records its output through a pipe, so colours and pagers are off
+for that one command. Commands that need the terminal (`less`, `top`, editors) are proposed as
+interactive and run normally, without their output recorded.
+
+Without the plugin, ush prints the proposal for you to copy, and can't know what you ran; paste the
+relevant output into `// …` if it matters. The conversation continues in the same shell for an
+hour; `ush --new` starts over.
+
+## Agent mode
+
+With `--run`, or `mode` set to `run` in `ush ai configure`, ush investigates on its own: it runs
+commands, reads their output, and answers. It runs a command without asking only if all of these
+hold:
 - ush's own policy recognises it as read-only (e.g. `df`, `du`, `ls`, `find` without `-delete` or
   `-exec`, `diskutil list`), or it matches one of [your allow rules](#your-allowlist);
 - it uses no shell tricks: no `$(…)`, no redirection to a file, no `;` after a comment, no
@@ -116,9 +148,11 @@ A model name starting with `claude-` is Anthropic's, any other is Ollama's; `ant
 
 | Option | Effect |
 | --- | --- |
-| `-n`, `--dry-run` | show what the assistant would run; run nothing |
-| `-c`, `--confirm` | ask before every command, read-only ones included |
-| `-1`, `--once` | answer, then stop (no follow-ups) |
+| `-r`, `--run` | agent mode: ush runs the commands itself |
+| `-N`, `--new` | start a new conversation instead of continuing |
+| `-n`, `--dry-run` | agent mode, showing what it would run; run nothing |
+| `-c`, `--confirm` | agent mode: ask before every command, read-only ones included |
+| `-1`, `--once` | agent mode: answer, then stop (no follow-ups) |
 | `-v`, `--verbose` | show complete command output (default: the first 12 lines) |
 | `-m`, `--model M` | model for this run |
 | `-e`, `--effort L` | Anthropic effort: `low`, `medium`, `high`, `xhigh`, `max` |
@@ -128,7 +162,7 @@ A model name starting with `claude-` is Anthropic's, any other is Ollama's; `ant
 
 | Command | Effect |
 | --- | --- |
-| `ush ai configure [--file]` | provider, key or Ollama URL, model, effort, checker |
+| `ush ai configure [--file]` | mode (propose or run), provider, key or Ollama URL, model, effort, checker |
 | `ush ai status` | what is configured, and where things are |
 | `ush ai clear-key` | remove the stored API key |
 | `ush allow [add\|remove RULE]` | your allowlist |
@@ -139,8 +173,8 @@ A model name starting with `claude-` is Anthropic's, any other is Ollama's; `ant
 ## What leaves your machine
 
 Before each session ush says where requests go. With Anthropic, each request sends your text, the OS
-name, your user name, the working directory, the output of the commands that ran (up to 32 KB each)
-and piped input. With a local Ollama model, all of that stays on this machine; with an Ollama
+name, your user name, the working directory, the output of the commands that ran (up to 32 KB each;
+in propose mode, of the proposals you ran) and piped input. With a local Ollama model, all of that stays on this machine; with an Ollama
 *cloud* model, Ollama forwards it to ollama.com, and ush says so. A checker gets your requests and
 the proposed commands, never output.
 
@@ -149,11 +183,15 @@ assignments and your API key. That is pattern matching: assume what a command pr
 provider, and use `--confirm` on sensitive machines.
 
 History (`~/.local/state/ush/history.jsonl`, mode 0600) keeps requests, commands, decisions, exit
-statuses and a shortened answer, but no command output.
+statuses and a shortened answer, but no command output. In propose mode the conversation, with the
+redacted output you sent, is kept for an hour in `~/.local/state/ush/sessions/` (mode 0600) so that
+`//` can continue it.
 
 ## Using sudo
 
-`sudo ush //…` runs approved commands as root. ush uses your key and settings (it knows who called
+In propose mode, `sudo ush //…` prints proposals meant for root without putting them on your command
+line; run them with `sudo` yourself. More simply, ask without `sudo`: proposals that need root
+start with `sudo`. In agent mode, `sudo ush --run //…` runs approved commands as root. ush uses your key and settings (it knows who called
 `sudo`), keeps root's history separately, ignores `USH_*` variables, and uses none of your allow
 rules. Only use it with an install that root owns ([ADMIN](ADMIN.md#for-sudo-a-root-owned-install)).
 Alternatively, run ush without `sudo`: commands the assistant prefixes with `sudo` are shown for
@@ -161,8 +199,8 @@ approval and ask for your password as usual.
 
 ## Without a terminal
 
-In cron jobs and scripts, ush can't ask, so it runs read-only commands only and declines everything
-else; the answer says so. Exit status: 0 answered (or dry run), 1 error or refused, 2 usage or
+In cron jobs and scripts, propose mode prints the proposal. In agent mode ush can't ask, so it runs
+read-only commands only and declines everything else; the answer says so. Exit status: 0 answered (or dry run), 1 error or refused, 2 usage or
 configuration error, 130 stopped.
 
 ## When something goes wrong
@@ -175,7 +213,9 @@ configuration error, 130 stopped.
 | "Ollama URL … is not on this machine" | ush only uses an Ollama on `127.0.0.1`, `localhost` or `::1` |
 | The answer comes without any command run | small local models do that; use a larger one (≥ 8B) |
 | zsh says `no matches found` | quote the request or add the plugin |
-| A command you trust keeps asking | `ush allow add …`, or check why: the reason is in the prompt |
+| A command you trust keeps asking (agent mode) | `ush allow add …`, or check why: the reason is in the prompt |
+| The proposal doesn't appear on the command line | add the zsh plugin and open a new terminal; `echo $USH_HANDOFF` should print a directory |
+| `//` says nothing about what you ran | the plugin records only the line run right after the proposal appeared |
 
 To check a whole install, run the smoke test: `ushpy/scripts/smoke.sh --bin "$(command -v ush)"`
 ([SMOKE](../../ushpy/docs/SMOKE.md)).

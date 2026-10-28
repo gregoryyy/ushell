@@ -12,6 +12,97 @@ top. The format is defined in [SDLC](../../docs/SDLC.md#done-entries).
 
 ---
 
+## 2026-10-28 19:13 — Propose mode: ush proposes, the user runs
+
+TODO items: 2.17.1 (2.17.2, the manual checks, stays open); ushgo TODO 1.12 ports it. GAPS Q6
+answered by the user. PR: see below.
+
+Agent: Opus 5.5, reasoning: not exposed, subagents: none.
+
+### Implementation notes
+
+- **The request:** "the idea of the ushell is to propose specific shell commands and prewrite them
+  to be executed by the user." The user's choices (GAPS Q6):
+  - ush proposes investigation commands too, rather than running them;
+  - agent mode stays, behind a flag;
+  - one command at a time.
+- **Agent** (`agent.py`):
+  - `Options.propose` selects one strict tool, `propose_command` (`command`, `purpose`, `effect`,
+    `interactive`), and a system prompt that says ush runs nothing.
+  - The first valid proposal is shown with notes: a change, not verified as read-only, or the
+    checker's objection. Any other tool_use in that turn gets a "one at a time" result, due with the
+    next request.
+  - `ask(request, ran, tracked)` answers the pending proposal with what ran: same or edited
+    command, exit status, changed working directory, and redacted bounded output, or that it
+    didn't run, or that ush can't tell (no plugin).
+  - `state()` and `restore()` carry the conversation between processes.
+  - Proposals with C0/C1 controls, bidi overrides or zero-width characters fail validation, and the
+    model is asked again.
+- **Handoff** (`handoff.py`, new):
+  - The plugin's directory (`USH_HANDOFF`) is used only if it is the user's, 0700, not a link,
+    and never as root.
+  - `write_proposal` replaces atomically. `take_ran` reads `ran` and `output` with `O_NOFOLLOW`
+    as regular files, keeps head and tail like execution does, and deletes them.
+  - `Sessions` keeps one 0600 conversation per shell in `state/ush/sessions/`. It is keyed by the
+    handoff directory, or the parent process without it, expires after an hour, and saving prunes
+    other expired ones.
+- **CLI** (`cli.py`):
+  - The `mode` setting (default `propose`), `-r/--run`, `-N/--new`, `ush //` to continue, and
+    `--dry-run` implies agent mode.
+  - `_propose` runs one step and hands over the proposal, or prints it without the plugin.
+  - `ai configure` asks for the mode first.
+  - `ai status` shows the mode.
+  - The session pre-fills the `ush>` prompt with the proposal (readline), and a line run there
+    answers it.
+- **Plugin:**
+  - `precmd` (put first, as it needs `$?`) pushes the proposal with `print -rz`, records the exit
+    status and command line, and ends the capture.
+  - `preexec` treats the line run from that prompt as the result, unless it is another `ush`
+    call. Unless interactive, it sends stdout and stderr through a FIFO into `tee`.
+  - `zshexit` removes the directory.
+  - A bare `//` now becomes `ush //` (continue), not `ush`.
+- **Also fixed:** `ush ai configure` took the answer `on` as an Ollama model named "on". It now
+  refuses `on`, `yes`, `true` and `enable`, and checks an Ollama checker against the pulled models.
+- **Docs:**
+  - ARCH (section "Propose mode", decision), SEC (assets, boundaries, four threats, two residual
+    risks), GAPS (Q6, A8, A9).
+  - The guides' shared sections ("Proposals", "Agent mode", options, data kept); ADMIN (`mode`,
+    conversations, handoff, `USH_HANDOFF`, sudo).
+  - Both READMEs, usage, SMOKE (M1–M10 marked agent mode, M11–M15 new), `smoke.sh` (two propose
+    checks; agent checks with `--run`).
+  - Root ROAD step 3, plus two ideas the user added: `ush analyze` and data loss prevention
+    filters.
+- **Validation:** `just ushpy-test`: 129 tests OK (108 before). New:
+  - `test_propose`: 15 tests (agent and handoff).
+  - Two CLI propose tests: handoff and continue end to end against the mock API; without the
+    plugin, and `--new`.
+  - `ZshProposeTest`: 4 tests in a real zsh through a pty:
+    - the proposal pre-filled;
+    - output captured by `tee`;
+    - an edited, failing command recorded with exit 3;
+    - an interactive one not captured;
+    - a new request instead counted as not run;
+    - the directory removed on exit.
+  - Smoke-test fixtures for the new checks.
+
+### Deviations
+
+- Propose mode runs the policy and the checker only as advice, since nothing runs without the
+  user's Enter. Agent mode is unchanged.
+- **Output capture** uses `tee` in the user's own shell, so `cd` and variables persist. The cost is
+  a pipe as stdout for that one command; a pty wrapper would keep the terminal, but would run the
+  command in a child shell.
+
+### Insights
+
+- Your history showed what prompted the request. In agent mode the commands were displayed and
+  approved, but the investigation and the answer read as one block. Proposing makes each step the
+  user's own action.
+- `print -z` from `precmd` gives a pre-filled command line without replacing ZLE widgets, so it
+  coexists with other plugins.
+
+---
+
 ## 2026-10-28 18:15 — Checker names without the provider; `ai configure` asks again; tests kept off the keychain
 
 TODO items: none new; fixes to 2.13 (checker) and the test suite, from the user's first

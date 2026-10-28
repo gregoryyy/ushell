@@ -84,7 +84,7 @@ class FakeTerminal(Terminal):
         choice = self.choices.pop(0)
         return choice if isinstance(choice, Choice) else Choice(choice)
 
-    def read_line(self, prompt: str):
+    def read_line(self, prompt: str, prefill: str = ""):
         return None
 
 

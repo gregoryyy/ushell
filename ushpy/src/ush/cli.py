@@ -14,6 +14,7 @@ from .check import Checker
 from .config import (EFFORTS, PROVIDERS, ConfigError, Identity, KeyStore, Settings,
                      apply_environment, check_ollama_url, identity, load_settings, mask,
                      save_settings)
+from .handoff import Sessions, handoff_dir, session_key, take_ran, write_proposal
 from .history import History, Step
 from .policy import classify
 from .provider import (API_URL, AnthropicProvider, OllamaProvider, Provider, Turn,
@@ -21,10 +22,11 @@ from .provider import (API_URL, AnthropicProvider, OllamaProvider, Provider, Tur
 from .ui import Terminal
 
 USAGE = """\
-ush, the you shell: ask in natural language, get answers from real commands.
+ush, the you shell: ask in natural language, get the commands that answer it.
 
 usage:
-  ush [OPTIONS] //REQUEST...   investigate and answer; then follow-up questions
+  ush [OPTIONS] //REQUEST...   propose a command for your command line, or answer
+  ush [OPTIONS] //             continue: send what you ran, get the next proposal
   ush [OPTIONS]                start a session
   ush ai configure [--file]    set the provider (Anthropic or a local Ollama), API key
                                (keychain on macOS), model, and effort
@@ -37,7 +39,10 @@ usage:
   ush help                     show this help
 
 options:
-  -n, --dry-run      show the commands the assistant would run, run none
+  -r, --run          agent mode: ush runs the commands itself, read-only ones at
+                     once, others after your approval; then follow-up questions
+  -N, --new          start a new conversation instead of continuing this shell's
+  -n, --dry-run      agent mode, but show the commands it would run, run none
   -c, --confirm      ask before every command, including read-only ones
   -1, --once         answer once, without follow-up questions
   -v, --verbose      show complete command output
@@ -45,14 +50,20 @@ options:
   -e, --effort LEVEL low, medium, high, xhigh, or max
   -k, --checker MODEL checker for this run: claude-haiku-5-5, qwen3.5:4b, or off
 
-In a session or follow-up, `// TEXT` asks, any other line runs as a command, and
-an empty line (follow-up) or `exit` ends it. Commands that ush cannot verify as
-read-only are shown and run only after you approve them. Requests and command
-output (with secrets redacted) are sent to the configured AI provider; with a
-local Ollama model they stay on this machine. A checker model, if configured,
-judges each proposed command against your requests only; what it flags needs
-your approval. USH_PROVIDER, USH_MODEL, USH_CHECKER, and USH_OLLAMA_URL override
-the settings (not as root).
+By default ush runs nothing: it proposes one command at a time. With the zsh
+plugin the proposal lands on your command line; run it with Enter, edit it, or
+ignore it, then `//` continues with what you ran, its exit status and output.
+`ush ai configure` sets agent mode as the default instead.
+
+In a session or agent-mode follow-up, `// TEXT` asks, any other line runs as a
+command, and an empty line (follow-up) or `exit` ends it. In agent mode,
+commands that ush cannot verify as read-only run only after you approve them.
+Requests and command output (with secrets redacted) are sent to the configured
+AI provider; with a local Ollama model they stay on this machine. A checker
+model, if configured, judges each proposed command against your requests only;
+what it flags gets a warning, or needs your approval in agent mode.
+USH_PROVIDER, USH_MODEL, USH_CHECKER, and USH_OLLAMA_URL override the settings
+(not as root).
 
 With the zsh plugin, `ush //...` and `// ...` need no quoting:
   source ushpy/shell/ush.plugin.zsh
@@ -162,6 +173,8 @@ def _main(argv: list[str], ui: Terminal) -> int:
         settings.effort = overrides["effort"]
     if "checker" in overrides:
         settings.set_checker(overrides["checker"])
+    if "mode" in overrides:
+        settings.set_mode(overrides["mode"])
     keys = KeyStore(ident)
     history = History(ident.state_dir())
 
@@ -178,19 +191,34 @@ def _main(argv: list[str], ui: Terminal) -> int:
         return 2
 
     request = " ".join(rest)[2:].strip() if rest else ""
+    continuing = bool(rest) and not request     # `ush //`: continue after a proposal
     piped = None
-    if not sys.stdin.isatty() and request:
+    if not sys.stdin.isatty() and (request or continuing):
         data = sys.stdin.buffer.read(STDIN_LIMIT + 1)
         piped = data[:STDIN_LIMIT].decode("utf-8", "replace")
         if len(data) > STDIN_LIMIT:
             piped += "\n[... input shortened ...]"
 
+    options.propose = settings.mode == "propose" and not options.dry_run
     factory = ProviderFactory(ident, settings, keys)
     secrets = ()
-    if request:
+    if request or continuing:
         secrets = factory.secrets()  # fail early, before any command runs
     agent = Agent(LazyProvider(factory), ui, settings, ident, history, options, secrets,
                   factory.checker())
+    if options.propose and (request or continuing):
+        handoff = handoff_dir(ident)
+        sessions = Sessions(ident.state_dir(), session_key(handoff))
+        if overrides.get("new"):
+            sessions.clear()
+        else:
+            saved = sessions.load()
+            if saved:
+                agent.restore(saved)
+        if request or piped or agent.proposal is not None:
+            return _propose(agent, ui, ident, settings, options, request, piped, handoff,
+                            sessions)
+        # `//` with nothing to continue opens a session, as before.
     _banner(ui, ident, settings, options)
     if piped:
         agent.add_context("Input piped to ush on stdin:", piped)
@@ -206,6 +234,36 @@ def _main(argv: list[str], ui: Terminal) -> int:
     return {"answered": 0, "dry-run": 0, "aborted": 130}.get(entry.outcome, 1)
 
 
+def _propose(agent: Agent, ui: Terminal, ident: Identity, settings: Settings, options: Options,
+             request: str, piped: Optional[str], handoff: Optional[str],
+             sessions: Sessions) -> int:
+    """One step of propose mode: send the request (or what ran), then hand over the proposal."""
+    _banner(ui, ident, settings, options)
+    if piped:
+        agent.add_context("Input piped to ush on stdin:", piped)
+    ran = None
+    if handoff and agent.proposal is not None:
+        ran = take_ran(handoff, settings.output_limit)
+    entry = agent.ask(request, ran, tracked=handoff is not None)
+    try:
+        sessions.save(agent.state())
+    except OSError as exc:
+        ui.warn(f"could not save the conversation: {exc}")
+    if entry.outcome != "proposed" or agent.proposal is None:
+        return {"answered": 0, "aborted": 130}.get(entry.outcome, 1)
+    if handoff:
+        try:
+            write_proposal(handoff, agent.proposal["command"], agent.proposal["interactive"])
+            ui.info("on your command line: Enter runs it, or edit it first · then // continues")
+            return 0
+        except OSError as exc:
+            ui.warn(f"could not put it on your command line: {exc}")
+    hint = " as root" if ident.is_root else ""
+    ui.info(f"ush ran nothing: copy the command to run it{hint} · then `ush //` continues "
+            "(the zsh plugin puts it on your command line)")
+    return 0
+
+
 def _parse_options(argv: list[str]) -> tuple[Options, dict, list[str]]:
     options, overrides = Options(), {}
     i = 0
@@ -219,6 +277,10 @@ def _parse_options(argv: list[str]) -> tuple[Options, dict, list[str]]:
             options.verbose = True
         elif a in ("-1", "--once"):
             options.once = True
+        elif a in ("-r", "--run"):
+            overrides["mode"] = "run"
+        elif a in ("-N", "--new"):
+            overrides["new"] = True
         elif a in ("-m", "--model", "-e", "--effort", "-k", "--checker") and i + 1 < len(argv):
             value = argv[i + 1]
             if a in ("-e", "--effort"):
@@ -238,6 +300,8 @@ def _parse_options(argv: list[str]) -> tuple[Options, dict, list[str]]:
 
 def _banner(ui: Terminal, ident: Identity, settings: Settings, options: Options) -> None:
     parts = [f"ush · {settings.active_model}"]
+    if options.propose:
+        parts.append("proposes, you run")
     if ident.is_root:
         parts.append("as root" + (f" (for {ident.owner_name})" if ident.via_sudo else ""))
     if options.dry_run:
@@ -274,15 +338,21 @@ def checker_disclosure(settings: Settings) -> str:
 def _session(agent: Agent, ui: Terminal, factory: ProviderFactory, follow_up: bool) -> None:
     if follow_up:
         ui.info("follow up with // QUESTION, run a command, or press Enter to finish")
+    elif agent.options.propose:
+        ui.info("// REQUEST asks · proposals appear at the prompt: Enter runs, // continues · "
+                "exit or Ctrl-D ends")
     else:
         ui.info("// REQUEST asks · other lines run as commands · exit or Ctrl-D ends")
+    offer = ""
     while True:
         try:
-            line = ui.read_line("ush> ")
+            line = ui.read_line("ush> ", prefill=offer)
         except KeyboardInterrupt:
             ui.finish_answer()
             ui.err.write("\n")
             continue
+        finally:
+            offer = ""
         if line is None:
             break
         line = line.strip()
@@ -294,7 +364,7 @@ def _session(agent: Agent, ui: Terminal, factory: ProviderFactory, follow_up: bo
             break
         if line.startswith("//"):
             request = line[2:].strip()
-            if not request:
+            if not request and agent.proposal is None:
                 continue
             try:
                 agent.secrets = factory.secrets()
@@ -302,6 +372,8 @@ def _session(agent: Agent, ui: Terminal, factory: ProviderFactory, follow_up: bo
                 ui.error(str(exc))
                 continue
             agent.ask(request)
+            if agent.proposal is not None:
+                offer = agent.proposal["command"]
         else:
             agent.run_explicit(line)
 
@@ -328,6 +400,8 @@ def _ai(args: list[str], ui: Terminal, ident: Identity, settings: Settings,
     action = args[0] if args else "status"
     if action == "configure":
         settings = load_settings(ident)  # environment overrides are not saved
+        _ask(ui, f"mode: propose (you run the commands) or run (ush runs them) "
+                 f"[{settings.mode}]: ", settings.set_mode)
         _ask(ui, f"provider {'/'.join(PROVIDERS)} [{settings.provider}]: ", settings.set_provider)
         if settings.provider == "ollama":
             def set_url(url: str) -> None:
@@ -349,7 +423,15 @@ def _ai(args: list[str], ui: Terminal, ident: Identity, settings: Settings,
                     raise ConfigError(f"effort must be one of {', '.join(EFFORTS)}")
                 settings.effort = effort
             _ask(ui, f"effort {'/'.join(EFFORTS)} [{settings.effort}]: ", set_effort)
-        _ask(ui, f"checker model, or off [{settings.checker or 'off'}]: ", settings.set_checker)
+        def set_checker(value: str) -> None:
+            settings.set_checker(value)
+            if settings.checker_provider == "ollama":
+                pulled = _ollama_models(settings.ollama_url)
+                if pulled and settings.checker_model not in pulled and \
+                        f"{settings.checker_model}:latest" not in pulled:
+                    raise ConfigError(f"Ollama has no model {settings.checker_model!r}; "
+                                      f"pulled: {', '.join(pulled)}")
+        _ask(ui, f"checker model, or off [{settings.checker or 'off'}]: ", set_checker)
         if settings.checker:
             ui.info(f"checker: {settings.checker_model} through {settings.checker_provider}")
         ui.info(f"settings saved to {save_settings(ident, settings)}")
@@ -365,6 +447,8 @@ def _ai(args: list[str], ui: Terminal, ident: Identity, settings: Settings,
             print(f"provider:  Anthropic ({API_URL})")
             print(f"model:     {settings.model} (effort {settings.effort})")
             print(f"key:       {mask(key) + ' from ' + source if key else 'not configured'}")
+        print("mode:      " + ("propose: ush proposes commands, you run them" if
+                                settings.mode == "propose" else "run: ush runs commands (agent)"))
         print(f"checker:   {checker_disclosure(settings) if settings.checker else 'off'}")
         print(f"allow:     {len(settings.allow)} rule(s), see `ush allow`" +
               (" (not used as root)" if ident.is_root and settings.allow else ""))
