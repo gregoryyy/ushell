@@ -3,7 +3,7 @@
 Where ush goes, in both implementations. The phases build on each other, and each one ends with a gate:
 a tested result that decides whether the next phase starts. When a phase starts, its work becomes
 items in [TODO](TODO.md), and this file links to them. Open questions are in [GAPS](GAPS.md).
-Status: 2026-10-29 12:28; phases 1 and 3 are done, 0.2.1 is released.
+Status: 2026-10-29 21:55; phases 1 and 3 are done, 0.2.1 is released; 0.2.2 is next (TODO 5.10).
 
 | Phase | Goal | TODO | Gate to the next phase |
 | --- | --- | --- | --- |

@@ -398,6 +398,10 @@ Until 2026-10-29: ushgo TODO 2.1–2.7.
   the merge the gate (5.3) on the merge commit, the tag `v0.2.1`, the GitHub release, and the
   formula from `scripts/formula.sh`, which has the new layout's paths. Done 2026-10-29 on 5c77891,
   with SECTEST F8 documented again (GAPS Q12).
+- [ ] 5.10 0.2.2 (user, 2026-10-29: "deploy to a homebrew tap", for the fix of TODO 2.31): tool calls
+  that local models write as text. Version 0.2.2 in both implementations and the man page; after
+  the merge the gate (5.3) on the merge commit, the tag `v0.2.2`, the GitHub release, and the
+  formula in the tap. Release notes: [docs/releases/0.2.2.md](../../docs/releases/0.2.2.md).
 
 ## Old IDs
 
