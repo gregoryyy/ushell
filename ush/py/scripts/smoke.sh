@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Smoke test of an installed ush, as a user would run it. Works for either implementation of the
 # command (Python or Go), in a scratch directory, with settings and history apart from yours.
-# See ush/py/docs/SMOKE.md for the manual checks that need a terminal, sudo, or the zsh plugin.
+# See ush/docs/SMOKE.md for the manual checks that need a terminal, sudo, or the zsh plugin.
 #
 #   smoke.sh                                       offline checks: no model, no cost
 #   smoke.sh --provider ollama --model qwen3.5:9b [--checker ollama:llama3.2:3b]

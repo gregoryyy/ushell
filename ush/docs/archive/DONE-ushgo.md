@@ -1,6 +1,11 @@
-# DONE
+# DONE: the Go implementation (ushgo), until 2026-10-29
 
-Progress log for [TODO](TODO.md), newest first. Each entry starts with the date and time of day
+> **Archived.** This was ushgo's own log until the two document sets were merged into
+> [ush/docs](../) on 2026-10-29; new entries go to [DONE](../DONE.md). The entries below are
+> unchanged; TODO and GAPS numbers in them are the old ones ([Old IDs](../TODO.md#old-ids)), and
+> only link targets were updated when files moved.
+
+Progress log for [TODO](../TODO.md), newest first. Each entry starts with the date and time of day
 (local time) and a title, then the TODO items and the PR, then the agent that did the work as
 `Agent: <model>, reasoning: <level>, subagents: <none or which>.` (or `Agent: human`), then
 **Implementation notes** (with the exact validation and its results), **Deviations** and
@@ -264,11 +269,11 @@ Agent: Opus 5.5, reasoning: not exposed, subagents: none.
 
 ### Implementation notes
 
-- [USER](USER.md): what ush does, first steps, asking (forms, quoting, piped input), approving
+- [USER](../USER.md): what ush does, first steps, asking (forms, quoting, piped input), approving
   (when a command runs unasked, the four answers), the allowlist, the checker, options, other
   commands, what leaves the machine, sudo, use without a terminal and exit statuses,
   troubleshooting.
-- [ADMIN](ADMIN.md): requirements per implementation, install from a release archive (checksums,
+- [ADMIN](../ADMIN.md): requirements per implementation, install from a release archive (checksums,
   `install.sh`, macOS quarantine), from source (deterministic build), Python, root-owned installs
   for `sudo`; configuration (files, every setting with default and range, environment variables);
   behaviour under sudo; network destinations; verifying with `ush ai status` and the smoke test;
@@ -379,12 +384,12 @@ Agent: Opus 5.5, reasoning: not exposed, subagents: none.
 
 ### Implementation notes
 
-- **Documents:** [README](../README.md), [ARCH](ARCH.md) (Go over Rust, ush modules mapped to
+- **Documents:** [README](../../go/README.md), [ARCH](../ARCH.md) (Go over Rust, ush modules mapped to
   `internal/` packages, conformance through ush's black-box tests, the tokenizer decision for TODO
-  1.1), [SEC](SEC.md) (what a static binary changes: no interpreter for root to trust; new risks of
+  1.1), [SEC](../SEC.md) (what a static binary changes: no interpreter for root to trust; new risks of
   drift between the two implementations, the Go toolchain and release binaries),
-  [TODO](TODO.md) (setup, ten port items in dependency order, release), [ROAD](ROAD.md),
-  [GAPS](GAPS.md) (Q1 resolved: Go; Q2 whether ushgo replaces ush).
+  [TODO](../TODO.md) (setup, ten port items in dependency order, release), [ROAD](../ROAD.md),
+  [GAPS](../GAPS.md) (Q1 resolved: Go; Q2 whether ushgo replaces ush).
 - **Code:** `go.mod` (Go 1.27, no dependencies), `cmd/ushgo/main.go`: `--version` (stamped with
   `-ldflags "-X main.version=…"`) and `--help`; everything else is a usage error (exit 2, "use ush"),
   so nothing runs by accident. `scripts/test.sh`: gofmt check, `go vet`, `go test` with

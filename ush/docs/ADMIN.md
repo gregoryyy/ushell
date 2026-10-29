@@ -2,14 +2,12 @@
 
 How to install, verify, configure, run under `sudo`, upgrade, and remove `ush` on machines you look
 after, and what it touches on the system and the network. For daily use, see the
-[user guide](USER.md). Status: 2026-10-28 10:23.
+[user guide](USER.md). Status: 2026-10-29 02:01.
 
-> **Which ush this describes.** This is the Python implementation of `ush`, in `ush/py/`, where
-> features are tried first. The Go implementation in `ush/go/` is the same command and the one
-> releases ship; it uses the same files, settings and plugin, so switching is a reinstall
-> ([ushgo ADMIN](../../go/docs/ADMIN.md)). Sections below say where the two differ.
-
-<!-- shared:begin (identical in ush/py/docs and ush/go/docs; test_docs) -->
+`ush` has two implementations with the same behaviour, files, settings and plugin: the Go one in
+`ush/go/`, the deliverable, one static binary per platform, and the Python one in `ush/py/`, where
+features are tried first. Switching between them is a reinstall. Sections below say where the two
+differ.
 
 ## Requirements
 
@@ -21,9 +19,42 @@ after, and what it touches on the system and the network. For daily use, see the
 | Size | about 1.6 MB today | about 70 MB (venv) |
 | Model | an Anthropic API key per user, or Ollama on the same machine | the same |
 
-<!-- shared:end -->
-
 ## Install
+
+### Go: from a release archive
+
+Each release has one `ush-VERSION-OS-ARCH.tar.gz` per platform and a `SHA256SUMS` file. Verify,
+unpack, install:
+
+```sh
+shasum -a 256 -c SHA256SUMS --ignore-missing      # or: sha256sum -c SHA256SUMS --ignore-missing
+tar -xzf ush-0.2.0-rc1-darwin-arm64.tar.gz
+ush-0.2.0-rc1-darwin-arm64/install.sh                 # for you: ~/.local/bin/ush
+```
+
+`install.sh` copies the binary to `PREFIX/bin/ush` (replacing it atomically) and the zsh plugin to
+`~/.local/share/ush/` (per user) or `PREFIX/lib/ush/` (with `--prefix`). Run from a terminal, it
+offers to add the plugin line to `~/.zshrc` (`--zshrc` adds it without asking, `--no-zshrc` only
+prints it); it never adds it twice or as root. These are the Python installer's places, so the
+plugin line stays valid when you switch.
+
+**macOS:** the binary is not signed. Archives downloaded with a browser get a quarantine attribute,
+and macOS then refuses to run the binary; download with `curl`, or remove the attribute after
+checking the checksum (`xattr -d com.apple.quarantine ush`). How releases will be distributed on
+macOS (Homebrew tap, or signing and notarization) is open ([GAPS](GAPS.md) Q11).
+
+### Go: from source
+
+```sh
+cd ush/go
+scripts/release.sh 0.2.0-rc1     # all four platforms into dist/, with SHA256SUMS (Go 1.27)
+```
+
+The build is deterministic: the same commit and version give the same checksums on any machine, so
+you can rebuild a published release and compare `SHA256SUMS` before trusting it. `go build -o ush
+./cmd/ush` gives a quick local binary.
+
+### Python
 
 ```sh
 cd ush/py && ./install.sh                          # for you: ~/.local/bin/ush, ~/.local/share/ush/
@@ -33,24 +64,22 @@ cd ush/py && ./install.sh                          # for you: ~/.local/bin/ush, 
 in `~/.local/share/ush/venv`, installs the hash-pinned packages from `requirements.lock` into it, and
 copies the `ush` package in instead of building it, so it fetches no unpinned build tools. The
 launcher `~/.local/bin/ush` runs that venv's Python with `-I`, which ignores `PYTHON*` variables,
-the user site directory and the current directory. Run from a terminal, the installer offers to
-add the plugin line to `~/.zshrc` (`--zshrc` adds it without asking, `--no-zshrc` only prints it);
-it never adds it twice or as root.
+the user site directory and the current directory. The plugin and `~/.zshrc` are handled as by the
+Go installer.
 
 ### For sudo: a root-owned install
 
-`sudo ush` runs whatever `ush` it finds, as root. If that file, the venv, or anything else it loads
-is writable by a user, that user can run code as root. Install a root-owned copy for `sudo` use:
+`sudo ush` runs whatever `ush` it finds, as root. If that file, or anything it loads, is writable by a
+user, that user can run code as root. Install a root-owned copy for `sudo` use:
 
 ```sh
-sudo ./install.sh --prefix /usr/local     # /usr/local/bin/ush, venv and plugin in /usr/local/lib/ush
+sudo ush-0.2.0-rc1-darwin-arm64/install.sh --prefix /usr/local # Go: /usr/local/bin/ush
+sudo ./install.sh --prefix /usr/local                          # Python: plus /usr/local/lib/ush
 ```
 
 `sudo`'s `secure_path` usually doesn't include `~/.local/bin`; the zsh plugin substitutes the
-absolute path of `ush` for `sudo ush //…`. The Go implementation reduces this to one root-owned
-binary ([ushgo ADMIN](../../go/docs/ADMIN.md#for-sudo-a-root-owned-install)).
-
-<!-- shared:begin (identical in ush/py/docs and ush/go/docs; test_docs) -->
+absolute path of `ush` for `sudo ush //…`. The Go binary is the whole install, which is the main
+reason it is the deliverable: no interpreter, venv or `PYTHON*` variables for root to trust.
 
 ## Configure
 
@@ -120,8 +149,8 @@ As root via `sudo`, ush:
 
 For Ollama, ush ignores proxy variables and doesn't follow redirects, so "stays on this machine" is
 true by construction. The commands ush runs use the network as they would from the user's shell; a
-read-only `dig`, `host` or `nslookup` runs without approval today ([SECTEST](../../py/docs/SECTEST.md)
-F2, a known finding).
+DNS lookup (`dig`, `host`, `nslookup`) of a name needs approval in agent mode, so injected text
+can't leak data through DNS names unasked ([SECTEST](SECTEST.md) F2, fixed 2026-10-28).
 
 ## Verify an install
 
@@ -133,34 +162,30 @@ ush/py/scripts/smoke.sh --provider ollama --model qwen3.5:9b   # with a local mo
 ```
 
 The smoke test keeps the user's settings and history out and writes `smoke-report.md`
-([SMOKE](../../py/docs/SMOKE.md)). Run it after every install and upgrade.
-
-<!-- shared:end -->
+([SMOKE](SMOKE.md)). Run it after every install and upgrade.
 
 ## Upgrade, roll back, remove
 
-- **Upgrade:** check out the new version and run `install.sh` again with the same `--prefix`; it
-  recreates the venv. Settings, keys and history stay; their formats are the same in both
-  implementations.
-- **Roll back:** check out the previous tag and run `install.sh` again.
-- **Switch to Go:** install a Go release archive into the same prefix ([ushgo
-  ADMIN](../../go/docs/ADMIN.md#install)); then remove the venv in `PREFIX/lib/ush/venv` (or
-  `~/.local/share/ush/venv`).
-- **Remove:** delete `PREFIX/bin/ush` and `PREFIX/lib/ush/` (or `~/.local/bin/ush` and
-  `~/.local/share/ush/`), the plugin line in `~/.zshrc`, and per user, if wanted: `ush ai
-  clear-key`, `~/.config/ush/`, `~/.local/state/ush/`.
-
-<!-- shared:begin (identical in ush/py/docs and ush/go/docs; test_docs) -->
+- **Upgrade:** install the new release over the old one (Python: check out the new version and run
+  `install.sh` again with the same `--prefix`; it recreates the venv). Settings, keys and history
+  stay; their formats are the same in both implementations.
+- **Roll back:** install the previous release archive the same way (Python: check out the previous
+  tag and run `install.sh` again).
+- **Switch implementation:** install the other one into the same prefix; nothing else changes.
+  From Python to Go, remove the venv afterwards: `PREFIX/lib/ush/venv` or `~/.local/share/ush/venv`.
+- **Remove:** delete `PREFIX/bin/ush` and `PREFIX/lib/ush/` (or `~/.local/share/ush/`), the plugin
+  line in `~/.zshrc`, and per user, if wanted: `ush ai clear-key`, `~/.config/ush/`,
+  `~/.local/state/ush/`.
 
 ## Security notes
 
-- The approval prompt is the main control. Escape sequences in commands or output can currently
-  change what it shows ([SECTEST](../../py/docs/SECTEST.md) F1, fix planned before the first
-  release); until then, use `--confirm` and read commands carefully on sensitive machines.
+- The approval prompt is the main control. ush shows commands and output with control and escape
+  sequences neutralised and refuses proposals that contain them, so what you approve is what runs
+  ([SECTEST](SECTEST.md) F1, fixed 2026-10-28). On sensitive machines, use `--confirm` and read
+  commands carefully anyway.
 - The read-only policy infers, it doesn't sandbox: a "read-only" tool with an unknown side effect, or
   a malicious binary earlier on `PATH`, runs unasked. Keep `PATH` free of writable or relative
   entries for users of ush, especially root.
-- Threat models: [ushpy SEC](../../py/docs/SEC.md) for the command,
-  [ushgo SEC](../../go/docs/SEC.md) for what the Go build changes.
+- Threat model: [SEC](SEC.md), with what the Go build changes in its last section; findings and
+  security tests in [SECTEST](SECTEST.md).
 
-<!-- shared:end -->

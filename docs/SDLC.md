@@ -1,11 +1,11 @@
 # Development process
 
 How work moves from an idea to merged, documented, tested code in this repository. It applies to
-people and coding agents alike, and to every project in it: [ush](../ush/py/README.md),
-[ushgo](../ush/go/README.md) and [wish](../wish/README.md). [AGENTS.md](../AGENTS.md) holds the
+people and coding agents alike, and to every project in it: [ush](../ush/README.md), in two
+implementations, and [wish](../wish/README.md). [AGENTS.md](../AGENTS.md) holds the
 rules that override everything else (human merges, security, release gate); this document describes
 the documents and the workflow. The regime follows `../propeller/docs/SDLC.md`. Status:
-2026-10-28 09:59.
+2026-10-29 02:01.
 
 ## The lifecycle
 
@@ -160,7 +160,8 @@ project in TODO order:
 ## ush: one command, two implementations
 
 `ush` is one command with two implementations that must behave the same (decided 2026-10-28,
-[ushgo GAPS](../ush/go/docs/GAPS.md) Q2):
+[ush GAPS](../ush/docs/GAPS.md) Q10). They share one document set, [ush/docs/](../ush/docs/), since
+2026-10-29:
 
 | | Python, [ush/py/](../ush/py/README.md) | Go, [ush/go/](../ush/go/README.md) |
 | --- | --- | --- |
@@ -174,24 +175,22 @@ project in TODO order:
 2. **Build and test it in Python**, with negative tests for anything that touches the policy,
    execution, credentials or egress. Behaviour that users see is specified by tests that drive the
    command from outside (CLI, pty, mock API), because those tests also run against Go.
-3. **In the same PR, add the ushgo TODO item** that ports it, naming the Python tests that define
-   it. A feature is in ush's DONE when Python has it; it reaches users when ushgo has it.
-4. **Port it to Go** in a separate PR, with the Python tests ported or run as conformance tests
-   against the Go binary (ushgo TODO 1.10). A difference in behaviour is a bug in one of the two
-   unless ARCH records it.
-5. **Smoke-test both** as a user, with the same script ([SMOKE](../ush/py/docs/SMOKE.md)):
+3. **Mark the TODO item** *py ✓ go –* and log it in DONE. The item stays open until Go has the
+   feature: it reaches users when ushgo has it.
+4. **Port it to Go**, in the same PR or a later one, with the Python tests ported or run as
+   conformance tests against the Go binary (ush TODO 4.10); then the item is *py ✓ go ✓* and
+   ticked. A difference in behaviour is a bug in one of the two unless ARCH records it.
+5. **Smoke-test both** as a user, with the same script ([SMOKE](../ush/docs/SMOKE.md)):
    `ush/py/scripts/smoke.sh --bin <either ush>`.
 
 **Shared contract:** settings (`~/.config/ush/config.json`), key store, history format, exit
 statuses, environment variables (`USH_*`) and the zsh plugin are the same for both; a change to any
-of them is made in both, or in Python with the ushgo item that follows.
+of them is made in both, or in Python with the item left open for Go.
 
-**Security-relevant code first in both:** fixes for findings in [SECTEST](../ush/py/docs/SECTEST.md)
-go into Python and get their ushgo item in the same PR; the ushgo port of the policy (TODO 1.1)
-starts from the fixed version.
+**Security-relevant code first in both:** fixes for findings in [SECTEST](../ush/docs/SECTEST.md)
+go into both implementations before the next release.
 
-**Releases:** a ush release ships the Go binary once ushgo passes the conformance suite (ushgo
-ROAD); until then, the Python implementation. Either way, the release gate in
+**Releases:** a ush release ships the Go binary (ush TODO 5.2); the release gate in
 [AGENTS.md](../AGENTS.md) and the smoke test run on what ships.
 
 ## Releases

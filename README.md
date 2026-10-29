@@ -6,9 +6,9 @@ checked, and executed. Both use the user's own AI API key, or a local model.
 
 | Project | What | Status |
 | --- | --- | --- |
-| **ush** | The `//` shell for zsh on your machine, optionally under `sudo`; one command, two implementations | |
-| ↳ [ushpy](ush/py/README.md) | ush in Python: the experimental implementation, where features are tried first | Complete; not yet released |
-| ↳ [ushgo](ush/go/README.md) | ush in Go: the compiled deliverable, one static binary | Ported, at parity with ushpy; 0.2.0-rc1 ships it |
+| [ush](ush/README.md) | The `//` shell for zsh on your machine, optionally under `sudo`; one command, two implementations | 0.2.0-rc1 released |
+| ↳ [ush/go](ush/go/README.md) | ush in Go: the compiled deliverable, one static binary | Shipped in 0.2.0-rc1 |
+| ↳ [ush/py](ush/py/README.md) | ush in Python: the experimental implementation, where features are tried first | At parity with Go |
 | [wish](wish/README.md) | Browser workspace: files, notebooks, live tools | Design documents; not implemented |
 
 What comes next, across the projects, is in the roadmap: [docs/ROAD.md](docs/ROAD.md); what exists
@@ -29,46 +29,30 @@ any command line, and `-v` gives the full explanation.
 
 `ush` is one command with two implementations that must behave the same: Python in `ush/py/` and Go
 in `ush/go/`. `ush --version` says which one you have (`(python)` or `(go)`). Features land in Python
-first and are then ported to Go; releases ship the Go binary once it passes the same black-box tests
-([SDLC](docs/SDLC.md#ush-one-command-two-implementations)). Until then, install the Python one.
+first and are then ported to Go; releases ship the Go binary, which passes the same black-box tests
+([SDLC](docs/SDLC.md#ush-one-command-two-implementations)). Install a release archive
+([ADMIN](ush/docs/ADMIN.md#install)), or from a checkout:
 
 ```sh
-cd ush/py && ./install.sh         # installs ~/.local/bin/ush; offers to add the plugin to ~/.zshrc
+cd ush/py && ./install.sh        # Python; installs ~/.local/bin/ush, offers the plugin for ~/.zshrc
 ush ai configure                 # mode, provider, model, key (macOS keychain or a 0600 file)
 // find out why my machine does not have enough disk space      # in a new terminal
 ```
 
 To check an installed `ush` of either implementation, run the user smoke test
-([SMOKE](ush/py/docs/SMOKE.md)): `ush/py/scripts/smoke.sh` offline, then with
+([SMOKE](ush/docs/SMOKE.md)): `ush/py/scripts/smoke.sh` offline, then with
 `--provider ollama --model …` on a local model, or `--bin PATH` for another binary.
 
-### ushpy: Python
-
-The reference for behaviour and the place to try features: zsh plugin, `sudo` use, local models,
-the checker model, and what is sent to the provider are described in
-[ush/py/README.md](ush/py/README.md). Its plan and records are in [ush/py/docs/](ush/py/docs/):
-[TODO](ush/py/docs/TODO.md), [ROAD](ush/py/docs/ROAD.md), [ARCH](ush/py/docs/ARCH.md),
-[SEC](ush/py/docs/SEC.md), [SECTEST](ush/py/docs/SECTEST.md), [GAPS](ush/py/docs/GAPS.md), and
-[DONE](ush/py/docs/DONE.md). It needs Python 3.10 or newer.
-
-### ushgo: Go
-
-The version users will install: one static binary, with no interpreter or installed packages for
-root to trust under `sudo`, and no two-second start while a Python SDK loads. It has every feature
-of ushpy, and ushpy's black-box tests pass against it (`just ushgo-conform`).
+Both share one set of documents in [ush/docs/](ush/docs/): the [user guide](ush/docs/USER.md) and
+[admin guide](ush/docs/ADMIN.md), [TODO](ush/docs/TODO.md), [ROAD](ush/docs/ROAD.md),
+[ARCH](ush/docs/ARCH.md), [SEC](ush/docs/SEC.md), [SECTEST](ush/docs/SECTEST.md),
+[GAPS](ush/docs/GAPS.md) and [DONE](ush/docs/DONE.md). Building and testing each implementation
+is in its README: [ush/go](ush/go/README.md) (Go 1.27, no dependencies) and [ush/py](ush/py/README.md)
+(Python 3.10 or newer).
 
 ```sh
-just ushgo-test                                  # gofmt, go vet, go test (Go 1.27: brew install go)
-cd ush/go && go build -o ush ./cmd/ush            # writes ./ush
-./ush --version                                  # ush 0.0.0-dev (go)
-just ushgo-conform                               # ushpy's black-box tests against the Go binary
+just ush-test                    # both implementations, and ushpy's black-box tests against Go
 ```
-
-The [user guide](ush/go/docs/USER.md) and the [admin guide](ush/go/docs/ADMIN.md) describe the `ush`
-command; ushpy has the same guides ([USER](ush/py/docs/USER.md), [ADMIN](ush/py/docs/ADMIN.md)). See [ush/go/README.md](ush/go/README.md) and its plan in
-[ush/go/docs/](ush/go/docs/):
-[TODO](ush/go/docs/TODO.md), [ROAD](ush/go/docs/ROAD.md), [ARCH](ush/go/docs/ARCH.md),
-[SEC](ush/go/docs/SEC.md), [GAPS](ush/go/docs/GAPS.md), and [DONE](ush/go/docs/DONE.md).
 
 ## wish
 
@@ -81,7 +65,7 @@ pipes, JSON/CSV, and one Python notebook, starting from an evaluation of just-ba
 
 ## How the work is organised
 
-Each project (ushpy, ushgo, wish) keeps the same documents in its `docs/` folder: TODO (the plan,
+Each project (ush, wish) keeps the same documents in its `docs/` folder: TODO (the plan,
 with stable numbered items), DONE (the progress log, newest first), ARCH, ROAD, SEC, and GAPS (the
 questions only the user can answer). [docs/SDLC.md](docs/SDLC.md) describes the process and
 [docs/ROAD.md](docs/ROAD.md) the roadmap across projects. Work happens on branches and
@@ -93,8 +77,9 @@ AGENTS.md                 rules for contributors and agents: human merges, tests
 CLAUDE.md                 points to AGENTS.md
 docs/SDLC.md              the development process shared by all projects
 docs/ROAD.md              the roadmap across projects
-ush/py/                   ush in Python, experimental: README, docs/, src/, tests/, scripts/
-ush/go/                   ush in Go, the deliverable: README, docs/, cmd/ush/, internal/, scripts/
+ush/docs/                 ush's documents, for both implementations; archive/ holds the old DONE logs
+ush/go/                   ush in Go, the deliverable: README, cmd/ush/, internal/, scripts/
+ush/py/                   ush in Python, experimental: README, src/, tests/, scripts/
 ush/shell/                the zsh plugin and the installers' ~/.zshrc step, shared by both
 ush/conform/              policy.json, the verdicts both implementations must give
 wish/                     browser workspace: README, docs/

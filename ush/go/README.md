@@ -6,11 +6,11 @@ binary: no interpreter or installed packages for root to trust under `sudo`, and
 while a Python SDK loads. Python is where features are tried first; ushgo gets each of them, and the
 two must behave the same ([SDLC](../../docs/SDLC.md#ush-one-command-two-implementations)).
 
-**Status:** ported (TODO 1.1–1.12). Every package of ushpy has its Go counterpart, and ushpy's
+**Status:** ported (TODO 4.1–4.12). Every package of ushpy has its Go counterpart, and ushpy's
 black-box tests pass against the Go binary (`just ushgo-conform`): the command line, propose mode,
 sessions and the approval prompt in a pty, the zsh plugin, the security tests and the smoke test.
 The policy matches ushpy's on all 1545 lines of the shared corpus. 0.2.0-rc1 is its first release
-([TODO](docs/TODO.md) 2.5).
+([TODO](../docs/TODO.md) 5.5).
 
 ## Build and test
 
@@ -42,23 +42,21 @@ install from an archive: `tar -xzf ush-….tar.gz && ush-…/install.sh` (or `su
 
 ## Documents
 
-- [USER](docs/USER.md): the user guide: asking, approving, the allowlist, the checker, what leaves
-  the machine, troubleshooting.
-- [ADMIN](docs/ADMIN.md): the admin guide: install and verify releases, root-owned installs for
-  `sudo`, settings and files, network, upgrade and removal.
-- [ARCH](docs/ARCH.md): how the port maps ush's modules to Go packages, and why Go.
-- [SEC](docs/SEC.md): what changes from [ush's threat model](../py/docs/SEC.md) with a compiled binary.
-- [TODO](docs/TODO.md) and [ROAD](docs/ROAD.md): the port's plan and phases.
-- [GAPS](docs/GAPS.md): questions for the user and assumptions.
-- The user smoke test is shared with Python: [SMOKE](../py/docs/SMOKE.md), `../ushpy/scripts/smoke.sh --bin ./ush`.
-- [DONE](docs/DONE.md): progress log, newest first.
+ush's documents are shared by both implementations, in [ush/docs/](../docs/):
+- [USER](../docs/USER.md) and [ADMIN](../docs/ADMIN.md): the user and admin guides.
+- [ARCH](../docs/ARCH.md#the-go-implementation): how the Go packages map ushpy's modules, and why Go.
+- [SEC](../docs/SEC.md#what-the-go-implementation-changes): what a compiled binary changes.
+- [TODO](../docs/TODO.md) (the port is section 4, releases section 5), [ROAD](../docs/ROAD.md),
+  [GAPS](../docs/GAPS.md) and [DONE](../docs/DONE.md); ushgo's log until 2026-10-29 is in
+  [archive/](../docs/archive/DONE-ushgo.md).
+- The user smoke test is shared with Python: [SMOKE](../docs/SMOKE.md),
+  `../py/scripts/smoke.sh --bin ./ush`.
 
-The process is the repository's [SDLC](../../docs/SDLC.md); TODO and GAPS numbers are ushgo's own.
+The process is the repository's [SDLC](../../docs/SDLC.md).
 
 ## Layout
 
 ```text
 cmd/ush/       the command (main.go) and its tests
 scripts/       test.sh: format, vet, test
-docs/          ARCH, SEC, TODO, ROAD, GAPS, DONE
 ```
