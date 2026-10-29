@@ -61,7 +61,7 @@ func TestProposalReplacesEarlierRecords(t *testing.T) {
 	}
 }
 
-func TestTakeRanReadsBoundsAndRemoves(t *testing.T) {
+func TestTakeRanReadsBoundsAndKeepsItOnlyForNotes(t *testing.T) {
 	dir := setup(t)
 	if TakeRan(dir, 1000) != nil {
 		t.Error("nothing ran")
@@ -73,13 +73,49 @@ func TestTakeRanReadsBoundsAndRemoves(t *testing.T) {
 		!strings.HasSuffix(ran.Output, "END") || len(ran.Output) > 1100 {
 		t.Errorf("%+v", ran)
 	}
-	if entries, _ := os.ReadDir(dir); len(entries) != 0 {
-		t.Error(entries)
+	if names := entryNames(dir); names != "last-output last-ran" {
+		t.Error(names)
+	}
+	if TakeRan(dir, 1000) != nil {
+		t.Error("`//` gets a run once")
 	}
 	os.WriteFile(filepath.Join(dir, "ran"), []byte("x\nvim notes"), 0o600)
 	if ran := TakeRan(dir, 1000); ran.ExitCode != nil || ran.Captured {
 		t.Errorf("%+v", ran)
 	}
+	if names := entryNames(dir); names != "last-ran" {
+		t.Error("stale output kept:", names)
+	}
+}
+
+// Notes (TODO 2.25) on an empty line: the last run, taken by `//` or not.
+func TestLastRanIsTheNewestRunAndRemovesNothing(t *testing.T) {
+	dir := setup(t)
+	if LastRan(dir, 1000) != nil {
+		t.Error("nothing ran")
+	}
+	os.WriteFile(filepath.Join(dir, "ran"), []byte("0\nmake"), 0o600)
+	os.WriteFile(filepath.Join(dir, "output"), []byte("built"), 0o600)
+	if ran := LastRan(dir, 1000); ran.Output != "built" || entryNames(dir) != "output ran" {
+		t.Errorf("%+v %s", ran, entryNames(dir))
+	}
+	TakeRan(dir, 1000)
+	if ran := LastRan(dir, 1000); ran.Command != "make" || ran.Output != "built" {
+		t.Errorf("%+v", ran)
+	}
+	os.WriteFile(filepath.Join(dir, "ran"), []byte("1\nmake test"), 0o600)
+	if ran := LastRan(dir, 1000); ran.Command != "make test" || *ran.ExitCode != 1 || ran.Captured {
+		t.Errorf("%+v", ran)
+	}
+}
+
+func entryNames(dir string) string {
+	entries, _ := os.ReadDir(dir)
+	var names []string
+	for _, e := range entries {
+		names = append(names, e.Name())
+	}
+	return strings.Join(names, " ")
 }
 
 func TestLinksAreNotFollowed(t *testing.T) {

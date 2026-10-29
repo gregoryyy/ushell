@@ -43,6 +43,9 @@ machine and the model.
   proposal. Both keys keep their usual meaning otherwise. `ush explain COMMAND` explains any
   command line; in a session (`ush`), proposals are pre-filled at the `ush>` prompt with the
   same keys.
+- **Ctrl-X n takes notes** on the last recorded output, on a command it then runs, or on the
+  files the line names; a `# comment` is the question. `ush notes [QUESTION] FILE…` does the
+  same from scripts and pipes.
 - **Agent mode** (`ush --run //REQUEST`, or `mode: run`): ush runs the commands itself,
   answers, and offers follow-ups. `ush` alone starts a session, where `// TEXT` asks and
   any other line runs as an ordinary command whose output becomes context. The rest of

@@ -14,6 +14,105 @@ implementation kept its own log: [ushpy](archive/DONE-ushpy.md), [ushgo](archive
 
 ---
 
+## 2026-10-29 02:40 — Notes on command output and files: Ctrl-X n and `ush notes`
+
+TODO items: 2.25, in both implementations. PR: see the branch `feat/ush-2.25-notes`.
+
+Agent: Opus 5.5, reasoning: not exposed, subagents: none.
+
+### Implementation notes
+
+- **The request:** "add the possibility to analyze command output and files. this could be a
+  shortcut like ctrl-n like notes" (user, 2026-10-29). The key is Ctrl-X n, since Ctrl-M is Enter.
+  The output is the plugin's recorded output, as proposed and accepted ("implement the changes").
+  Both decisions are in GAPS Q7.
+- **`ush notes [-v] [--last] [INSTRUCTION] [FILE…]`**, in `cli.py` and `notes.py`, and in Go in
+  `cmd/ush/notes.go` and `internal/notes`:
+  - Words naming existing paths are files; the rest is the instruction. Piped input counts as
+    material.
+  - `--last` takes the plugin's last recorded run.
+  - One request without tools (`complete`, as for `ush explain`). The material is redacted and
+    goes between random-tag markers; the system prompt calls it data. At most 200 KB in all.
+  - A disclosure line names each item and where it goes; `-v` adds the sizes.
+  - Refused, with the reason:
+    - secret locations, the policy's list (now `is_secret` / `policy.IsSecret`), by the name given
+      and by what a link resolves to;
+    - directories, and special files: a FIFO is opened with `O_NONBLOCK`;
+    - binary files (a NUL byte);
+    - files past the remaining budget.
+  - Never as root.
+- **The last run kept for notes:** `take_ran` (Go `TakeRan`) now renames `ran` and `output` to
+  `last-ran` and `last-output` instead of deleting them. `last_ran` (`LastRan`) reads the fresh
+  run or else the kept one and removes nothing. So Ctrl-X n on an empty line still has the output
+  after `//` has sent it. The next run replaces the kept files, and the shell's exit removes them.
+- **The plugin**, shared by both:
+  - `_ush_notes` splits the line with `${(Z+c+)BUFFER}`, so a trailing comment is one word: the
+    question.
+  - A line whose first word `whence` finds runs like a proposal: the captured state, then
+    `accept-line`; `precmd` writes `ran`, then runs `ush notes --last`.
+  - Other lines become `ush notes --last …` (no word names a file) or `ush notes -- WORDS`, with
+    `~/` expanded, and are accepted, so the history shows what was sent.
+  - sudo, doas, ush and `//` lines are refused with a message.
+  - The key is bound in emacs and viins only where it is free (`undefined-key`). `USH_NOTES_KEY`
+    sets another key; empty means none.
+  - The completion lists `explain` and `notes`.
+- **Tests:**
+  - **`test_zsh_plugin`:**
+    - six pty tests with the fake ush: a command with and without a question, the history line;
+      a script under `~/` runs;
+      an empty line, a question alone, plain words; a line of files with `~/` and quotes; sudo and
+      `//` lines; the bindings;
+    - `ZshNotesTest`, with the real ush against the mock API: a command, then its output again.
+  - **`test_cli`:**
+    - files and piped input, with redaction and markers;
+    - the refusals: `.env`, a link to `~/.ssh/config` and a broken one into `~/.ssh`, binary,
+      200 KB, a directory, a FIFO;
+    - the budget across two files;
+    - `--last`: sent, kept, not recorded, nothing yet, no plugin;
+    - root, in-process.
+  - **`test_notes`** and **`test_propose`**: `last_ran`; `take_ran` keeps the run.
+  - **Go:** `internal/notes` (`TestReadFileSendsTextAndSaysWhyNot` and two more),
+    `TestNotesNeverAsRoot`, `TestLastRanIsTheNewestRunAndRemovesNothing`.
+  - **Both implementations:** the black-box tests ran against the Go binary too.
+- **Documents:** USER (Notes, the commands table, what leaves the machine), ARCH (notes, the kept
+  files, `internal/notes`), SEC (two threats, the kept output, a residual risk), SECTEST (five
+  rows), TODO 2.25 done for both, the repository ROAD's idea narrowed to what remains (a result per
+  file), SOTA, ush/py's README.
+- **Validation:**
+  - `just ush-test`: ushpy 199 tests OK; every Go package OK, `internal/notes` new; 80
+    conformance tests OK against the Go binary.
+  - `just links`: passes.
+  - Local CI on the pushed head: see the PR.
+
+### Deviations
+
+- **What a line is:**
+  - TODO 2.25 said the words naming files are sent; it didn't say when a line is a command.
+    Here a line is a command if `whence` finds its first word, else it is files and a question.
+  - Words that name no file, with no file among them, are a question on the last output, so
+    `why so slow` works without the `#`.
+  - A command line's own file arguments are not sent besides its output.
+- **Notes are printed, not drawn above the line:** TODO 2.25 said notes appear "as an explanation
+  is shown", but explanations are display-only (`PREDISPLAY`) and vanish. Notes are printed before
+  the next prompt, so they stay in the scrollback, and the history shows the `ush notes` line.
+- **Refused files are reported, the rest is sent:** one refusal doesn't stop the request; if
+  nothing is left, ush says "nothing sent" and exits 1.
+- **One answer for all files:** the repository ROAD's idea, a result per file, stays an idea.
+- **`complete`'s limits:** a 60-second timeout and 2048 answer tokens, the same as for explanations.
+  That suits brief notes; long material on a slow local model may time out.
+
+### Insights
+
+- zsh's `${(Z+c+)…}` parses a line as the shell would and keeps the comment as one word. That
+  gave the question and the command without a second parser.
+- Inside double quotes zsh joins an array before applying `(q-)`: `${(j: :)${(q-)args}}` quoted
+  the whole list as one word. `(@q-)` quotes each word.
+- `bindkey -L` lists only the main keymap; `bindkey -LM MAP` per keymap shows the rest.
+- Two cases the first version got wrong, found in review and now tested: `whence` was asked about
+  `~/bin/x` before the `~` was expanded, so a script under home was sent as a file instead of
+  run; and Go resolved a broken link to its own path, where Python's `realpath` follows it to the
+  secret location it names.
+
 ## 2026-10-29 02:07 — One document set for ush
 
 TODO items: none; the plan's structure. PR: #31.

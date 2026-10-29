@@ -14,9 +14,12 @@
 # In propose mode, ush's proposal is put on the next command line, and what you then
 # run there is recorded for `//` to continue with (see the hooks at the end).
 #
+# Ctrl-X n takes notes on command output and files with the model (see _ush_notes below).
+#
 # Settings (set before sourcing):
 #   USH_BARE_SLASH=0   do not treat a line starting with `//` as `ush //...`
 #   USH_BIN=PATH       ush executable to use (default: `ush` found on PATH)
+#   USH_NOTES_KEY=KEYS the notes key, as bindkey writes it (default: ^Xn; empty: none)
 
 [[ -o interactive ]] || return 0
 (( ${+_ush_plugin_loaded} )) && return 0
@@ -62,6 +65,8 @@ _ush() {
     'ai:configure, inspect, or clear the AI provider key'
     'history:list recent requests and the commands they ran'
     'replay:run the commands of an earlier request again, without AI'
+    'explain:explain a command line with the model, without running it'
+    'notes:notes on files or piped input with the model'
     'allow:list, add, or remove commands that may run without approval'
     'help:show usage'
   )
@@ -90,6 +95,8 @@ typeset -ga _ush_saved=()   # the key bindings a proposal replaced, as `bindkey 
 typeset -gA _ush_orig=()    # key sequence -> the widget it had
 typeset -gi _ush_explained=0  # an explanation is shown above the proposal
 typeset -g _ush_kept_line= _ush_kept_text=  # the last explanation and the line it explains
+typeset -gi _ush_noting=0     # Ctrl-X n ran the command: notes on it before the next prompt
+typeset -g _ush_notes_ask=    # and the question for them
 zmodload -F zsh/zselect b:zselect 2>/dev/null
 
 _ush_precmd() {
@@ -98,8 +105,13 @@ _ush_precmd() {
   if [[ $_ush_state == running ]]; then
     _ush_end_capture
     print -r -- "$st"$'\n'"$_ush_line" >| $_ush_dir/ran
+    if (( _ush_noting )); then
+      local -a ask=(--last)
+      [[ -n $_ush_notes_ask ]] && ask+=(-- $_ush_notes_ask)
+      command ${USH_BIN:-ush} notes $ask
+    fi
   fi
-  _ush_state=
+  _ush_state= _ush_noting=0 _ush_notes_ask=
   [[ -f $_ush_dir/proposal && ! -L $_ush_dir/proposal ]] || return 0
   content=$(<$_ush_dir/proposal)
   command rm -f -- $_ush_dir/proposal
@@ -192,6 +204,55 @@ _ush_explain() {
   fi
 }
 
+# Ctrl-X n: notes with the model (`ush notes`, TODO 2.25), printed before the next prompt, so
+# they stay in the scrollback. A comment ending the line is the question: `make # why?`.
+# - On an empty line, or one with only a question: notes on the output of the last command the
+#   plugin recorded.
+# - On a command line: the command runs with its output recorded, as a proposal runs (through a
+#   pipe, so no colours or pagers), and then gets notes.
+# - On another line, the words that name files are sent, and the rest is the question:
+#   `app.log nginx.conf why the 502?`.
+# Lines run as `ush notes ...` go into the history as such, showing what was sent. Not on sudo
+# or ush lines.
+_ush_notes() {
+  emulate -L zsh
+  setopt extended_glob
+  local -a words args
+  local comment= command=$BUFFER word first bin=${USH_BIN:-ush} files=0
+  words=(${(Z+c+)BUFFER})
+  if [[ $words[-1] == '#'* ]]; then
+    comment=${${words[-1]#\#}##[[:space:]]#}
+    command=${${${BUFFER%%[[:space:]]#}%"$words[-1]"}%%[[:space:]]#}
+    words[-1]=()
+  fi
+  first=${(Q)words[1]}
+  [[ $first == '~/'* ]] && first=$HOME/${first#\~/}
+  if [[ $first == (sudo|doas|ush|*/ush|//*) ]]; then
+    zle -M "ush: no notes on sudo or ush lines"
+    return
+  fi
+  if (( ${#words} )) && whence -- $first >/dev/null; then
+    _ush_noting=1 _ush_notes_ask=$comment
+    _ush_state=offered _ush_mode=capture
+    BUFFER=$command
+    zle accept-line
+    return
+  fi
+  for word in $words; do
+    word=${(Q)word}
+    [[ $word == '~/'* ]] && word=$HOME/${word#\~/}
+    [[ -e $word || -L $word ]] && files=1
+    args+=($word)
+  done
+  [[ -n $comment ]] && args+=($comment)
+  if (( files )); then
+    BUFFER="${(q-)bin} notes -- ${(j: :)${(@q-)args}}"
+  else
+    BUFFER="${(q-)bin} notes --last${args:+ -- ${(q-)${(j: :)args}}}"
+  fi
+  zle accept-line
+}
+
 _ush_keys_bind() {
   (( ${#_ush_saved} )) && return 0
   local key line
@@ -240,4 +301,12 @@ then
   zle -N _ush_discard
   zle -N _ush_explain
   zle -N _ush_up
+  zle -N _ush_notes
+  if [[ -n ${USH_NOTES_KEY-'^Xn'} ]]; then
+    for _ush_map in emacs viins; do  # only where the key is free: no binding changes
+      [[ $(bindkey -M $_ush_map -- ${USH_NOTES_KEY-'^Xn'}) == *' undefined-key' ]] &&
+        bindkey -M $_ush_map -- ${USH_NOTES_KEY-'^Xn'} _ush_notes
+    done
+    unset _ush_map
+  fi
 fi

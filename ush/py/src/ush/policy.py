@@ -79,6 +79,11 @@ def _is_secret(path: str) -> bool:
     return bool(parts) and bool(SECRET_NAME_PATTERNS.match(parts[-1]))
 
 
+def is_secret(path: str) -> bool:
+    """A known secret location; `ush notes` (TODO 2.25) doesn't send such a file either."""
+    return _is_secret(path)
+
+
 def _covers_secrets(directory: str) -> bool:
     """True if recursively reading `directory` would reach a secret location."""
     d = directory.rstrip("/") or "/"

@@ -7,7 +7,9 @@
 // The handoff directory is the plugin's (USH_HANDOFF, mktemp -d): ush writes `proposal` (a mode
 // line, capture or interactive, then the command); the plugin writes `ran` (exit status, then the
 // command line) and `output`. ush uses the directory only if it is the user's own, closed to
-// others, and never as root. Conversations are saved per shell in the state directory,
+// others, and never as root. When `//` takes `ran` and `output`, they stay as `last-ran` and
+// `last-output` for notes (`ush notes --last`, Ctrl-X n, TODO 2.25) until the next run replaces
+// them or the shell exits. Conversations are saved per shell in the state directory,
 // sessions/KEY.json, mode 0600, and expire after an hour unused. Explanations are kept in
 // explanations.json, mode 0600: the model's redacted answer under the SHA-256 of the command line,
 // never the command line itself.
@@ -88,10 +90,35 @@ func WriteProposal(dir, command string, interactive bool) error {
 	return os.Rename(tmp, filepath.Join(dir, "proposal"))
 }
 
-// TakeRan returns what the plugin recorded since the proposal, then removes it; nil if nothing
-// ran.
+// TakeRan returns what the plugin recorded since the proposal, then keeps it only for notes; nil
+// if nothing ran.
 func TakeRan(dir string, limit int) *Ran {
-	text, ok := readRegular(filepath.Join(dir, "ran"))
+	ran := loadRan(dir, "", limit)
+	if ran == nil {
+		return nil
+	}
+	for _, name := range []string{"ran", "output"} {
+		if _, err := os.Lstat(filepath.Join(dir, name)); err == nil {
+			_ = os.Rename(filepath.Join(dir, name), filepath.Join(dir, "last-"+name))
+		} else {
+			removeIfExists(filepath.Join(dir, "last-"+name))
+		}
+	}
+	removeIfExists(filepath.Join(dir, "proposal"))
+	return ran
+}
+
+// LastRan returns the last run the plugin recorded, whether or not `//` has taken it; it removes
+// nothing.
+func LastRan(dir string, limit int) *Ran {
+	if ran := loadRan(dir, "", limit); ran != nil {
+		return ran
+	}
+	return loadRan(dir, "last-", limit)
+}
+
+func loadRan(dir, prefix string, limit int) *Ran {
+	text, ok := readRegular(filepath.Join(dir, prefix+"ran"))
 	if !ok {
 		return nil
 	}
@@ -101,7 +128,7 @@ func TakeRan(dir string, limit int) *Ran {
 		ran.ExitCode = &code
 	}
 	collector := execute.NewCollector(limit, nil)
-	if f, err := os.OpenFile(filepath.Join(dir, "output"), os.O_RDONLY|syscall.O_NOFOLLOW, 0); err == nil {
+	if f, err := os.OpenFile(filepath.Join(dir, prefix+"output"), os.O_RDONLY|syscall.O_NOFOLLOW, 0); err == nil {
 		if info, err := f.Stat(); err == nil && info.Mode().IsRegular() {
 			ran.Captured = true
 			buf := make([]byte, 65536)
@@ -118,9 +145,6 @@ func TakeRan(dir string, limit int) *Ran {
 		f.Close()
 	}
 	ran.Output, ran.Truncated = collector.Text()
-	for _, name := range []string{"ran", "output", "proposal"} {
-		removeIfExists(filepath.Join(dir, name))
-	}
 	return ran
 }
 

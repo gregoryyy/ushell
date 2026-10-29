@@ -93,6 +93,31 @@ Without the plugin, ush prints the proposal for you to copy, and can't know what
 relevant output into `// …` if it matters. The conversation continues in the same shell for an
 hour; `ush --new` starts over.
 
+## Notes
+
+**Ctrl-X n** asks the model for notes on command output or files: what it is, what stands out
+(errors, warnings, failures, odd values), and what to do next. The notes are printed before the
+next prompt, so they stay in your scrollback. A comment at the end of the line is your question:
+
+| On the command line | Notes on |
+| --- | --- |
+| nothing, or only `# why so slow?` | the output of the last command ush recorded (a proposal you ran, or the last Ctrl-X n command) |
+| a command: `make test # why does it fail?` | that command's output: it runs as a proposal would, recorded, then gets notes |
+| files: `app.log nginx.conf why the 502?` | the files the words name; the other words are the question |
+
+For files, the line runs as `ush notes …`, so your history shows what was sent. Ctrl-X n doesn't
+work on `sudo` or `//` lines. `USH_NOTES_KEY` in `~/.zshrc`, before the plugin, sets another key,
+or none when empty; ush binds the key only if it is free.
+
+Without the plugin, or in a script: `ush notes [-v] [QUESTION] FILE…`, or pipe into it:
+`journalctl -n 200 | ush notes "anything unusual?"`. Words that name existing files are files; the
+rest is the question.
+
+ush tells you what it sends and where, and sends at most 200 KB in all, secrets redacted. It
+refuses, with the reason, files in secret locations (`~/.ssh`, `.env`, keys and the like, also
+through a link), directories and other special files, binary files, and files past the limit.
+It never runs as root: under sudo it would send what only root can read.
+
 ## Agent mode
 
 With `--run`, or `mode` set to `run` in `ush ai configure`, ush investigates on its own: it runs
@@ -173,6 +198,7 @@ A model name starting with `claude-` is Anthropic's, any other is Ollama's; `ant
 | `ush ai clear-key` | remove the stored API key |
 | `ush allow [add\|remove RULE]` | your allowlist |
 | `ush explain [-v] COMMAND…` | explain a command line with the model, without running it |
+| `ush notes [-v] [QUESTION] FILE…` | notes on files or piped input with the model (see [Notes](#notes)) |
 | `ush history [-n N]` | recent requests and the commands they ran (default 10) |
 | `ush replay ID\|last [-n]` | run those commands again, without AI, through the same approval checks |
 | `ush help`, `ush --version` | usage; version and implementation |
@@ -184,7 +210,8 @@ name, your user name, the working directory, the output of the commands that ran
 in propose mode, of the proposals you ran) and piped input. With a local Ollama model, all of that stays on this machine; with an Ollama
 *cloud* model, Ollama forwards it to ollama.com, and ush says so. A checker gets your requests and
 the proposed commands, never output. `ush explain` (and Down on a proposal) sends the command line
-and your last request, unless that command was explained before.
+and your last request, unless that command was explained before. `ush notes` (and Ctrl-X n) sends
+the files, piped input or recorded output it names when it starts, up to 200 KB in all.
 
 Before sending, ush removes known token formats, private keys, URL credentials, `password=`
 assignments and your API key. That is pattern matching: assume what a command prints may reach the

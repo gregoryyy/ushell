@@ -104,7 +104,14 @@ exec python3 - "$@" <<'PY'
 import json, os, sys
 d = os.environ["USH_HANDOFF"]
 args = sys.argv[1:]
-if args[:1] == ["explain"]:
+def read(name):
+    try:
+        return open(os.path.join(d, name)).read()
+    except OSError:
+        return None
+if args[:1] == ["notes"]:
+    print("NOTES" + json.dumps([args[1:], read("ran"), read("output")]))
+elif args[:1] == ["explain"]:
     with open(os.path.join(os.environ["HOME"], "explained"), "a") as f:
         f.write(json.dumps(args[1:]) + "\\n")
     if os.path.exists(os.path.join(os.environ["HOME"], "fail")):
@@ -112,11 +119,6 @@ if args[:1] == ["explain"]:
         sys.exit(1)
     print("EXPLAIN" + json.dumps(args[1:]))
 elif args == ["//"]:
-    def read(name):
-        try:
-            return open(os.path.join(d, name)).read()
-        except OSError:
-            return None
     print("RAN" + json.dumps([read("ran"), read("output")]))
     for name in ("ran", "output"):
         if os.path.exists(os.path.join(d, name)):
@@ -145,15 +147,20 @@ class ZshProposeTest(TempDirTest):
         self.tmpdir = os.path.join(self.tmp, "t")
         os.mkdir(self.tmpdir)
 
-    def session(self, steps):
-        """steps: (keys to send, text to wait for). Returns the output after each step."""
+    def session(self, steps, before="", env=None):
+        """steps: (keys to send, text to wait for). Returns the output after each step. `before`
+        runs before the plugin is sourced."""
         pid, fd = pty.fork()
         if pid == 0:
             os.environ.update({"PATH": self.bin + ":/usr/bin:/bin", "PS1": "PROMPT> ", "TERM": "xterm-256color",
-                               "HOME": self.tmp, "TMPDIR": self.tmpdir})
+                               "HOME": self.tmp, "TMPDIR": self.tmpdir, **(env or {})})
+            os.chdir(self.tmp)
             os.execv(ZSH, [ZSH, "-f", "-i"])
         try:
             ZshPluginTest._read(fd, "PROMPT> ")
+            if before:
+                os.write(fd, f"{before}\r".encode())
+                ZshPluginTest._read(fd, "PROMPT> ")
             os.write(fd, f"source {PLUGIN}\r".encode())
             ZshPluginTest._read(fd, "PROMPT> ")
             outputs = []
@@ -325,6 +332,95 @@ class ZshProposeTest(TempDirTest):
         ])
         self.assertEqual(self.explained(), ["echo one", "echo one"])
 
+    @staticmethod
+    def notes(output):
+        found = re.findall(r"NOTES(\[.*?\])\r?\n", output)
+        return json.loads(found[-1]) if found else output
+
+    def test_ctrl_x_n_runs_a_command_line_and_takes_notes_on_its_output(self):
+        # TODO 2.25: the command runs as a proposal would, recorded; the comment is the question.
+        out = self.session([
+            ("echo noted-$((6*7)) # any errors?", "errors?"),
+            ("\x18n", "NOTES"),
+            ("echo plain\x18n", "NOTES"),
+            ("\x1b[A", "echo plain"),              # history has the command, without comment
+            ("\x15\x1b[A\x1b[A", "echo noted"),
+        ])
+        self.assertIn("noted-42", out[1])
+        args, ran, output = self.notes(out[1])
+        self.assertEqual(args, ["--last", "--", "any errors?"])
+        self.assertEqual((ran, output), ("0\necho noted-$((6*7))\n", "noted-42\n"))
+        self.assertEqual(self.notes(out[2]), [["--last"], "0\necho plain\n", "plain\n"])
+        self.assertNotIn("#", re.sub(r"\x1b\[[0-9;?]*[A-Za-z]|\r", "", out[4]).split("PROMPT> ")[-1])
+
+    def test_ctrl_x_n_runs_a_script_under_home(self):
+        script = os.path.join(self.tmp, "deploy.sh")
+        with open(script, "w") as f:
+            f.write("#!/bin/sh\necho deployed-$((6*7))\n")
+        os.chmod(script, 0o755)
+        out = self.session([("~/deploy.sh # ok?\x18n", "NOTES")])
+        self.assertIn("deployed-42", out[0])  # it ran, the file wasn't sent
+        self.assertEqual(self.notes(out[0])[0], ["--last", "--", "ok?"])
+
+    def test_ctrl_x_n_on_an_empty_line_takes_notes_on_the_last_output(self):
+        out = self.session([
+            ("\x18n", "NOTES"),
+            ("# why so slow?\x18n", "NOTES"),
+            ("why so slow\x18n", "NOTES"),
+            ("\x1b[A", "ush notes"),               # what was sent is in the history
+        ])
+        self.assertEqual(self.notes(out[0])[0], ["--last"])
+        self.assertEqual(self.notes(out[1])[0], ["--last", "--", "why so slow?"])
+        self.assertEqual(self.notes(out[2])[0], ["--last", "--", "why so slow"])
+        self.assertIn("ush notes --last -- 'why so slow'", out[3])
+
+    def test_ctrl_x_n_sends_the_files_a_line_names(self):
+        for name in ("app.log", "my file.txt"):
+            with open(os.path.join(self.tmp, name), "w") as f:
+                f.write("x\n")
+        out = self.session([
+            ("~/app.log 'my file.txt' why 502? # and this\x18n", "NOTES"),
+        ])
+        self.assertEqual(self.notes(out[0])[0],
+                         ["--", f"{self.tmp}/app.log", "my file.txt", "why", "502?", "and this"])
+
+    def test_ctrl_x_n_refuses_sudo_and_ush_lines(self):
+        out = self.session([
+            ("sudo cat /etc/hosts\x18n", "no notes"),
+            ("\x15// list files\x18n", "no notes"),
+            ("\x15", ""),
+        ])
+        for o in out[:2]:
+            self.assertNotIn("NOTES", o)
+            self.assertNotIn("localhost", o)
+
+    def test_the_notes_key_changes_no_binding(self):
+        out = self.session([
+            ("all='for m in emacs viins vicmd; do bindkey -LM $m; done'\r", "PROMPT> "),
+            ("eval $all >| ~/after; zsh -fic $all >| ~/before\r", "PROMPT> "),
+        ])
+        with open(os.path.join(self.tmp, "before")) as f:
+            before = set(f.read().splitlines())
+        with open(os.path.join(self.tmp, "after")) as f:
+            after = set(f.read().splitlines())
+        self.assertEqual(before - after, set(), out)
+        self.assertEqual(len(before), len(set(before)))
+        self.assertGreater(len(before), 100)
+        added = after - before
+        self.assertEqual(len(added), 2, added)  # emacs and viins
+        for line in added:
+            self.assertTrue(line.endswith('"^Xn" _ush_notes'), line)
+        out = self.session([("bindkey -M emacs '^Xn'\r", "PROMPT> ")],
+                           before="bindkey -M emacs '^Xn' kill-word")
+        self.assertIn('"^Xn" kill-word', out[0])                   # a binding of the user's
+        out = self.session([("bindkey -M emacs '^Xn'\r", "PROMPT> ")], env={"USH_NOTES_KEY": ""})
+        self.assertIn('"^Xn" undefined-key', out[0])
+        out = self.session([("bindkey -M emacs '^Xq'\r", "PROMPT> ")],
+                           env={"USH_NOTES_KEY": "^Xq"})
+        self.assertIn('"^Xq" _ush_notes', out[0])
+        out = self.session([("bindkey -M emacs '^Xg'\r", "PROMPT> ")], env={"USH_NOTES_KEY": "^Xg"})
+        self.assertIn('"^Xg" list-expand', out[0])                 # taken: left as it is
+
     def test_no_handoff_as_root_or_twice(self):
         with open(PLUGIN) as f:
             source = f.read()
@@ -481,6 +577,57 @@ class SessionExplainTest(TempDirTest):
         explained = [r["body"]["messages"][-1]["content"] for r in api.requests[1:]]
         self.assertEqual(len(api.requests), 3, explained)
         self.assertIn("echo kept-one x", json.dumps(explained[-1]))
+
+
+@unittest.skipUnless(ZSH, "zsh not installed")
+class ZshNotesTest(TempDirTest):
+    """Ctrl-X n with the real ush, against a local mock of the Messages API (TODO 2.25): a
+    command runs, recorded, and gets notes; Ctrl-X n on the empty line then takes notes on the
+    same output."""
+
+    def test_notes_on_a_command_and_then_on_its_output_again(self):
+        bin_dir = os.path.join(self.tmp, "bin")
+        os.mkdir(bin_dir)
+        with open(os.path.join(bin_dir, "ush"), "w") as f:
+            f.write("#!/bin/sh\nexec " + " ".join(f"'{a}'" for a in ush_argv()) + ' "$@"\n')
+        os.chmod(os.path.join(bin_dir, "ush"), 0o755)
+        replies = [([{"type": "text", "text": "FIRST-NOTE"}], "end_turn"),
+                   ([{"type": "text", "text": "SECOND-NOTE"}], "end_turn")]
+        with MockAPI(replies) as api:
+            pid, fd = pty.fork()
+            if pid == 0:
+                os.environ.update({"PATH": bin_dir + ":/usr/bin:/bin", "PS1": "PROMPT> ",
+                                   "TERM": "xterm-256color", "HOME": self.tmp, "NO_COLOR": "1",
+                                   "PYTHONPATH": SRC, "TMPDIR": self.tmp,
+                                   "XDG_CONFIG_HOME": os.path.join(self.tmp, "config"),
+                                   "XDG_STATE_HOME": os.path.join(self.tmp, "state"),
+                                   "ANTHROPIC_API_KEY": SYNTHETIC_KEY, "USH_BASE_URL": api.url})
+                os.environ.pop("USH_HANDOFF", None)
+                os.execv(ZSH, [ZSH, "-f", "-i"])
+            try:
+                read = ZshPluginTest._read
+                read(fd, "PROMPT> ")
+                os.write(fd, f"source {PLUGIN}\r".encode())
+                read(fd, "PROMPT> ")
+                os.write(fd, b"echo hello-$((6*7)) # what is it?\x18n")
+                first = read(fd, "FIRST-NOTE", timeout=30)
+                os.write(fd, b"\x18n")
+                second = read(fd, "SECOND-NOTE", timeout=30)
+                os.write(fd, b"exit\r")
+            finally:
+                os.close(fd)
+                os.waitpid(pid, 0)
+        self.assertIn("hello-42", first)
+        self.assertIn("FIRST-NOTE", first)
+        self.assertIn("SECOND-NOTE", second)
+        self.assertEqual(len(api.requests), 2)
+        sent = [r["body"]["messages"][0]["content"] for r in api.requests]
+        self.assertIn("The output of the command `echo hello-$((6*7))`, which exited with "
+                      "status 0", sent[0])
+        self.assertIn("hello-42", sent[0])
+        self.assertIn("The user's instruction: what is it?", sent[0])
+        self.assertIn("hello-42", sent[1])
+        self.assertIn("No instruction", sent[1])
 
 
 if __name__ == "__main__":

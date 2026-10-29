@@ -205,28 +205,36 @@ Done in Python, and in Go through the port (section 4).
   Esc, Down asks once; Down, edit, Down asks twice; the same in the `ush>` session; a failed
   explanation is not kept; the store holds no command line, is 0600, keeps the newest 500, and
   ignores a broken or linked file; the Go session editor and store use the same file and keys.
-- [ ] 2.25 *py – go –* Notes on command output and files (user, 2026-10-29: "add the possibility to analyze
+- [x] 2.25 *py ✓ go ✓* Notes on command output and files (user, 2026-10-29: "add the possibility to analyze
   command output and files. this could be a shortcut like ctrl-n like notes"; ROAD's
-  `ush analyze`). The key is Ctrl-X n (GAPS Q7, answered); blocked on Q7's second part, which
-  output. Proposed:
-  - **Ctrl-X n** on the command line asks the model for notes and shows them above the line, as an
-    explanation is shown. A comment on the line is the instruction (`cat app.log # any errors?`);
-    without one, the model summarises and points out what stands out.
-  - **Command output:** on an empty line, notes on the output of the last command the plugin
-    recorded. On a command line, the command runs as a proposal would, with its output recorded,
-    and then gets notes.
-  - **Files:** words on the line that name readable regular files send those files as context.
-  - **Command line:** `ush notes [-v] [INSTRUCTION] FILE…`, also with piped input, for scripts and
-    shells without the plugin.
-  - **Limits:** the same disclosure, redaction and 200 KB limit as piped input; files in secret
-    locations (the policy's list) and binary files are refused with the reason; never under
-    `sudo`.
+  `ush analyze`). The key is Ctrl-X n, and the output is the plugin's recorded output (GAPS Q7,
+  both answered):
+  - **Ctrl-X n** on the command line asks the model for notes and prints them before the next
+    prompt, so they stay in the scrollback. A comment ending the line is the question
+    (`cat app.log # any errors?`); without one, the model says what it is and what stands out.
+    `USH_NOTES_KEY` sets another key (empty: none); the key is bound only where it is free.
+  - **Command output:** on an empty line, or one with only a question, notes on the output of the
+    last command the plugin recorded, whether or not `//` has taken it (it stays as `last-ran` and
+    `last-output` in the handoff directory). On a command line, the command runs as a proposal
+    would, with its output recorded, and then gets notes.
+  - **Files:** on a line that isn't a command, words that name files send those files; the rest
+    is the question (`app.log nginx.conf why the 502?`). The line runs as `ush notes …`, so the
+    history shows what was sent.
+  - **Command line:** `ush notes [-v] [INSTRUCTION] FILE…`, also with piped input, for scripts
+    and shells without the plugin; `--last` is the plugin's. Words naming existing paths are
+    files, the rest is the instruction.
+  - **Limits:** the same disclosure, redaction and 200 KB limit as piped input, for all the
+    material together; files in secret locations (the policy's list, also through a link),
+    directories, special files, binary files and files past the limit are refused with the
+    reason; never as root, and the plugin refuses sudo and ush lines.
 
-  Acceptance: zsh pty tests with a fake provider (Ctrl-X n on an empty line, on a command, on a
-  line naming files, with a comment as instruction); the refusals (secret file, binary, too
-  large, sudo) and redaction of file content; `ush notes` with files and piped input; no other
-  binding changed; SEC and SECTEST rows for files sent
-  to the provider. The plugin's Ctrl-X n is shared by both.
+  Acceptance: zsh pty tests with a fake ush (Ctrl-X n on an empty line, on a command, on a line
+  naming files, with a comment as question; sudo and ush lines refused; no other binding changed,
+  `USH_NOTES_KEY`) and with the real ush against the mock API (a command, then its output again);
+  `ush notes` against both implementations with files, piped input and `--last`; the refusals
+  (secret file and link, binary, too large, directory, FIFO, root) and redaction of file content
+  and output; SEC and SECTEST rows for files sent to the provider. The plugin's Ctrl-X n is shared
+  by both.
 - [ ] 2.26 *py – go –* History as context (ROAD idea, scheduled 2026-10-29): with the plugin, a request
   carries the shell's recent history (`fc -ln`, at most the last N lines), so "repeat that with
   these changes" works. The lines are filtered before they leave: secrets redacted, lines that

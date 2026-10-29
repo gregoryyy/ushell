@@ -88,6 +88,9 @@ func isSecret(path string) bool {
 	return len(parts) > 0 && secretNamePatterns.MatchString(parts[len(parts)-1])
 }
 
+// IsSecret: a known secret location; `ush notes` (TODO 2.25) doesn't send such a file either.
+func IsSecret(path string) bool { return isSecret(path) }
+
 // coversSecrets: recursively reading directory would reach a secret location.
 func coversSecrets(directory string) bool {
 	d := strings.TrimRight(directory, "/")

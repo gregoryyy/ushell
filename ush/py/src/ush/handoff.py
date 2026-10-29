@@ -9,7 +9,8 @@ continues the conversation with it.
   `interactive`, then the command); the plugin writes `ran` (the exit status, then the command
   line that ran) and `output` (what it printed, unless the proposal was interactive). ush uses
   the directory only if it is a real directory of the user's, closed to others, and never as
-  root.
+  root. When `//` takes `ran` and `output`, they stay as `last-ran` and `last-output` for notes
+  (`ush notes --last`, Ctrl-X n, TODO 2.25), until the next run replaces them or the shell exits.
 - The conversation is saved per shell in the state directory, `sessions/KEY.json`, mode 0600,
   where KEY is the handoff directory's name or, without the plugin, the parent process. It holds
   what was sent to the provider, so redacted command output, and expires after an hour unused.
@@ -75,8 +76,28 @@ def write_proposal(directory: str, command: str, interactive: bool) -> None:
 
 
 def take_ran(directory: str, limit: int) -> Optional[Ran]:
-    """What the plugin recorded since the proposal, then removed; None if nothing ran."""
-    text = _read(os.path.join(directory, "ran"))
+    """What the plugin recorded since the proposal, then kept only for notes; None if nothing
+    ran."""
+    ran = _load_ran(directory, "", limit)
+    if ran is None:
+        return None
+    for name in ("ran", "output"):
+        path = os.path.join(directory, name)
+        if os.path.lexists(path):
+            os.replace(path, os.path.join(directory, "last-" + name))
+        else:
+            _remove(os.path.join(directory, "last-" + name))
+    _remove(os.path.join(directory, "proposal"))
+    return ran
+
+
+def last_ran(directory: str, limit: int) -> Optional[Ran]:
+    """The last run the plugin recorded, whether or not `//` has taken it; removes nothing."""
+    return _load_ran(directory, "", limit) or _load_ran(directory, "last-", limit)
+
+
+def _load_ran(directory: str, prefix: str, limit: int) -> Optional[Ran]:
+    text = _read(os.path.join(directory, prefix + "ran"))
     if text is None:
         return None
     status, _, command = text.partition("\n")
@@ -84,7 +105,7 @@ def take_ran(directory: str, limit: int) -> Optional[Ran]:
     collector = _Collector(limit, None)
     captured = False
     try:
-        fd = os.open(os.path.join(directory, "output"), os.O_RDONLY | os.O_NOFOLLOW)
+        fd = os.open(os.path.join(directory, prefix + "output"), os.O_RDONLY | os.O_NOFOLLOW)
     except OSError:
         pass
     else:
@@ -94,8 +115,6 @@ def take_ran(directory: str, limit: int) -> Optional[Ran]:
                 while chunk := f.read(65536):
                     collector.feed(chunk)
     output, truncated = collector.text()
-    for name in ("ran", "output", "proposal"):
-        _remove(os.path.join(directory, name))
     return Ran(command.rstrip("\n"), exit_code, output, captured, truncated)
 
 

@@ -35,6 +35,7 @@ zsh ── ush.plugin.zsh ── quotes `ush //…`, `sudo ush //…`, `// …` 
  │                        puts proposals on the command line, records what then ran
  └─ ush (cli.py) ── propose step, session / follow-up loop, subcommands, piped input
      ├─ handoff.py ── propose mode: the plugin's handoff directory, saved conversations
+     ├─ notes.py ──── `ush notes`: which files are sent, and why one is refused
      ├─ agent.py ──── request loop: provider turn → tool_use → policy → approval → execute,
      │                or in propose mode: → policy and checker notes → proposal
      │   ├─ policy.py ─── read-only classifier (zsh-aware tokenizer, command table, secret paths)
@@ -119,6 +120,19 @@ propose specific shell commands and prewrite them to be executed by the user"; t
   kept.
 - **Esc** clears the explanation, or else the proposal.
 - **The installers** offer to add the plugin to `~/.zshrc` (`shell/zshrc.sh`).
+
+**Notes** (TODO 2.25, GAPS Q7): Ctrl-X n, bound for the whole shell, not only on a proposal,
+and only where the key is free. `_ush_notes` splits the line with zsh's own parser
+(`${(Z+c+)BUFFER}`), so a trailing comment is one word: the question.
+- **A command line** (its first word is something `whence` finds) runs like a proposal: the
+  widget sets the captured state and accepts the line. `precmd` writes `ran` as usual, then
+  runs `ush notes --last`.
+- **Other lines** are replaced by `ush notes --last` (no word names a file) or
+  `ush notes -- WORDS` and accepted, so the history holds what was sent.
+- **`ush notes`** is one request without tools (`complete`), like `ush explain`. The material
+  goes between random markers, redacted, at most 200 KB in all. `--last` reads `ran` and
+  `output`, or, once `//` has taken them, `last-ran` and `last-output`: `take_ran` renames them
+  instead of deleting them, and the next run replaces them. Refusals are in SEC.
 
 **Without the plugin**, ush prints the proposal, and the conversation is keyed by the parent
 process. The next `ush //` tells the model that ush can't know what ran.
@@ -290,8 +304,9 @@ internal/config ─── identity under sudo, settings, keychain / 0600 key fil
 internal/history ── append-only JSONL history and replay                           (history.py)
 ```
 
-Also `internal/handoff` (propose mode's handoff directory and saved conversations, handoff.py)
-and `internal/check` (the checker model, check.py). The zsh plugin (`ush/shell/ush.plugin.zsh`) is shared unchanged: both
+Also `internal/handoff` (propose mode's handoff directory and saved conversations, handoff.py),
+`internal/notes` (what `ush notes` sends, notes.py) and `internal/check` (the checker model,
+check.py). The zsh plugin (`ush/shell/ush.plugin.zsh`) is shared unchanged: both
 implementations are the command `ush`.
 
 ### Decisions
