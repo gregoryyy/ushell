@@ -9,8 +9,9 @@ two must behave the same ([SDLC](../../docs/SDLC.md#ush-one-command-two-implemen
 **Status:** ported (TODO 4.1–4.12). Every package of ushpy has its Go counterpart, and ushpy's
 black-box tests pass against the Go binary (`just ushgo-conform`): the command line, propose mode,
 sessions and the approval prompt in a pty, the zsh plugin, the security tests and the smoke test.
-The policy matches ushpy's on all 1545 lines of the shared corpus. 0.2.0-rc1 is its first release
-([TODO](../docs/TODO.md) 5.5).
+The policy matches ushpy's on all 1545 lines of the shared corpus. 0.2.0 is its first release
+([TODO](../docs/TODO.md) 5.8): `brew install gregoryyy/ush/ush`, or an archive from the
+GitHub release.
 
 ## Build and test
 

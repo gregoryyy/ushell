@@ -21,6 +21,18 @@ differ.
 
 ## Install
 
+### Go: with Homebrew
+
+```sh
+brew install gregoryyy/ush/ush                      # macOS or Linux: /opt/homebrew/bin/ush
+```
+
+The tap [gregoryyy/homebrew-ush](https://github.com/gregoryyy/homebrew-ush) builds `ush` from the
+tagged source with Homebrew's Go, as the release build does (`-trimpath`, no cgo, the version
+stamped in). The plugin goes to `$(brew --prefix)/share/ush/ush.plugin.zsh`; `brew info ush` prints
+the line for `~/.zshrc`. A Homebrew prefix is owned by the user, so a Homebrew `ush` is not for
+`sudo`: see [For sudo](#for-sudo-a-root-owned-install).
+
 ### Go: from a release archive
 
 Each release has one `ush-VERSION-OS-ARCH.tar.gz` per platform and a `SHA256SUMS` file. Verify,
@@ -28,8 +40,8 @@ unpack, install:
 
 ```sh
 shasum -a 256 -c SHA256SUMS --ignore-missing      # or: sha256sum -c SHA256SUMS --ignore-missing
-tar -xzf ush-0.2.0-rc1-darwin-arm64.tar.gz
-ush-0.2.0-rc1-darwin-arm64/install.sh                 # for you: ~/.local/bin/ush
+tar -xzf ush-0.2.0-darwin-arm64.tar.gz
+ush-0.2.0-darwin-arm64/install.sh                 # for you: ~/.local/bin/ush
 ```
 
 `install.sh` copies the binary to `PREFIX/bin/ush` (replacing it atomically) and the zsh plugin to
@@ -40,14 +52,14 @@ plugin line stays valid when you switch.
 
 **macOS:** the binary is not signed. Archives downloaded with a browser get a quarantine attribute,
 and macOS then refuses to run the binary; download with `curl`, or remove the attribute after
-checking the checksum (`xattr -d com.apple.quarantine ush`). How releases will be distributed on
-macOS (Homebrew tap, or signing and notarization) is open ([GAPS](GAPS.md) Q11).
+checking the checksum (`xattr -d com.apple.quarantine ush`). Homebrew builds from source, so its
+binary is not quarantined. Signing and notarization are not planned for now ([GAPS](GAPS.md) Q11).
 
 ### Go: from source
 
 ```sh
 cd ush/go
-scripts/release.sh 0.2.0-rc1     # all four platforms into dist/, with SHA256SUMS (Go 1.27)
+scripts/release.sh 0.2.0     # all four platforms into dist/, with SHA256SUMS (Go 1.27)
 ```
 
 The build is deterministic: the same commit and version give the same checksums on any machine, so
@@ -73,7 +85,7 @@ Go installer.
 user, that user can run code as root. Install a root-owned copy for `sudo` use:
 
 ```sh
-sudo ush-0.2.0-rc1-darwin-arm64/install.sh --prefix /usr/local # Go: /usr/local/bin/ush
+sudo ush-0.2.0-darwin-arm64/install.sh --prefix /usr/local # Go: /usr/local/bin/ush
 sudo ./install.sh --prefix /usr/local                          # Python: plus /usr/local/lib/ush
 ```
 
@@ -166,6 +178,7 @@ The smoke test keeps the user's settings and history out and writes `smoke-repor
 
 ## Upgrade, roll back, remove
 
+- **Homebrew:** `brew upgrade ush`; `brew uninstall ush` and `brew untap gregoryyy/ush` remove it.
 - **Upgrade:** install the new release over the old one (Python: check out the new version and run
   `install.sh` again with the same `--prefix`; it recreates the venv). Settings, keys and history
   stay; their formats are the same in both implementations.

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ush"
-version = "0.2.0rc1"
+version = "0.3.0.dev0"
 description = "ush, the you shell: natural-language // requests for zsh, answered with real commands"
 readme = "README.md"
 requires-python = ">=3.10"

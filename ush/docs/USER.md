@@ -6,7 +6,7 @@ machines, see the [admin guide](ADMIN.md). Status: 2026-10-29 02:01.
 
 `ush` has two implementations that behave the same: the Go one in `ush/go/`, which releases ship,
 and the Python one in `ush/py/`, where features are tried first. Everything below works in both;
-`ush --version` tells you which one you have: `ush 0.2.0-rc1 (go)` or `ush 0.2.0-rc1 (python)`.
+`ush --version` tells you which one you have: `ush 0.2.0 (go)` or `ush 0.2.0 (python)`.
 
 ## What ush does
 

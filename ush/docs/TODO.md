@@ -361,17 +361,31 @@ Until 2026-10-29: ushgo TODO 2.1–2.7.
 - [x] 5.2 *(decision)* Which implementation is maintained after parity: both, Go as the
   deliverable, Python as the experimental implementation (GAPS Q10, 2026-10-28).
 - [ ] 5.3 Release gate per [AGENTS.md](../../AGENTS.md) and [SEC](SEC.md): conformance on each
-  supported OS, ush SECTEST levels 1 and 2 on the binary, `govulncheck`, secret scan.
+  supported OS, ush SECTEST levels 1 and 2 on the binary, `govulncheck`, secret scan. Run for 0.2.0
+  on 2026-10-29 in full except Linux amd64 and Intel macOS (no machine) and a live Anthropic run.
 - [ ] 5.4 The man page `ush.1` (TODO 2.14) in the release archive, installed to
   `share/man/man1`.
-- [ ] 5.5 0.2.0-rc1, the first release, of the Go binaries at parity (user, 2026-10-28): version
+- [x] 5.5 0.2.0-rc1, the first release, of the Go binaries at parity (user, 2026-10-28): version
   0.2.0-rc1 in both implementations, release notes, the release gate (5.3) on the tagged commit.
   The AI prepares; the user tags and publishes. GAPS Q12 answered 2026-10-29: release with SECTEST
-  F8 documented. Tag `v0.2.0-rc1` on b19db18, pushed by the agent at the user's request.
-- [ ] 5.6 GitHub release from the tag: the four archives and `SHA256SUMS` attached, the notes, the
-  install line for curl users.
+  F8 documented. Tag `v0.2.0-rc1` on b19db18, pushed by the agent at the user's request, then
+  moved to b4f9d82. Done 2026-10-29; not published as a GitHub release: 0.2.0 (5.8) replaced it.
+- [x] 5.6 GitHub release from the tag: the four archives and `SHA256SUMS` attached, the notes, the
+  install line for curl users. Done for v0.2.0 (5.8).
 - [ ] 5.7 Homebrew tap: a formula that builds `ush` from the tagged source with Go
   (`brew install gregoryyy/ush/ush`); the tap repository `homebrew-ush` is created by the user.
+  For v0.2.0 the formula is written, passes `brew style`, and its build steps work by hand from the
+  tag's tarball; creating the public repository was refused to the agent by its permission check,
+  so the user pushes it (DONE 2026-10-29 11:10). Each release then updates `Formula/ush.rb` there
+  with `scripts/formula.sh VERSION`.
+- [ ] 5.8 0.2.0 on the commit of 0.2.0-rc1, b4f9d82 (user, 2026-10-29: "do it. also publish the
+  github release and homebrew tap"): the release gate (5.3) again on that commit with version
+  0.2.0, the tag `v0.2.0`, the GitHub release (5.6) and the tap (5.7), published by the agent at
+  the user's request. Done except the tap repository (5.7). Release notes: [docs/releases/0.2.0.md](../../docs/releases/0.2.0.md).
+- [ ] 5.9 0.3.0, the next release, from `main`: the layout (#30), explanations kept per command
+  line (2.24) and notes (2.25). Version `0.3.0-dev` on `main` until then. Release candidate first,
+  then the gate (5.3) on the tagged commit, the GitHub release and the formula from
+  `scripts/formula.sh`, which has the new layout's paths.
 
 ## Old IDs
 
