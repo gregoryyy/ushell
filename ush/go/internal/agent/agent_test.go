@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -181,5 +182,43 @@ func TestUntrackedAndNotRun(t *testing.T) {
 		if !strings.Contains(content[0].(block)["content"].(string), c.want) || content[len(content)-1].(block)["text"] != "what now?" {
 			t.Error(content)
 		}
+	}
+}
+
+func TestAnUnknownToolIsRefusedWithTheToolNames(t *testing.T) {
+	wrong := block{"type": "tool_use", "id": "t1", "name": "ls", "input": block{"command": "ls", "purpose": "x"}}
+	a, f, _, _, _ := newAgent(t, [][]block{{wrong}, {text("sorry")}}, Options{})
+	a.Ask(context.Background(), "x", nil, true)
+	r := lastResults(f)[0].(block)
+	if r["is_error"] != true || !strings.Contains(r["content"].(string), "unknown tool 'ls'; the tools are run_command, run_script") {
+		t.Error(r)
+	}
+}
+
+func TestThreeTurnsOfRefusedCallsStopTheRequest(t *testing.T) {
+	wrong := func(i int) []block {
+		return []block{{"type": "tool_use", "id": fmt.Sprintf("t%d", i), "name": "ls", "input": block{}}}
+	}
+	turns := func() [][]block { return [][]block{wrong(0), wrong(1), wrong(2), wrong(3), wrong(4)} }
+	a, f, _, errOut, _ := newAgent(t, turns(), Options{})
+	if entry := a.Ask(context.Background(), "x", nil, true); entry.Outcome != "error" || len(f.requests) != 3 {
+		t.Fatal(entry.Outcome, len(f.requests))
+	}
+	if !strings.Contains(errOut.String(), "refused 3 times in a row") {
+		t.Error(errOut.String())
+	}
+	// Every tool_use is answered: the last message holds the third turn's results.
+	last := a.Messages[len(a.Messages)-1]
+	if last["role"] != "user" || last["content"].([]block)[0]["tool_use_id"] != "t2" {
+		t.Error(last)
+	}
+	// Propose mode counts the same way; two refused turns before a proposal don't stop it.
+	a, f, _, _, _ = newAgent(t, turns(), Options{Propose: true})
+	if entry := a.Ask(context.Background(), "x", nil, true); entry.Outcome != "error" || len(f.requests) != 3 {
+		t.Fatal(entry.Outcome, len(f.requests))
+	}
+	a, _, _, _, _ = newAgent(t, [][]block{wrong(0), wrong(1), {propose("p1", "ls", "read")}}, Options{Propose: true})
+	if entry := a.Ask(context.Background(), "x", nil, true); entry.Outcome != "proposed" {
+		t.Error(entry.Outcome)
 	}
 }

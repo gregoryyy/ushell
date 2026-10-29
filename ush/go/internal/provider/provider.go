@@ -231,7 +231,29 @@ func (c *Client) statusError(resp *http.Response) error {
 }
 
 // Turn streams one reply. Tool input that can't be parsed re-issues the turn, up to three times.
+// From Ollama, a tool call the model wrote as text becomes a tool call (TextToolCall), and text
+// that may be one is held back from the screen until the turn ends.
 func (c *Client) Turn(ctx context.Context, system string, tools []Block, messages []Block, onText, onProgress func(string)) (Turn, error) {
+	if !c.ollama {
+		return c.turn(ctx, system, tools, messages, onText, onProgress)
+	}
+	show := onText
+	if show == nil {
+		show = func(string) {}
+	}
+	held := NewHeldText(show)
+	turn, err := c.turn(ctx, system, tools, messages, held.Write, onProgress)
+	if err != nil {
+		return turn, err
+	}
+	if converted, ok := fromText(turn, tools); ok {
+		return converted, nil
+	}
+	held.Flush()
+	return turn, nil
+}
+
+func (c *Client) turn(ctx context.Context, system string, tools []Block, messages []Block, onText, onProgress func(string)) (Turn, error) {
 	params, betas := c.params(system, tools, messages)
 	params["stream"] = true
 	for range 3 {

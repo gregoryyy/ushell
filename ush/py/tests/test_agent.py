@@ -162,6 +162,35 @@ class AgentTest(TempDirTest):
         self.assertIn("INVALID_JSON", result["content"])
         self.assertEqual(entry.steps, [])
 
+    def test_an_unknown_tool_is_refused_with_the_tool_names(self):
+        wrong = {"type": "tool_use", "id": "t1", "name": "ls",
+                 "input": {"command": "ls", "purpose": "x"}}
+        agent, provider, _, _ = self.make_agent([[wrong], [text("sorry")]])
+        agent.ask("x")
+        result = last_tool_results(provider)[0]
+        self.assertTrue(result["is_error"])
+        self.assertIn("unknown tool 'ls'; the tools are run_command, run_script",
+                      result["content"])
+
+    def test_three_turns_of_refused_calls_stop_the_request(self):
+        def wrong(i):
+            return [{"type": "tool_use", "id": f"t{i}", "name": "ls", "input": {}}]
+        agent, provider, ui, _ = self.make_agent([wrong(i) for i in range(5)])
+        entry = agent.ask("x")
+        self.assertEqual(entry.outcome, "error")
+        self.assertEqual(len(provider.requests), 3)
+        self.assertIn("refused 3 times in a row", ui.err.getvalue())
+        assert_every_tool_use_answered(self, agent.messages)
+        # Propose mode counts the same way; two refused turns before a proposal don't stop it.
+        agent, provider, ui, _ = self.make_agent([wrong(i) for i in range(5)], propose=True)
+        self.assertEqual(agent.ask("x").outcome, "error")
+        self.assertEqual(len(provider.requests), 3)
+        proposal = {"type": "tool_use", "id": "p1", "name": "propose_command",
+                    "input": {"command": "ls", "purpose": "list", "effect": "read",
+                              "interactive": False}}
+        agent, provider, ui, _ = self.make_agent([wrong(0), wrong(1), [proposal]], propose=True)
+        self.assertEqual(agent.ask("x").outcome, "proposed")
+
     def test_step_limit(self):
         agent, provider, _, _ = self.make_agent(
             [[tool_use(f"echo {i}", ident=f"t{i}")] for i in range(3)] + [[text("stop")]])

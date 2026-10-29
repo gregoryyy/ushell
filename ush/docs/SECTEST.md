@@ -108,8 +108,9 @@ confirms nothing raw reaches the terminal.
 | --- | --- |
 | Endless or huge output, binary output, invalid UTF-8 | Covered: `test_output_is_bounded_keeping_head_and_tail`, `test_binary_and_invalid_utf8_output`; a reply cut off mid-stream (found F6): `test_a_dropped_connection_is_an_error_not_a_crash` |
 | Hanging commands, pipelines that ignore SIGTERM, interrupt | Covered: `test_timeout_stops_the_whole_pipeline`, `test_interrupt_cancels_and_kills` |
-| Runaway agent loop | Covered: `test_step_limit` |
-| Malformed, truncated, or unknown tool calls | Covered: `test_invalid_tool_input_is_returned_as_an_error`, `test_truncated_tool_input_is_not_run`, `test_tool_schemas_are_strict` |
+| Runaway agent loop | Covered: `test_step_limit`; a model that keeps making refused calls stops after three turns: `test_three_turns_of_refused_calls_stop_the_request` |
+| Malformed, truncated, or unknown tool calls | Covered: `test_invalid_tool_input_is_returned_as_an_error`, `test_truncated_tool_input_is_not_run`, `test_tool_schemas_are_strict`, `test_an_unknown_tool_is_refused_with_the_tool_names` |
+| A tool call an Ollama model writes as text, read as a call, skips the checks or runs something other than what was written | Covered: `TextToolCallTest` (only one JSON object alone in the text; a wrong name maps only to the one tool the input fits; a name goes in front of the command only if it is a program on the PATH; anything else stays text or keeps its name for the agent to refuse), `OllamaTextToolCallTest` (Anthropic's text stays text), `test_cli` end to end; the converted call then goes through `_validate`, the policy and approval like any other |
 | Oversized piped input | Covered: `test_oversized_piped_input_is_bounded`, which found F3 |
 
 ## 8. Supply chain

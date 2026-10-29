@@ -14,6 +14,75 @@ implementation kept its own log: [ushpy](archive/DONE-ushpy.md), [ushgo](archive
 
 ---
 
+## 2026-10-29 21:20 — Tool calls that local models write as text
+
+TODO items: 2.31 (new), in both implementations. PR: #36.
+
+Agent: Opus 5.5, reasoning: not exposed, subagents: none.
+
+### Implementation notes
+
+- **The report:** with llama3.2:3b, `ush> //list the current directory` printed
+  `{"name":"ls","parameters":{"command":"ls -bA","effect":"read","interactive":false,…}}` and
+  nothing else (user, 2026-10-29). Reproduced in 6 of 6 runs on 0.2.1.
+- **The cause:** llama3.2 writes tool calls in Llama's format, `{"name": …, "parameters": {…}}`,
+  and Ollama turns that into a `tool_use` only when the name is one of the tools. The model put
+  the command in the name (`ls`), so the call arrived as text. Often `command` held only the
+  arguments (`-d`), `interactive` was the string `"false"`, and sometimes `"parameters{` lacked
+  its `":`.
+- **The Ollama adapter** (`OllamaProvider.turn`; Go `Client.Turn` for Ollama, `textcall.go`):
+  - A turn without a tool_use whose whole text is one such object (or one in a code fence)
+    becomes a tool_use with a `toolu_text_…` id; `stop_reason` becomes `tool_use`.
+  - `text_tool_call` / `TextToolCall` read the call as meant where that is unambiguous:
+    - a name that is no tool, with input that fits exactly one tool's schema, is that tool;
+    - a name that is a program on the `PATH` and isn't the command's first word goes in front
+      (`-d` → `ls -d`);
+    - `"true"`/`"false"` in a boolean field become booleans;
+    - the `"parameters{` slip is repaired.
+    Anything else stays text, or keeps its wrong name for the agent to refuse.
+  - `HeldText` holds text that starts with `{` or a backtick until the turn ends. It is shown
+    then only if it was no call; prose streams as before. Anthropic's turns are unchanged.
+- **The agent:**
+  - An unknown tool's error names the tools ("unknown tool 'ls'; the tools are
+    propose_command").
+  - Three turns in a row whose calls were all refused (invalid, or past the step limit) stop the
+    request with an error. A model that keeps writing a wrong call could loop until now.
+- **Tests:**
+  - ushpy:
+    - `TextToolCallTest` (named tools, program names, made-up names, no fit, fences, the slip,
+      text that is no call) and `HeldTextTest`;
+    - `OllamaTextToolCallTest` against the mock API: nothing shown, a `propose_command` with
+      `ls -d`; prose and real calls unchanged; Anthropic text stays text;
+    - `test_agent`: unknown-tool message, the three-turn stop in agent and propose mode;
+    - `test_cli` end to end with a mock Ollama: the proposal `ls -d`, no JSON, in history.
+  - ushgo:
+    - `TestTextToolCall` (the same cases), `TestHeldTextStreamsProseAndHoldsAPossibleCall`,
+      `TestOllamaTurnsAWrittenCallIntoAToolUse`, `TestProseARealCallAndAnthropicTextAreUnchanged`;
+    - `TestAnUnknownToolIsRefusedWithTheToolNames`, `TestThreeTurnsOfRefusedCallsStopTheRequest`;
+    - the CLI test runs against the Go binary in conformance.
+- **Live, llama3.2:3b on local Ollama:**
+  - `//list the current directory`: a proposal in 6 of 6 runs with ushpy (`ls`, `ls -d`,
+    `ls -l`) and 6 of 6 with ushgo (`ls`, `ls -d`, `ls -lah`).
+  - Continuing with `//now only the .txt files` in the same shell works (the converted call is
+    echoed back to Ollama).
+- **Validation:** `just ush-test`: ushpy 216 OK, every Go package OK, conformance 81 OK. `just links` OK.
+
+### Deviations
+
+- **Agent mode on llama3.2:3b stays poor:** in 7 runs of "how many files are in the current
+  directory" it mostly answered without running anything, with made-up counts, and once wrote a
+  call broken past repair. No adapter fixes that; USER's troubleshooting now says so.
+- **The first version** only passed the call on with its wrong name, for the agent's error to
+  correct. The model then answered in prose in 6 of 6 runs, so the adapter reads the call as
+  meant instead.
+
+### Insights
+
+- Ollama's Anthropic API depends on the model's own call format; a call with a name that is no
+  tool is silently text. Models below about 8B need this help, and still fail in agent mode.
+
+---
+
 ## 2026-10-29 12:28 — Release 0.2.1: the gate, the tag, the GitHub release and the tap
 
 TODO items: 5.9, 5.7, 5.8 (done); 5.3 (run again). PR: #35.

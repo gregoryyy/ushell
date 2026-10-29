@@ -4,6 +4,9 @@ The rest of ush sees only `Turn` and `ProviderError`."""
 from __future__ import annotations
 
 import json
+import re
+import secrets
+import shutil
 import urllib.request
 from dataclasses import dataclass, field
 from typing import Any, Callable, Optional, Protocol
@@ -181,6 +184,30 @@ class OllamaProvider(AnthropicProvider):
         return {"model": self.model, "max_tokens": MAX_TOKENS, "system": system, "tools": tools,
                 "messages": messages}
 
+    def turn(self, system, tools, messages, on_text, on_progress) -> Turn:
+        """As Anthropic's, but a tool call the model wrote as text becomes a tool call.
+
+        Small models (llama3.2:3b) write Llama's call format, `{"name": …, "parameters": {…}}`,
+        and Ollama turns it into a call only when the name is one of the tools: with the command
+        as the name (`"ls"`), the call arrives as text. `text_tool_call` reads it, and the agent
+        checks it as any call. Text that may be such a call is held back from the screen until the
+        turn ends.
+        """
+        held = HeldText(on_text)
+        turn = super().turn(system, tools, messages, held.write, on_progress)
+        if not any(b.get("type") == "tool_use" for b in turn.content):
+            text = "".join(b.get("text", "") for b in turn.content if b.get("type") == "text")
+            call = text_tool_call(text, tools)
+            if call is not None:
+                name, args = call
+                turn.content = [*(b for b in turn.content if b.get("type") != "text"),
+                                {"type": "tool_use", "id": "toolu_text_" + secrets.token_hex(12),
+                                 "name": name, "input": args}]
+                turn.stop_reason = "tool_use"
+                return turn
+        held.flush()
+        return turn
+
     def _error(self, exc: Any) -> ProviderError:
         a = self._anthropic
         if isinstance(exc, a.NotFoundError):
@@ -233,6 +260,87 @@ def ollama_remote_host(base_url: str, model: str, timeout: float = 2.0) -> Optio
         if isinstance(entry, dict) and entry.get("name") in (model, f"{model}:latest"):
             return entry.get("remote_host") or guess
     return guess
+
+
+FENCE = re.compile(r"\A```(?:json)?\s*(.*?)\s*```\Z", re.DOTALL)
+
+
+PROGRAM = re.compile(r"[A-Za-z0-9][A-Za-z0-9._+-]*")
+SLIP = re.compile(r'"(parameters|arguments)\{')
+
+
+def text_tool_call(text: str, tools: list[dict]) -> Optional[tuple[str, dict]]:
+    """The name and input of a tool call written as text: one JSON object with a string `name`
+    and an object `parameters` (or `arguments`), alone in the text or in one code fence.
+
+    Models that write calls as text also get them slightly wrong, so the call is read as meant
+    where that is unambiguous; the agent's checks apply afterwards as to any call:
+    - a name that is no tool, with input whose keys fit exactly one tool (all its required keys,
+      none it lacks), is that tool; a name that is a program on the PATH (`ls`) and isn't the
+      first word of `command` is put in front of it (`-d` becomes `ls -d`);
+    - "true" and "false" in a boolean field are booleans;
+    - `"parameters{`, a slip llama3.2 makes, is `"parameters": {`.
+    """
+    text = text.strip()
+    fenced = FENCE.match(text)
+    if fenced:
+        text = fenced.group(1)
+    if not text.startswith("{"):
+        return None
+    try:
+        call = json.loads(text)
+    except ValueError:
+        try:
+            call = json.loads(SLIP.sub(r'"\1": {', text, count=1))
+        except ValueError:
+            return None
+    if not isinstance(call, dict) or not isinstance(call.get("name"), str):
+        return None
+    keys = set(call) - {"name"}
+    if len(keys) != 1 or keys.pop() not in ("parameters", "arguments"):
+        return None
+    args = call.get("parameters", call.get("arguments"))
+    if not isinstance(args, dict):
+        return None
+    name = call["name"]
+    by_name = {t["name"]: t for t in tools}
+    if name not in by_name:
+        fits = [t for t in tools if set(t["input_schema"]["required"]) <= set(args)
+                <= set(t["input_schema"]["properties"])]
+        if len(fits) != 1:
+            return name, args
+        command = args.get("command")
+        if (isinstance(command, str) and command.split()[:1] != [name]
+                and PROGRAM.fullmatch(name) and shutil.which(name)):
+            args = {**args, "command": f"{name} {command.strip()}".strip()}
+        name = fits[0]["name"]
+    properties = by_name[name]["input_schema"]["properties"]
+    args = {k: (v == "true" if properties.get(k, {}).get("type") == "boolean"
+                and v in ("true", "false") else v) for k, v in args.items()}
+    return name, args
+
+
+class HeldText:
+    """Streams text through, except while it may still be a tool call written as text (it
+    starts with `{` or a code fence): that is held until `flush`, at the end of the turn."""
+
+    def __init__(self, write: Callable[[str], None]):
+        self._write, self._held, self._passing = write, "", False
+
+    def write(self, chunk: str) -> None:
+        if self._passing:
+            self._write(chunk)
+            return
+        self._held += chunk
+        start = self._held.lstrip()
+        if start and not start.startswith(("{", "`")):
+            self.flush()
+
+    def flush(self) -> None:
+        self._passing = True
+        if self._held:
+            held, self._held = self._held, ""
+            self._write(held)
 
 
 def echo_content(content: list[dict]) -> list[dict]:
