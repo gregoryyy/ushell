@@ -433,7 +433,7 @@ class SessionExplainTest(TempDirTest):
     again (ushpy TODO 2.24, ushgo TODO 2.9). Against a local mock of the Messages API."""
 
     def test_down_asks_the_model_once_per_command_line(self):
-        src = os.path.join(os.path.dirname(PLUGIN), "..", "src")
+        src = SRC
         explanation = "Parts:\n- `echo`: prints {}.\nAccess: none."
         replies = [
             ([{"type": "tool_use", "id": "p1", "name": "propose_command",
