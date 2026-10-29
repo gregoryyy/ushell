@@ -114,7 +114,8 @@ against `zsh -f` (ushpy `test_security`).
 - [ ] 2.7 Homebrew tap: a formula that builds `ush` from the tagged source with Go
   (`brew install gregoryyy/ush/ush`); the tap repository `homebrew-ush` is created by the user.
 - [ ] 2.8 Port ushpy TODO 2.23: agent mode asks before an injected read-only command (SECTEST F8).
-- [ ] 2.9 Port ushpy TODO 2.24: the session editor (`ui.go`'s `vared` script) shows the kept
-  explanation again while the command line is unchanged; the plugin is shared already.
+- [x] 2.9 Port ushpy TODO 2.24: the session editor (`ui.go`'s `vared` script) shows the kept
+  explanation again while the command line is unchanged; `ush explain` keeps its answers in
+  `explanations.json`, the same file and keys as ushpy; the plugin is shared already.
 - [ ] 2.10 Port ushpy TODO 2.25: `ush notes`, file context with its refusals and limits; the
   plugin's Ctrl-X n is shared.

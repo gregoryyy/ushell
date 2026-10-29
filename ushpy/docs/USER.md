@@ -81,7 +81,9 @@ objected. With the zsh plugin it then waits on your command line:
   personal data or secrets end up hidden or exposed. With `-v` (`ush -v` for a session, or `ush -v //…`) you also get a summary,
   notes on what it reads, changes and risks, ush's own verdict, and where the command was sent.
   The explanation appears above the command; the cursor stays in the command, so you can still
-  edit it, and Enter runs it. `ush explain [-v] COMMAND` explains any command line.
+  edit it, and Enter runs it. `ush explain [-v] COMMAND` explains any command line. A command
+  is explained once: Down again, or the same command later (say, from your history), shows the
+  same explanation without asking the model; only a changed command line is explained anew.
 - **Up** closes the explanation too; otherwise it is your history, as always.
 - **Esc** closes the explanation, or else removes the proposal, so you can start from scratch;
   ush then knows you didn't run it. Esc does this only while a proposal is on the line; otherwise
@@ -186,7 +188,7 @@ name, your user name, the working directory, the output of the commands that ran
 in propose mode, of the proposals you ran) and piped input. With a local Ollama model, all of that stays on this machine; with an Ollama
 *cloud* model, Ollama forwards it to ollama.com, and ush says so. A checker gets your requests and
 the proposed commands, never output. `ush explain` (and Down on a proposal) sends the command line
-and your last request.
+and your last request, unless that command was explained before.
 
 Before sending, ush removes known token formats, private keys, URL credentials, `password=`
 assignments and your API key. That is pattern matching: assume what a command prints may reach the

@@ -125,6 +125,7 @@ by commit. See [tools/ci/README.md](../../tools/ci/README.md).
 | Captured output with secrets sent on `//` | Covered: redacted like any output, `test_continuing_sends_what_ran_redacted` |
 | A command to explain that closes the request's markers and instructs the model | Covered: random-tag markers, `ExplainTest` |
 | The explanation sends more than the command | Covered: `test_explain_runs_nothing_and_uses_the_proposal_context` (no tools, nothing run, key redacted) |
+| Kept explanations leak command lines, or a planted store is read | Covered: the file holds hashes and redacted answers only, mode 0600; a symlink or broken file is ignored (`test_explanations_are_kept_by_command_line`, `ExplanationsTest`, ushgo `TestABrokenOrLinkedExplanationStoreIsIgnored`); a kept answer is shown through the same display filter as a new one |
 | The plugin leaves Esc, Down or Up rebound | Covered: `test_zsh_plugin` (bindings restored after running, removing, abandoning a proposal) |
 | The installer changes `~/.zshrc` without consent | Covered: `test_install` |
 

@@ -448,6 +448,8 @@ func explainCommand(args []string, term *ui.Terminal, id config.Identity, s conf
 			}
 		}
 	}
+	kept := handoff.NewExplanations(id.StateDir())
+	answer := kept.Get(command)
 	if o.Verbose {
 		where := "goes to Anthropic"
 		if s.Provider == "ollama" {
@@ -456,28 +458,38 @@ func explainCommand(args []string, term *ui.Terminal, id config.Identity, s conf
 				where = "goes to " + remote + " via Ollama"
 			}
 		}
-		term.Info(fmt.Sprintf("ush · %s · explaining, runs nothing · the command %s, secrets redacted", s.ActiveModel(), where))
+		if answer != "" {
+			term.Info("ush · explained before, runs nothing · nothing sent")
+		} else {
+			term.Info(fmt.Sprintf("ush · %s · explaining, runs nothing · the command %s, secrets redacted", s.ActiveModel(), where))
+		}
 		if verdict.Auto {
 			term.Info("ush's policy: read-only")
 		} else {
 			term.Info("ush's policy: not verified as read-only: " + verdict.Reason)
 		}
 	}
-	b := make([]byte, 4)
-	_, _ = rand.Read(b)
-	tag := hex.EncodeToString(b) // a command can't close the markers early
-	text := strings.Join(append(context_, fmt.Sprintf("Command to explain, between <<<%s and %s>>>:", tag, tag),
-		"<<<"+tag, command, tag+">>>"), "\n")
-	p, err := factory.create()
-	if err != nil {
-		return 2, err
+	if answer == "" {
+		b := make([]byte, 4)
+		_, _ = rand.Read(b)
+		tag := hex.EncodeToString(b) // a command can't close the markers early
+		text := strings.Join(append(context_, fmt.Sprintf("Command to explain, between <<<%s and %s>>>:", tag, tag),
+			"<<<"+tag, command, tag+">>>"), "\n")
+		p, err := factory.create()
+		if err != nil {
+			return 2, err
+		}
+		answer, err = p.Complete(context.Background(), strings.ReplaceAll(explainSystem, "{os}", agent.OSName()), redact.Text(text, secrets...))
+		if err != nil {
+			term.Error(err.Error())
+			return 1, nil
+		}
+		answer = redact.Text(strings.TrimSpace(answer), secrets...)
+		if answer != "" {
+			kept.Put(command, answer)
+		}
 	}
-	answer, err := p.Complete(context.Background(), strings.ReplaceAll(explainSystem, "{os}", agent.OSName()), redact.Text(text, secrets...))
-	if err != nil {
-		term.Error(err.Error())
-		return 1, nil
-	}
-	answer = redact.Text(strings.TrimSpace(answer), secrets...)
+	answer = redact.Text(answer, secrets...)
 	shown := brief(answer)
 	if o.Verbose {
 		shown = answer

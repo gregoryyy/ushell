@@ -1,6 +1,7 @@
 package handoff
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
@@ -132,5 +133,58 @@ func TestSessionsArePrivatePerShellAndExpire(t *testing.T) {
 		if _, err := NewSessions(state, bad); err == nil {
 			t.Errorf("key %q accepted", bad)
 		}
+	}
+}
+
+func TestExplanationsAreKeptByHashNewestFirstOut(t *testing.T) { // ushpy ExplanationsTest
+	kept := NewExplanations(filepath.Join(t.TempDir(), "state"))
+	if kept.Get("echo hi") != "" {
+		t.Error("empty store")
+	}
+	kept.Put("echo hi", "says hi")
+	if kept.Get("  echo hi ") != "says hi" {
+		t.Error("get")
+	}
+	text, _ := os.ReadFile(kept.Path)
+	if !strings.HasPrefix(string(text), `{"56a79f3b115448072387c2480044bfa2cf8f90e4f5fddd8c943b4e051b81f80b": `) { // ushpy's key too
+		t.Error(string(text))
+	}
+	if info, _ := os.Stat(kept.Path); info.Mode().Perm() != 0o600 {
+		t.Error(info.Mode())
+	}
+	for i := 0; i < ExplanationsKept; i++ {
+		kept.Put(fmt.Sprintf("echo %d", i), fmt.Sprintf("says %d", i))
+	}
+	if kept.Get("echo hi") != "" || kept.Get("echo 0") != "says 0" {
+		t.Error("the oldest should go")
+	}
+	kept.Put("echo 0", "again")
+	kept.Put("echo new", "new")
+	if kept.Get("echo 0") != "again" || kept.Get("echo 1") != "" {
+		t.Error("a new answer moves it to the newest")
+	}
+	order, _ := kept.load()
+	if len(order) != ExplanationsKept {
+		t.Error(len(order))
+	}
+}
+
+func TestABrokenOrLinkedExplanationStoreIsIgnored(t *testing.T) {
+	state := t.TempDir()
+	kept := NewExplanations(state)
+	os.WriteFile(kept.Path, []byte("not json"), 0o600)
+	if kept.Get("echo hi") != "" {
+		t.Error("broken store read")
+	}
+	kept.Put("echo hi", "says hi")
+	if kept.Get("echo hi") != "says hi" {
+		t.Error("rewritten")
+	}
+	os.Remove(kept.Path)
+	target := filepath.Join(t.TempDir(), "elsewhere.json")
+	os.WriteFile(target, []byte(`{"`+explanationKey("echo hi")+`": {"answer": "planted"}}`), 0o600)
+	os.Symlink(target, kept.Path)
+	if kept.Get("echo hi") != "" {
+		t.Error("read through a link")
 	}
 }

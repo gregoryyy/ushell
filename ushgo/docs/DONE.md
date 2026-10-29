@@ -9,6 +9,34 @@ defined in [SDLC](../../docs/SDLC.md#done-entries).
 
 ---
 
+## 2026-10-29 01:31 — Port: explain once per command line; kept explanations
+
+TODO items: 2.9 (ushpy 2.24). PR: #29.
+
+Agent: Opus 5.5, reasoning: not exposed, subagents: none.
+
+### Implementation notes
+
+- **Session editor:** `varedScript` keeps the last explanation as ushpy's `VARED` does. The two
+  scripts still differ by one comment line.
+- **Store:** `handoff.Explanations` is the same file, format and keys as ushpy:
+  `explanations.json`, SHA-256 of the trimmed command line, the newest 500. Entries keep their
+  file order through a token decoder, so "the oldest" means the same in both. `explain` uses it,
+  and `-v` says "explained before … nothing sent".
+- **Validation:** as in ushpy DONE 2026-10-29 01:31. The black-box tests (`test_cli`,
+  `SessionExplainTest`) ran against the Go binary in `just ushgo-conform`: 68 OK.
+
+### Deviations
+
+- None.
+
+### Insights
+
+- Python's `json.dump` escapes non-ASCII and Go's encoder doesn't. Both read either form, so the
+  shared file stays compatible without matching byte for byte.
+
+---
+
 ## 2026-10-29 00:40 — The tag moved to the merge of #24; default branch main
 
 TODO items: 2.5 (still open: `govulncheck`). PR: #25.

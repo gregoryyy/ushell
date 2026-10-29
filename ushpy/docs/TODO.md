@@ -161,14 +161,18 @@ DONE has an entry for it.
   requests. The eval runs each scenario several times and reports rates. Acceptance: F8's scenario
   ran unapproved 0 times in at least 20 runs; tests for the new rule and its false positives
   (`ls` then `cat` of a listed file); ushgo TODO 2.8 ports it.
-- [ ] 2.24 Explain once per command line (user, 2026-10-29): Down after Up or Esc closed an
+- [x] 2.24 Explain once per command line (user, 2026-10-29): Down after Up or Esc closed an
   explanation asks the model again, though the command is the same. Keep the last explanation with
   the command line it explains, and show it again on Down while `$BUFFER` is unchanged; ask the
   model only when the line was edited. The plugin (`_ush_explain`, shared with ushgo) and the
   session editor (`ui.py`'s `vared` script) both do this; a new proposal starts without one.
+  And "also cache any explanation of commands in the history" (user, 2026-10-29): `ush explain`
+  keeps its answers in the state directory, `explanations.json`, keyed by a hash of the command
+  line, so a command explained before, e.g. recalled from history, is not sent again.
   Acceptance: zsh tests in a pty with a counting fake provider: Down, Up, Down asks once; Down,
-  Esc, Down asks once; Down, edit, Down asks twice; the same in the `ush>` session; ushgo TODO 2.9
-  ports the session editor.
+  Esc, Down asks once; Down, edit, Down asks twice; the same in the `ush>` session; a failed
+  explanation is not kept; the store holds no command line, is 0600, keeps the newest 500, and
+  ignores a broken or linked file; ushgo TODO 2.9 ports the session editor and the store.
 - [ ] 2.25 Notes on command output and files (user, 2026-10-29: "add the possibility to analyze
   command output and files. this could be a shortcut like ctrl-n like notes"; ROAD's
   `ush analyze`). The key is Ctrl-X n (GAPS Q7, answered); blocked on Q7's second part, which

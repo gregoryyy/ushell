@@ -14,7 +14,7 @@ from .check import Checker
 from .config import (EFFORTS, PROVIDERS, ConfigError, Identity, KeyStore, Settings, path_risks,
                      apply_environment, check_ollama_url, identity, load_settings, mask,
                      save_settings)
-from .handoff import Sessions, handoff_dir, session_key, take_ran, write_proposal
+from .handoff import Explanations, Sessions, handoff_dir, session_key, take_ran, write_proposal
 from .history import History, Step
 from .policy import classify
 from .provider import (API_URL, AnthropicProvider, OllamaProvider, Provider, ProviderError,
@@ -321,7 +321,8 @@ def _explain(args: list[str], ui: Terminal, ident: Identity, settings: Settings,
     """`ush explain COMMAND`: the model's explanation of a command line; runs nothing. By
     default only the parts; with -v also ush's banner and policy verdict, the summary and the
     notes. For the pending proposal it adds the request and purpose, and the proposal's -v.
-    --inline: called from the Down key, which adds the key hint in verbose mode."""
+    --inline: called from the Down key, which adds the key hint in verbose mode. An explanation
+    given before for the same command line is shown again without asking the model."""
     inline = False
     while args and args[0] in ("--inline", "-v", "--verbose"):
         inline = inline or args[0] == "--inline"
@@ -346,24 +347,33 @@ def _explain(args: list[str], ui: Terminal, ident: Identity, settings: Settings,
             context.append(f"ush proposed this command for: {proposal['purpose']}")
         elif proposal.get("command"):
             context.append(f"ush had proposed: {proposal['command']}; the user edited it.")
+    kept = Explanations(ident.state_dir())
+    answer = kept.get(command)
     if options.verbose:
         where = "goes to Anthropic"
         if settings.provider == "ollama":
             remote = ollama_remote_host(settings.ollama_url, settings.ollama_model)
             where = f"goes to {remote} via Ollama" if remote else "stays on this machine"
-        ui.info(f"ush · {settings.active_model} · explaining, runs nothing · the command "
-                f"{where}, secrets redacted")
+        if answer is not None:
+            ui.info("ush · explained before, runs nothing · nothing sent")
+        else:
+            ui.info(f"ush · {settings.active_model} · explaining, runs nothing · the command "
+                    f"{where}, secrets redacted")
         ui.info("ush's policy: " + ("read-only" if verdict.auto else
                                     f"not verified as read-only: {verdict.reason}"))
-    tag = os.urandom(4).hex()  # a command can't close the markers early
-    text = "\n".join([*context, f"Command to explain, between <<<{tag} and {tag}>>>:",
-                      f"<<<{tag}", command, f"{tag}>>>"])
-    try:
-        answer = factory().complete(EXPLAIN_SYSTEM.format(os=os_name()), redact(text, secrets))
-    except ProviderError as exc:
-        ui.error(str(exc))
-        return 1
-    answer = redact(answer.strip(), secrets)
+    if answer is None:
+        tag = os.urandom(4).hex()  # a command can't close the markers early
+        text = "\n".join([*context, f"Command to explain, between <<<{tag} and {tag}>>>:",
+                          f"<<<{tag}", command, f"{tag}>>>"])
+        try:
+            answer = factory().complete(EXPLAIN_SYSTEM.format(os=os_name()), redact(text, secrets))
+        except ProviderError as exc:
+            ui.error(str(exc))
+            return 1
+        answer = redact(answer.strip(), secrets)
+        if answer:
+            kept.put(command, answer)
+    answer = redact(answer, secrets)
     shown = answer if options.verbose else brief(answer)
     if options.verbose and inline:
         shown += "\n" + EXPLAIN_HINT
