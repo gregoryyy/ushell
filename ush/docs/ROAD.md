@@ -3,7 +3,7 @@
 Where ush goes, in both implementations. The phases build on each other, and each one ends with a gate:
 a tested result that decides whether the next phase starts. When a phase starts, its work becomes
 items in [TODO](TODO.md), and this file links to them. Open questions are in [GAPS](GAPS.md).
-Status: 2026-10-29 11:40; phases 1 and 3 are done, 0.2.0 is released; 0.2.1 is next.
+Status: 2026-10-29 12:28; phases 1 and 3 are done, 0.2.1 is released.
 
 | Phase | Goal | TODO | Gate to the next phase |
 | --- | --- | --- | --- |
@@ -49,7 +49,7 @@ effort for the process and terminal work (GAPS Q9).
 
 Done 2026-10-28: every module ported (TODO 4.1–4.12), the policy corpus and ushpy's black-box tests
 passing against the Go binary on macOS and Linux. Releases ship the Go binary (TODO 5): 0.2.0 is
-out (5.8) as a GitHub release (5.6), its Homebrew formula ready for the tap (5.7); 0.2.1, with the man page, is next (5.9). Every new feature now lands in both implementations (TODO, section 2).
+out (5.8) as a GitHub release (5.6), then 0.2.1 with the man page (5.9), both in the Homebrew tap (5.7). Every new feature now lands in both implementations (TODO, section 2).
 
 ## 4. Context and shells
 

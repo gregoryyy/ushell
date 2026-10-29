@@ -24,13 +24,15 @@ differ.
 ### Go: with Homebrew
 
 ```sh
-brew install gregoryyy/ush/ush                      # macOS or Linux: /opt/homebrew/bin/ush
+brew tap gregoryyy/ush
+brew trust gregoryyy/ush                            # Homebrew loads third-party taps only once trusted
+brew install ush                                    # macOS or Linux: /opt/homebrew/bin/ush
 ```
 
 The tap [gregoryyy/homebrew-ush](https://github.com/gregoryyy/homebrew-ush) builds `ush` from the
 tagged source with Homebrew's Go, as the release build does (`-trimpath`, no cgo, the version
-stamped in). The plugin goes to `$(brew --prefix)/share/ush/ush.plugin.zsh`; `brew info ush` prints
-the line for `~/.zshrc`. A Homebrew prefix is owned by the user, so a Homebrew `ush` is not for
+stamped in), and Homebrew needs current Command Line Tools to build it. The plugin goes to `$(brew --prefix)/share/ush/ush.plugin.zsh`; `brew info ush` prints
+the line for `~/.zshrc`; the manual page is `man ush`. A Homebrew prefix is owned by the user, so a Homebrew `ush` is not for
 `sudo`: see [For sudo](#for-sudo-a-root-owned-install).
 
 ### Go: from a release archive

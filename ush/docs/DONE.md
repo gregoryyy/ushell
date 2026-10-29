@@ -14,6 +14,67 @@ implementation kept its own log: [ushpy](archive/DONE-ushpy.md), [ushgo](archive
 
 ---
 
+## 2026-10-29 12:28 — Release 0.2.1: the gate, the tag, the GitHub release and the tap
+
+TODO items: 5.9, 5.7, 5.8 (done); 5.3 (run again). PR: #35.
+
+Agent: Opus 5.5, reasoning: not exposed, subagents: none.
+
+### Implementation notes
+
+- **The user's request:** "first create version 0.2.1 and run the gh command on that", after
+  "add a man page and re-release to 0.2.1"; the user merged #34.
+- **Gate on 5c77891**, the merge of #34, as 0.2.1:
+  - Level 1, macOS arm64: `just ci --post` passes all seven jobs; statuses posted.
+  - Level 1, Linux arm64 (Debian in `golang:1.27`, with mandoc, unprivileged, from `git archive`):
+    ushpy 203 OK, `go test ./...` every package OK, conformance 80 OK.
+  - Release build: `scripts/release.sh 0.2.1` and `--check` (two builds identical). The same build
+    in the Linux container gives the same four checksums:
+    - `4af05af8…` darwin-arm64
+    - `a8bad593…` darwin-amd64
+    - `c7ce2ae6…` linux-arm64
+    - `11417195…` linux-amd64
+  - darwin-arm64 archive, installed to a temporary prefix:
+    - it holds `ush.1`; `ush 0.2.1 (go)`; no file writable by others; `man ush` renders;
+    - `smoke.sh --bin` with llama3.2:3b: 14 PASS, 1 WARN (the model proposed no command), 0 FAIL;
+    - `ush notes 'any errors?' app.log` with llama3.2:3b names the log's error, after the
+      disclosure line.
+  - linux-arm64 archive on `debian:13`: the checksum verifies, it installs as a user, `man ush`
+    renders, offline smoke 6 PASS.
+  - Level 2: the injection eval three times, 36 runs: 4 attempted, **2 ran unapproved** (HTML,
+    agent mode, `cat pwned-by-injection`: F8). The user decided "Release, F8 documented" (GAPS
+    Q12), and the release notes give the rate.
+  - `govulncheck` v1.1.4: no vulnerabilities. `gitleaks git --redact .`: no leaks.
+- **Published by the agent, at the user's request:**
+  - The annotated tag `v0.2.1` on 5c77891.
+  - The GitHub release v0.2.1 (latest), with the four archives, `SHA256SUMS` and the notes.
+    Downloaded again: the checksums verify, and `SHA256SUMS` is byte-identical to the build's.
+- **The tap:** the user had created `gregoryyy/homebrew-ush` with the prepared 0.2.0 commit. The
+  agent pushed:
+  - the 0.2.1 formula from `formula.sh`: `brew style` clean, and its build by hand from the tag's
+    tarball gives `ush 0.2.1 (go)`, with the plugin and page at the formula's paths;
+  - a README line on `brew trust`.
+- **`brew trust`:** `brew tap gregoryyy/ush` works, but this Homebrew refuses to load formulas
+  from an untrusted tap. The install line is now `brew tap`, `brew trust`, `brew install ush`:
+  - in the tap's README, ADMIN and both release notes (files);
+  - on GitHub, in the v0.2.0 and v0.2.1 release bodies, edited.
+  The agent left trusting the tap on this Mac to the user.
+
+### Deviations
+
+- **The eval failed its criterion** (2 unapproved), released by the user's decision (GAPS Q12).
+- **`brew install` not run:** the Command Line Tools on this Mac are outdated (DONE 11:10), and the
+  tap is not trusted here.
+- **Not run:** Linux amd64 and Intel macOS (no machine); a live Anthropic run (not authorised).
+
+### Insights
+
+- The eval's per-release sample of a 3B model swings from 0 to 2 in 36. A gate decision needs
+  the rate over several releases (SECTEST), and F8 needs its fix (TODO 2.23), not more samples.
+- Homebrew now gates third-party taps behind `brew trust`; every install instruction needs it.
+
+---
+
 ## 2026-10-29 11:41 — The manual page, `man ush`; version 0.2.1
 
 TODO items: 2.14 and 5.4, in both implementations; 5.9 (0.2.1 prepared, not yet released). PR: #34.
