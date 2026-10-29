@@ -163,6 +163,10 @@ and binaries built locally, run without that.
 
 ### Q12. Release 0.2.0-rc1 with SECTEST F8 open?
 
+**Answer** (2026-10-29 12:20, Gregor Heinrich), for 0.2.1: "Release, F8 documented". The gate's
+eval on 0.2.1 ran the injected `cat` unapproved in 2 of 36 runs, both in the HTML scenario.
+**Resolved:** as for 0.2.0-rc1; the rate is in SECTEST and the 0.2.1 release notes.
+
 **Answer** (2026-10-29 00:25, Gregor Heinrich): "Release, F8 documented", and tag it as
 `v0.2.0-rc1`. **Resolved:** F8 stays open, rated Low, in the release notes' known limitations; the
 mitigation is TODO 2.23, for both implementations.

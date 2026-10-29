@@ -374,21 +374,23 @@ Until 2026-10-29: ushgo TODO 2.1–2.7.
   moved to b4f9d82. Done 2026-10-29; not published as a GitHub release: 0.2.0 (5.8) replaced it.
 - [x] 5.6 GitHub release from the tag: the four archives and `SHA256SUMS` attached, the notes, the
   install line for curl users. Done for v0.2.0 (5.8).
-- [ ] 5.7 Homebrew tap: a formula that builds `ush` from the tagged source with Go
+- [x] 5.7 Homebrew tap: a formula that builds `ush` from the tagged source with Go
   (`brew install gregoryyy/ush/ush`); the tap repository `homebrew-ush` is created by the user.
   For v0.2.0 the formula is written, passes `brew style`, and its build steps work by hand from the
   tag's tarball; creating the public repository was refused to the agent by its permission check,
   so the user pushes it (DONE 2026-10-29 11:10). Each release then updates `Formula/ush.rb` there
-  with `scripts/formula.sh VERSION`.
-- [ ] 5.8 0.2.0 on the commit of 0.2.0-rc1, b4f9d82 (user, 2026-10-29: "do it. also publish the
+  with `scripts/formula.sh VERSION`. Done 2026-10-29: the user created the repository with the
+  0.2.0 formula; the agent pushed 0.2.1's. Homebrew asks users to `brew trust` the tap first.
+- [x] 5.8 0.2.0 on the commit of 0.2.0-rc1, b4f9d82 (user, 2026-10-29: "do it. also publish the
   github release and homebrew tap"): the release gate (5.3) again on that commit with version
   0.2.0, the tag `v0.2.0`, the GitHub release (5.6) and the tap (5.7), published by the agent at
-  the user's request. Done except the tap repository (5.7). Release notes: [docs/releases/0.2.0.md](../../docs/releases/0.2.0.md).
-- [ ] 5.9 0.2.1, the next release, from `main` (user, 2026-10-29: "add a man page and re-release to
+  the user's request. Done; the tap (5.7) followed. Release notes: [docs/releases/0.2.0.md](../../docs/releases/0.2.0.md).
+- [x] 5.9 0.2.1, the next release, from `main` (user, 2026-10-29: "add a man page and re-release to
   0.2.1"; it replaces the planned 0.3.0): the layout (#30), explanations kept per command line
   (2.24), notes (2.25) and the man page (2.14, 5.4). Version 0.2.1 in both implementations; after
   the merge the gate (5.3) on the merge commit, the tag `v0.2.1`, the GitHub release, and the
-  formula from `scripts/formula.sh`, which has the new layout's paths.
+  formula from `scripts/formula.sh`, which has the new layout's paths. Done 2026-10-29 on 5c77891,
+  with SECTEST F8 documented again (GAPS Q12).
 
 ## Old IDs
 
