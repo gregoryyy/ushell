@@ -28,7 +28,7 @@ sandbox.
 | Source | Trust | Consequence |
 | --- | --- | --- |
 | The user at the terminal | Trusted | Approvals, edits, explicit session commands |
-| Model output (commands, scripts, `effect` claims) | Untrusted | Policy plus approval; claims never widen permissions |
+| Model output (commands, scripts, `effect` claims) | Untrusted | Policy plus approval; claims never widen permissions. A tool call an Ollama model writes as text is read as a call (TODO 2.31) and then checked like one |
 | Command output, piped input, file contents | Untrusted data | May carry prompt injection; never grants anything |
 | Environment (`USH_BASE_URL`, `USH_PROVIDER`, `USH_MODEL`, `USH_OLLAMA_URL`, `XDG_*`) under root | Untrusted | Ignored as root |
 | Ollama endpoint and its model list | Trusted for local models only | Must be a loopback address; cloud models are disclosed |

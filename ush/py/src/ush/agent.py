@@ -28,6 +28,9 @@ from .provider import Provider, ProviderError, echo_content
 from .redact import redact
 from .ui import Terminal
 
+# Turns in a row whose tool calls were all refused (invalid, or past the step limit) before the
+# request stops: a small model that keeps writing a wrong call would otherwise loop.
+MAX_REFUSED_TURNS = 3
 # C0 controls but tab and newline, DEL, C1 controls, bidi overrides and isolates, zero-width.
 CONTROL = re.compile("[\x00-\x08\x0b-\x1f\x7f-\x9f\u200b-\u200f\u202a-\u202e\u2066-\u2069\ufeff]")
 
@@ -270,6 +273,7 @@ class Agent:
         return entry
 
     def _loop(self, entry: Entry) -> tuple[str, str]:
+        refused = 0
         while True:
             turn = self.provider.turn(self.system, self.tools, self.messages,
                                       on_text=self.ui.answer, on_progress=self.ui.progress)
@@ -296,6 +300,9 @@ class Agent:
                     self.unanswered = results
                     return "proposed", text
                 self.messages.append({"role": "user", "content": results})
+                refused = refused + 1 if all(r.get("is_error") for r in results) else 0
+                if refused >= MAX_REFUSED_TURNS:
+                    return self._stop_refused(), text
                 continue
             results, aborted = [], False
             for block in uses:
@@ -312,6 +319,14 @@ class Agent:
             if aborted:
                 self.ui.warn("stopped")
                 return "aborted", text
+            refused = refused + 1 if all(r.get("is_error") for r in results) else 0
+            if refused >= MAX_REFUSED_TURNS:
+                return self._stop_refused(), text
+
+    def _stop_refused(self) -> str:
+        self.ui.error(f"the model's tool calls were refused {MAX_REFUSED_TURNS} times in a row; "
+                      "nothing more was run (a larger model may do better)")
+        return "error"
 
     def _answer_unrun(self, uses: list[dict], reason: str) -> None:
         if uses:
@@ -508,8 +523,9 @@ def _result(block: dict, text: str, error: bool = False) -> dict:
 
 def _validate(name: Optional[str], args: object, tools: list[dict]) -> str:
     """Check tool input against the schema; eager streaming leaves this to the client."""
-    if name not in [t["name"] for t in tools]:
-        return f"unknown tool {name!r}"
+    names = [t["name"] for t in tools]
+    if name not in names:
+        return f"unknown tool {name!r}; the tools are {', '.join(names)}"
     if not isinstance(args, dict):
         return "input is not an object"
     schema = next(t for t in tools if t["name"] == name)["input_schema"]

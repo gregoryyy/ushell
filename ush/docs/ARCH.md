@@ -219,7 +219,10 @@ can only add friction (always ask, or never run, even when approved) is safe and
   a second adapter for Ollama's native or OpenAI-style API. A probe on 2026-10-27
   (Ollama 0.40.7) showed that `/v1/messages` accepts ush's request, strict tools
   included, and returns `tool_use` blocks, so the agent loop and SDK stay the same.
-  The Ollama adapter sends only model, limits, system prompt, tools, and messages. Its
+  The Ollama adapter sends only model, limits, system prompt, tools, and messages. Small
+  models write Llama's call format as text with the command as the name (`{"name": "ls",
+  "parameters": {…}}`), which Ollama passes on as text; the adapter reads such a text as a
+  call, and holds text that may be one back from the screen until the turn ends (TODO 2.31). Its
   endpoint must be a loopback address, and its HTTP client ignores proxy variables and
   redirects, so "stays on this machine" is true by construction. Cloud models are
   detected through `remote_host` in `/api/tags` and disclosed. Settings select the

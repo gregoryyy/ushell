@@ -18,9 +18,9 @@ from ush.config import Settings
 from ush.history import History
 from unittest import mock
 
-from ush.agent import TOOLS
-from ush.provider import (FALLBACK_BETA, UPDATES_BETA, AnthropicProvider, OllamaProvider,
-                          ProviderError, ollama_remote_host)
+from ush.agent import PROPOSE_TOOL, TOOLS
+from ush.provider import (FALLBACK_BETA, UPDATES_BETA, AnthropicProvider, HeldText,
+                          OllamaProvider, ProviderError, ollama_remote_host, text_tool_call)
 
 COMMAND = {"command": "echo mock-output", "purpose": "check", "effect": "read",
            "timeout_seconds": 20}
@@ -142,6 +142,126 @@ class OllamaProviderTest(TempDirTest):
             closed = api.url
         with self.assertRaisesRegex(ProviderError, "cannot reach Ollama at .*ollama serve"):
             ask(OllamaProvider("qwen3:8b", closed, max_retries=0))
+
+
+class TextToolCallTest(unittest.TestCase):
+    """Tool calls small models write as text (llama3.2:3b, 2026-10-29: `{"name": "ls",
+    "parameters": {"command": "-d", …, "interactive": "false"}}` for "list the current directory")."""
+
+    PROPOSAL = {"command": "ls -bA", "purpose": "list", "effect": "read", "interactive": False}
+
+    def call(self, text, tools=(PROPOSE_TOOL,)):
+        return text_tool_call(text, list(tools))
+
+    def test_a_named_tool_is_taken_as_written(self):
+        self.assertEqual(self.call(json.dumps({"name": "propose_command",
+                                               "parameters": self.PROPOSAL})),
+                         ("propose_command", self.PROPOSAL))
+        self.assertEqual(self.call(json.dumps({"name": "run_command", "arguments": COMMAND}),
+                                   TOOLS), ("run_command", COMMAND))
+
+    def test_a_program_as_the_name_is_the_tool_its_input_fits(self):
+        written = '{"name": "ls", "parameters": {"command": "-d", "purpose": "list", ' \
+                  '"effect": "read", "interactive": "false"}}'
+        self.assertEqual(self.call(written), ("propose_command", {
+            "command": "ls -d", "purpose": "list", "effect": "read", "interactive": False}))
+        # The program already leads the command: nothing is added.
+        self.assertEqual(self.call(json.dumps({"name": "ls", "parameters": self.PROPOSAL})),
+                         ("propose_command", self.PROPOSAL))
+        # In agent mode, the input fits run_command and not run_script.
+        self.assertEqual(self.call(json.dumps({"name": "wc", "parameters": {**COMMAND,
+                                                                            "command": "-l x"}}),
+                                   TOOLS), ("run_command", {**COMMAND, "command": "wc -l x"}))
+
+    def test_a_name_that_is_no_program_is_not_put_in_front(self):
+        made_up = "no-such-program-ush-test"
+        self.assertEqual(self.call(json.dumps({"name": made_up, "parameters": self.PROPOSAL})),
+                         ("propose_command", self.PROPOSAL))
+        self.assertEqual(self.call(json.dumps({"name": "list files", "parameters": self.PROPOSAL})),
+                         ("propose_command", self.PROPOSAL))
+
+    def test_input_that_fits_no_tool_keeps_its_name_for_the_agent_to_refuse(self):
+        partial = {"command": "-d", "purpose": "list"}
+        self.assertEqual(self.call(json.dumps({"name": "ls", "parameters": partial})),
+                         ("ls", partial))
+        extra = {**self.PROPOSAL, "shell": "zsh"}
+        self.assertEqual(self.call(json.dumps({"name": "ls", "parameters": extra})), ("ls", extra))
+
+    def test_fences_and_the_parameters_slip(self):
+        body = json.dumps({"name": "propose_command", "parameters": self.PROPOSAL})
+        expected = ("propose_command", self.PROPOSAL)
+        self.assertEqual(self.call(f"```json\n{body}\n```"), expected)
+        self.assertEqual(self.call(f"  ```\n{body}```\n"), expected)
+        slip = body.replace('"parameters": {', '"parameters{')
+        self.assertEqual(self.call(slip), expected)
+
+    def test_other_text_is_no_call(self):
+        for text in ("Run `ls -d` to list it.", '{"command": "ls"}', '{"name": "ls"}',
+                     '{"name": "ls", "parameters": "ls -d"}',
+                     '{"name": "ls", "parameters": {}, "extra": 1}', "[1, 2]", "{not json",
+                     'Here: {"name": "ls", "parameters": {}}', '{"name": 3, "parameters": {}}'):
+            with self.subTest(text=text):
+                self.assertIsNone(self.call(text))
+
+
+class HeldTextTest(unittest.TestCase):
+    def test_prose_streams_and_a_possible_call_waits_for_the_end(self):
+        out = []
+        held = HeldText(out.append)
+        for chunk in ("  ", "Run ", "`ls`."):
+            held.write(chunk)
+        self.assertEqual(out, ["  Run ", "`ls`."])
+        out.clear()
+        for opening in ("{", "`"):
+            held = HeldText(out.append)
+            held.write(" " + opening)
+            held.write('"name"')
+            self.assertEqual(out, [])
+            held.flush()
+            self.assertEqual(out, [" " + opening + '"name"'])
+            out.clear()
+
+
+@unittest.skipUnless(HAVE_SDK, "anthropic SDK not installed (pip install -r requirements.lock)")
+class OllamaTextToolCallTest(TempDirTest):
+    WRITTEN = ('{"name": "ls", "parameters": {"command": "-d", "purpose": "list", '
+               '"effect": "read", "interactive": "false"}}')
+
+    def turn(self, provider, tools=(PROPOSE_TOOL,)):
+        shown = []
+        turn = provider.turn("sys", list(tools), [{"role": "user", "content": "x"}],
+                             shown.append, lambda t: None)
+        return turn, "".join(shown)
+
+    def test_ollama_turns_a_written_call_into_a_tool_use_and_shows_nothing(self):
+        with MockAPI([([{"type": "text", "text": self.WRITTEN}], "end_turn")]) as api:
+            turn, shown = self.turn(OllamaProvider("llama3.2:3b", api.url, max_retries=0))
+        self.assertEqual(shown, "")
+        self.assertEqual(turn.stop_reason, "tool_use")
+        (block,) = turn.content
+        self.assertEqual((block["type"], block["name"], block["input"]["command"],
+                          block["input"]["interactive"]),
+                         ("tool_use", "propose_command", "ls -d", False))
+        self.assertRegex(block["id"], r"^toolu_text_[0-9a-f]{24}$")
+
+    def test_prose_and_a_real_call_are_unchanged(self):
+        use = {"type": "tool_use", "id": "call_1", "name": "run_command", "input": COMMAND}
+        both = [{"type": "text", "text": self.WRITTEN}, use]
+        with MockAPI([([{"type": "text", "text": "It is empty."}], "end_turn"),
+                      (both, "tool_use")]) as api:
+            provider = OllamaProvider("llama3.2:3b", api.url, max_retries=0)
+            turn, shown = self.turn(provider)
+            self.assertEqual((shown, turn.content[0]["text"]), ("It is empty.", "It is empty."))
+            turn, shown = self.turn(provider, TOOLS)
+            self.assertEqual(shown, self.WRITTEN)
+            self.assertEqual([b["type"] for b in turn.content], ["text", "tool_use"])
+
+    def test_anthropic_text_stays_text(self):
+        with MockAPI([([{"type": "text", "text": self.WRITTEN}], "end_turn")]) as api:
+            provider = AnthropicProvider(SYNTHETIC_KEY, "claude-opus-5-5", "medium",
+                                         base_url=api.url, max_retries=0)
+            turn, shown = self.turn(provider)
+        self.assertEqual((shown, turn.stop_reason), (self.WRITTEN, "end_turn"))
 
 
 class OllamaRemoteHostTest(TempDirTest):

@@ -192,7 +192,13 @@ func (a *Agent) Ask(ctx context.Context, request string, ran *handoff.Ran, track
 	return entry
 }
 
+// maxRefusedTurns is how many turns in a row may have all their tool calls refused (invalid, or
+// past the step limit) before the request stops: a small model that keeps writing a wrong call
+// would otherwise loop.
+const maxRefusedTurns = 3
+
 func (a *Agent) loop(ctx context.Context, entry *history.Entry) (string, string, error) {
+	refused := 0
 	for {
 		turn, err := a.Provider.Turn(ctx, a.system, a.tools, a.Messages, a.UI.Answer, a.UI.Progress)
 		if err != nil {
@@ -241,6 +247,9 @@ func (a *Agent) loop(ctx context.Context, entry *history.Entry) (string, string,
 				return "proposed", text.String(), nil
 			}
 			a.Messages = append(a.Messages, block{"role": "user", "content": results})
+			if refused = countRefused(refused, results); refused >= maxRefusedTurns {
+				return a.stopRefused(), text.String(), nil
+			}
 			continue
 		}
 		var results []block
@@ -262,7 +271,25 @@ func (a *Agent) loop(ctx context.Context, entry *history.Entry) (string, string,
 		if aborted {
 			return "aborted", text.String(), errAbort
 		}
+		if refused = countRefused(refused, results); refused >= maxRefusedTurns {
+			return a.stopRefused(), text.String(), nil
+		}
 	}
+}
+
+// countRefused continues the count of turns whose tool results were all errors, or restarts it.
+func countRefused(count int, results []block) int {
+	for _, r := range results {
+		if r["is_error"] != true {
+			return 0
+		}
+	}
+	return count + 1
+}
+
+func (a *Agent) stopRefused() string {
+	a.UI.Error(fmt.Sprintf("the model's tool calls were refused %d times in a row; nothing more was run (a larger model may do better)", maxRefusedTurns))
+	return "error"
 }
 
 func (a *Agent) answerUnrun(uses []block, reason string) {
@@ -583,7 +610,11 @@ func validate(name string, args any, tools []block) string {
 		}
 	}
 	if schema == nil {
-		return fmt.Sprintf("unknown tool %s", pyRepr(name))
+		names := make([]string, 0, len(tools))
+		for _, t := range tools {
+			names = append(names, str(t["name"]))
+		}
+		return fmt.Sprintf("unknown tool %s; the tools are %s", pyRepr(name), strings.Join(names, ", "))
 	}
 	in, ok := args.(block)
 	if !ok {

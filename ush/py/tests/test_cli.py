@@ -435,6 +435,21 @@ class CliTest(TempDirTest):
         self.assertIn("ush · qwen3:8b", self.ush("history").stdout + result.stderr)
 
     @unittest.skipUnless(HAVE_SDK, "anthropic SDK not installed")
+    def test_a_tool_call_written_as_text_by_a_local_model_is_a_proposal(self):
+        written = ('{"name": "ls", "parameters": {"command": "-d", "purpose": "the directory", '
+                   '"effect": "read", "interactive": "false"}}')
+        replies = [([{"type": "text", "text": written}], "end_turn")]
+        with MockAPI(replies, tags=[{"name": "llama3.2:3b"}]) as api:
+            env = {"USH_PROVIDER": "ollama", "USH_MODEL": "llama3.2:3b", "USH_OLLAMA_URL": api.url}
+            result = self.ush("-N", "//list the current directory", env=env)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        shown = result.stdout + result.stderr
+        self.assertIn("ls -d", shown)
+        self.assertIn("the directory", shown)
+        self.assertNotIn('"parameters"', shown)
+        self.assertIn("ls -d", self.ush("history").stdout)
+
+    @unittest.skipUnless(HAVE_SDK, "anthropic SDK not installed")
     def test_ollama_cloud_model_is_disclosed(self):
         replies = [([{"type": "text", "text": "ok"}], "end_turn")]
         tags = [{"name": "gemma4:31b-cloud", "remote_host": "https://ollama.com:443"}]

@@ -247,7 +247,8 @@ configuration error, 130 stopped.
 | "Ollama has no model …" | `ollama pull MODEL`, or pick one from `ollama list` |
 | "cannot reach Ollama" | start it: `ollama serve` |
 | "Ollama URL … is not on this machine" | ush only uses an Ollama on `127.0.0.1`, `localhost` or `::1` |
-| The answer comes without any command run | small local models do that; use a larger one (≥ 8B) |
+| The answer comes without any command run | small local models do that; use a larger one (≥ 8B). llama3.2:3b often answers agent-mode questions without running anything, with made-up numbers |
+| "the model's tool calls were refused 3 times in a row" | the model kept calling a tool that doesn't exist, or with the wrong input; use a larger model |
 | zsh says `no matches found` | quote the request or add the plugin |
 | A command you trust keeps asking (agent mode) | `ush allow add …`, or check why: the reason is in the prompt |
 | The proposal doesn't appear on the command line | add the zsh plugin and open a new terminal; `echo $USH_HANDOFF` should print a directory |

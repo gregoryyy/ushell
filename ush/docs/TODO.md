@@ -285,6 +285,13 @@ Done in Python, and in Go through the port (section 4).
   OpenAI-compatible endpoint covers tool calling, 2.29's adapter is used instead. Acceptance: as
   for 2.29, with signing tested against fixed vectors; credentials from the platform's standard
   chain, never logged; in Go with the standard library only.
+- [x] 2.31 *py ✓ go ✓* Tool calls written as text by local models (user, 2026-10-29: with llama3.2:3b,
+  `//list the current directory` printed `{"name":"ls","parameters":{"command":"ls -bA",…}}`).
+  Ollama turns Llama's call format into a call only when the name is a tool's; the model used the
+  command as the name. The Ollama adapter reads such text as the call meant, the agent names the
+  tools when it refuses an unknown one, and three turns of refused calls stop a request.
+  Acceptance: unit, provider (mock Ollama) and CLI tests in both implementations; llama3.2:3b
+  proposes a command for the request in 6 of 6 runs in each. Done 2026-10-29 (DONE).
 
 ## 3. Release
 
