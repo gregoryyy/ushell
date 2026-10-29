@@ -6,7 +6,7 @@ machines, see the [admin guide](ADMIN.md). Status: 2026-10-29 02:01.
 
 `ush` has two implementations that behave the same: the Go one in `ush/go/`, which releases ship,
 and the Python one in `ush/py/`, where features are tried first. Everything below works in both;
-`ush --version` tells you which one you have: `ush 0.2.0 (go)` or `ush 0.2.0 (python)`.
+`ush --version` tells you which one you have: `ush 0.2.1 (go)` or `ush 0.2.1 (python)`.
 
 ## What ush does
 
@@ -202,6 +202,7 @@ A model name starting with `claude-` is Anthropic's, any other is Ollama's; `ant
 | `ush history [-n N]` | recent requests and the commands they ran (default 10) |
 | `ush replay ID\|last [-n]` | run those commands again, without AI, through the same approval checks |
 | `ush help`, `ush --version` | usage; version and implementation |
+| `man ush` | the manual page: all of the above in one place |
 
 ## What leaves your machine
 

@@ -14,6 +14,60 @@ implementation kept its own log: [ushpy](archive/DONE-ushpy.md), [ushgo](archive
 
 ---
 
+## 2026-10-29 11:41 — The manual page, `man ush`; version 0.2.1
+
+TODO items: 2.14 and 5.4, in both implementations; 5.9 (0.2.1 prepared, not yet released). PR: #34.
+
+Agent: Opus 5.5, reasoning: not exposed, subagents: none.
+
+### Implementation notes
+
+- **The request:** "add a man page and re-release to 0.2.1" (user, 2026-10-29). 0.2.1 replaces the
+  0.3.0 planned in TODO 5.9.
+- **`ush/man/ush.1`:** one page for both implementations, in man macros. It covers:
+  - the synopsis, the `//` forms, sessions and piped input;
+  - the plugin's keys (Enter, Down, Up, Esc, Ctrl-X n) and agent mode's approvals;
+  - every option and subcommand of `ush help`;
+  - the environment, files, what is sent where, exit statuses, and examples.
+  The user guide stays the long form.
+- **Installed everywhere ush is:**
+  - Both installers copy it to `PREFIX/share/man/man1/ush.1`, mode 0644, per user
+    (`~/.local/share/man/man1`) and with `--prefix`. `man` finds it next to the binary on the
+    `PATH`, with no `MANPATH`.
+  - The release archive carries it (`tools/release`, the archive README).
+  - `release.sh` refuses to build with uncommitted changes in `ush/man`.
+  - The formula installs it with `man1.install`, and its test checks that it is there.
+- **Tests:**
+  - `test_docs`: every short and long option of `ush help`, every subcommand, and the plugin's
+    and override variables are in the page. Removing `--once` from the page fails the test.
+  - `mandoc -T lint -W warning` is clean; the test is skipped where mandoc is missing.
+  - `test_install`, new `InstallerTest`: `ush/py/install.sh` runs with a stand-in Python (no venv
+    or network) and puts the page, the plugin, the package and the launcher where expected, none
+    writable by others, per user and with `--prefix`. Without the copy line, the tests fail.
+  - `tools/release`: the archive has `ush.1`, and its `install.sh` puts it in
+    `share/man/man1`.
+  - By hand: the Go archive's installer into a temporary `HOME`, then `man ush` with that `PATH`,
+    renders the page.
+- **Version 0.2.1** in ushpy (`__version__`, `pyproject`) and in the page's header. Release notes:
+  [docs/releases/0.2.1.md](../../docs/releases/0.2.1.md).
+- **Docs:** USER (`man ush`), ADMIN (where the installers put it, and removal), ARCH (archive
+  members), TODO, ROAD.
+- **Validation:**
+  - `just ush-test`: ushpy 203 OK, every Go package OK, conformance 80 OK.
+  - `just links` OK.
+
+### Deviations
+
+- **The page's source is roff, written by hand**, not generated from the user guide. The test keeps
+  it complete against `ush help`; its prose can drift from USER.md, which says more.
+
+### Insights
+
+- macOS's `man` derives its search path from `PATH` (`../share/man` of each entry), so a per-user
+  install needs no `MANPATH` change.
+
+---
+
 ## 2026-10-29 11:10 — Release 0.2.0: the gate, the tag, the GitHub release; the tap prepared
 
 TODO items: 5.8 (new; open until the tap is pushed), 5.5, 5.6 (done), 5.7 (prepared), 5.3 (run

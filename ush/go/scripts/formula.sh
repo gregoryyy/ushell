@@ -5,7 +5,7 @@
 # gregoryyy/homebrew-ush (created by the user). Users then install with:
 #   brew install gregoryyy/ush/ush
 #
-#   scripts/formula.sh 0.3.0 > ush.rb
+#   scripts/formula.sh 0.2.1 > ush.rb
 #
 # The paths are those of the ush/go layout (#30). Tags before it, v0.2.0 among them, have ushgo/
 # and ushpy/shell/: their formula comes from formula.sh at that tag.
@@ -32,6 +32,7 @@ class Ush < Formula
              "-ldflags", "-s -w -X main.version=#{version}", "-o", bin/"ush", "./cmd/ush"
     end
     (share/"ush").install "ush/shell/ush.plugin.zsh"
+    man1.install "ush/man/ush.1"
   end
 
   def caveats
@@ -45,6 +46,7 @@ class Ush < Formula
   test do
     assert_match "#{version} (go)", shell_output("#{bin}/ush --version")
     assert_match "usage:", shell_output("#{bin}/ush help")
+    assert_path_exists man1/"ush.1"
   end
 end
 FORMULA

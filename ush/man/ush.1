@@ -1,0 +1,342 @@
+.\" The manual page of ush, for both implementations (TODO 2.14). The user guide, ush/docs/USER.md,
+.\" is the long form; test_docs checks that every option and subcommand of `ush help` is here.
+.TH USH 1 2026-10-29 "ush 0.2.1" "User Commands"
+.SH NAME
+ush \- the you shell: ask in plain language at the zsh prompt, get the commands that answer it
+.SH SYNOPSIS
+.B ush
+.RI [ options ]
+.BI // request ...
+.br
+.B ush
+.RI [ options ]
+.B //
+.br
+.B ush
+.RI [ options ]
+.br
+.B ush explain
+.RB [ \-v ]
+.I command ...
+.br
+.B ush notes
+.RB [ \-v ]
+.RB [ \-\-last ]
+.RI [ question ]
+.IR file ...
+.br
+.B ush ai configure
+.RB [ \-\-file ]
+.br
+.B ush ai status
+.br
+.B ush ai clear\-key
+.br
+.B ush allow
+.RB [ add | remove
+.IR rule ]
+.br
+.B ush history
+.RB [ \-n
+.IR n ]
+.br
+.B ush replay
+.IR id | last
+.RB [ \-n ]
+.br
+.B ush help
+.br
+.B ush \-\-version
+.SH DESCRIPTION
+.B ush
+sends a request in plain language to an AI model and answers it with shell commands.
+By default it runs nothing: it proposes one command at a time.
+With the zsh plugin the proposal lands on your command line, where you run it with Enter, edit it,
+or ignore it; then
+.B //
+continues with what you ran, its exit status and output.
+The model is Anthropic's, with your own API key, or a local Ollama model, with which nothing leaves
+the machine.
+.PP
+In agent mode
+.RB ( \-\-run ,
+or the setting
+.B mode
+=
+.BR run )
+.B ush
+runs commands itself: those its policy verifies as read-only at once, every other one only after
+you approve it.
+.SS Requests
+.TP
+.BI "ush //" request
+Propose a command, or answer.
+With the plugin,
+.BI "// " request
+works without quotes; without it, quote the request, since zsh would expand
+.BR ? ,
+.B *
+and quotes first.
+.TP
+.B ush //
+Continue: send what you ran, its exit status and output, and get the next proposal.
+.BI "// " text
+after a proposal continues with a remark or a new question.
+.TP
+.B ush
+A session, with zsh's line editing and history:
+.BI "// " text
+asks, any other line runs as a command whose output becomes context, and
+.B exit
+or Ctrl\-D ends it.
+.TP
+.IB command " | ush //" request
+Piped input becomes context for the request, up to 200 KB.
+.SS The zsh plugin
+.TP
+.B Enter
+runs the proposal in your shell, as if you had typed it; ush records its exit status and output for
+the next
+.BR // .
+.TP
+.B Down
+explains the proposal above the command line: what each part does, which files and network it
+reads and writes.
+A command line is explained once and kept; Down again shows the same explanation.
+.TP
+.B Up
+closes the explanation; otherwise it is your history.
+.TP
+.B Esc
+closes the explanation, or else removes the proposal (in vi mode: Ctrl\-U).
+.TP
+.B Ctrl\-X n
+notes on output or files, printed before the next prompt.
+On an empty line, or one with only a
+.BI # question ,
+on the last recorded output; on a command line, it runs the command, records its output and gets
+notes on it; on a line naming files, on those files, the other words being the question.
+.SS Agent mode
+A command runs without asking only if
+.B ush
+recognises it as read-only, or it matches one of your allow rules, and it uses no shell syntax that
+could hide a change, reads no secret file, was not marked as a change, and the checker, if any,
+did not flag it.
+Every other command is shown with the reason, and you answer
+.B y
+(run it),
+.B n
+(don't, with an optional reason for the model),
+.B e
+(edit, then run your version) or
+.B a
+(stop the request).
+Scripts the model writes are always shown in full and always need approval.
+.SH OPTIONS
+.TP
+.BR \-r ", " \-\-run
+Agent mode: ush runs the commands itself, read-only ones at once, others after your approval; then
+follow-up questions.
+.TP
+.BR \-N ", " \-\-new
+Start a new conversation instead of continuing this shell's.
+.TP
+.BR \-n ", " \-\-dry\-run
+Agent mode, but show the commands it would run, and run none.
+.TP
+.BR \-c ", " \-\-confirm
+Ask before every command, including read-only ones.
+.TP
+.BR \-1 ", " \-\-once
+Answer once, without follow-up questions.
+.TP
+.BR \-v ", " \-\-verbose
+Full explanations (summary, parts, notes, ush's verdict); in agent mode, complete command output
+instead of the first 12 lines.
+.TP
+.BR \-m ", " \-\-model " \fImodel\fR"
+Model for this run (default from
+.BR "ush ai configure" ).
+.TP
+.BR \-e ", " \-\-effort " \fIlevel\fR"
+Anthropic effort:
+.BR low ,
+.BR medium ,
+.BR high ,
+.B xhigh
+or
+.BR max .
+.TP
+.BR \-k ", " \-\-checker " \fImodel\fR"
+Checker for this run, or
+.BR off .
+A checker is a second model that sees only your requests and each proposed command, never command
+output; what it flags gets a warning, or needs your approval in agent mode.
+A name starting with
+.B claude\-
+is Anthropic's, any other Ollama's;
+.B anthropic:
+or
+.B ollama:
+in front says so explicitly.
+.SH COMMANDS
+.TP
+.BR "ush explain " [ \-v ] " \fIcommand\fR ..."
+Explain a command line with the model, without running it; the same as Down on a proposal.
+.TP
+.BR "ush notes " [ \-v "] [" \-\-last "] [\fIquestion\fR] \fIfile\fR ..."
+Notes on files, piped input or, with
+.BR \-\-last ,
+the plugin's last recorded output: what it is, what stands out, what to do next.
+Words that name existing files are files; the rest is the question.
+At most 200 KB in all; files in secret locations, directories, special files, binary files and
+files past the limit are refused with the reason.
+Never as root.
+.TP
+.BR "ush ai configure " [ \-\-file ]
+Set the mode (propose or run), the provider (Anthropic or a local Ollama), the API key or Ollama
+URL, the model, the effort and the checker.
+The key goes to the macOS keychain, or with
+.B \-\-file
+(and on Linux) to a file of mode 0600.
+.TP
+.B ush ai status
+Show the provider, model, key source (never the key) and paths.
+.TP
+.B ush ai clear\-key
+Remove the stored API key.
+.TP
+.BR "ush allow " [ add | remove " \fIrule\fR]"
+List, add or remove commands that may run without approval in agent mode, e.g.
+.BR "ush allow add kubectl get" .
+A rule matches commands whose words start with it.
+Rules are refused for commands ush checks itself, for commands that run other commands, and for
+commands that change or send data; they are not used as root.
+.TP
+.BR "ush history " [ \-n " \fIn\fR]"
+List recent requests and the commands they ran (default 10).
+.TP
+.BR "ush replay " \fIid\fR | last " [" \-n ]
+Run those commands again, without AI, through the same approval checks;
+.B \-n
+shows them without running them.
+.TP
+.BR "ush help" ", " "ush \-\-version"
+Show the usage; show the version and the implementation,
+.B go
+or
+.BR python .
+.SH ENVIRONMENT
+All but
+.B NO_COLOR
+are ignored when ush runs as root, so
+.B sudo \-E
+can't redirect a root session.
+.TP
+.BR ANTHROPIC_API_KEY ", " USH_API_KEY
+The API key, before the keychain and the key file.
+.TP
+.BR USH_PROVIDER ", " USH_MODEL ", " USH_OLLAMA_URL ", " USH_CHECKER
+Override the settings for one run.
+.TP
+.B USH_BASE_URL
+Another Anthropic endpoint, e.g. a company gateway.
+.TP
+.BR XDG_CONFIG_HOME ", " XDG_STATE_HOME
+Where settings, history and conversations live.
+.TP
+.B USH_HANDOFF
+Set by the zsh plugin: a directory of mode 0700 with the proposal, what ran and its output.
+.TP
+.B USH_BARE_SLASH
+Set to 0 before sourcing the plugin: no bare
+.B // ...
+form.
+.TP
+.B USH_NOTES_KEY
+Set before sourcing the plugin: the key for notes (default
+.BR ^Xn ;
+empty for none).
+.TP
+.B NO_COLOR
+No colours.
+.PP
+ush never reads
+.B .env
+files, and removes
+.B ANTHROPIC_*
+and
+.B USH_API_KEY
+from the environment of the commands it runs.
+.SH FILES
+.TP
+.I ~/.config/ush/config.json
+Settings, mode 0600.
+.TP
+.I ~/.config/ush/credentials
+The API key when it isn't in the keychain; a regular file of mode 0600, or ush refuses it.
+.TP
+.I ~/.local/state/ush/history.jsonl
+History: requests, commands, decisions, exit statuses, shortened answers; no command output.
+.TP
+.I ~/.local/state/ush/sessions/
+Propose mode's conversations, one per shell, kept for an hour.
+.TP
+.I ~/.local/state/ush/explanations.json
+The newest 500 explanations, keyed by a hash of the command line.
+.TP
+.I ~/.local/share/ush/ush.plugin.zsh
+The zsh plugin (with
+.BR "\-\-prefix " \fIdir\fR:
+.IR dir/lib/ush/ );
+.B source
+it in
+.IR ~/.zshrc .
+.SH PRIVACY
+With Anthropic, each request sends your text, the OS name, your user name, the working directory,
+piped input and the output of the commands that ran (up to 32 KB each; in propose mode, of the
+proposals you ran).
+.B ush explain
+sends the command line and your last request;
+.B ush notes
+sends the files or output it names, up to 200 KB.
+Known secret formats, private keys, URL credentials and your API key are redacted first; that is
+pattern matching, so read each command on sensitive machines, or use a local model.
+With a local Ollama model all of it stays on the machine; with an Ollama cloud model, Ollama
+forwards it to ollama.com, and ush says so.
+.SH EXIT STATUS
+.TP
+.B 0
+Answered, or a dry run.
+.TP
+.B 1
+An error, or refused.
+.TP
+.B 2
+A usage or configuration error.
+.TP
+.B 130
+Stopped.
+.SH EXAMPLES
+.TP
+.B // why is my disk full?
+Propose a command; Enter runs it, then
+.B //
+continues.
+.TP
+.B ush \-\-run //which process listens on port 8080
+Investigate in agent mode.
+.TP
+.B journalctl \-n 200 | ush notes 'anything unusual?'
+Notes on piped output.
+.TP
+.B ush \-k llama3.2:3b //clean up old docker images
+Propose with a local checker model.
+.TP
+.B sudo ush \-\-run //why does nginx fail to start
+Run approved commands as root; needs a root-owned install.
+.SH SEE ALSO
+.BR zsh (1),
+.BR sudo (8)
+.PP
+The user and admin guides: https://github.com/gregoryyy/ushell/tree/main/ush/docs

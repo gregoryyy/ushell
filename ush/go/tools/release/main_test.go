@@ -109,7 +109,7 @@ func TestBuildIsReproducibleAndRuns(t *testing.T) {
 	if output, err := exec.Command("tar", "-xzf", tarball, "-C", out).CombinedOutput(); err != nil {
 		t.Fatalf("tar: %v %s", err, output)
 	}
-	for _, name := range []string{"ush", "install.sh", "README.txt", "ush.plugin.zsh", "zshrc.sh", "LICENSE"} {
+	for _, name := range []string{"ush", "install.sh", "README.txt", "ush.plugin.zsh", "zshrc.sh", "ush.1", "LICENSE"} {
 		if _, err := os.Stat(filepath.Join(out, host, name)); err != nil {
 			t.Error(err)
 		}
@@ -118,14 +118,14 @@ func TestBuildIsReproducibleAndRuns(t *testing.T) {
 	if err != nil || string(version) != "ush 1.2.3 (go)\n" {
 		t.Fatalf("--version: %q %v", version, err)
 	}
-	// The installer puts the binary and the plugin where ushpy's installer does.
+	// The installer puts the binary, the plugin and the manual page where ushpy's installer does.
 	prefix := t.TempDir()
 	install := exec.Command("sh", filepath.Join(out, host, "install.sh"), "--prefix", prefix)
 	install.Env = append(os.Environ(), "HOME="+t.TempDir(), "ZDOTDIR=") // never the real ~/.zshrc
 	if output, err := install.CombinedOutput(); err != nil {
 		t.Fatalf("install.sh: %v %s", err, output)
 	}
-	for _, path := range []string{"bin/ush", "lib/ush/ush.plugin.zsh"} {
+	for _, path := range []string{"bin/ush", "lib/ush/ush.plugin.zsh", "share/man/man1/ush.1"} {
 		info, err := os.Stat(filepath.Join(prefix, path))
 		if err != nil {
 			t.Fatal(err)

@@ -10,8 +10,8 @@ cd "$(dirname "$0")/.."
 version=${1:?usage: scripts/release.sh VERSION [--check]}
 shift
 epoch=$(git log -1 --format=%ct)
-if [ -n "$(git status --porcelain -- . ../shell ../../LICENSE)" ]; then
-    echo "release.sh: uncommitted changes in ush/go/ or the plugin; the build would not match the commit" >&2
+if [ -n "$(git status --porcelain -- . ../shell ../man ../../LICENSE)" ]; then
+    echo "release.sh: uncommitted changes in ush/go/, the plugin or the manual page; the build would not match the commit" >&2
     [ "${1:-}" = --check ] || exit 1
 fi
 export GOTOOLCHAIN=local GOFLAGS=-mod=readonly

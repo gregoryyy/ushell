@@ -127,11 +127,13 @@ Done in Python, and in Go through the port (section 4).
   makes the command need approval; OK never approves; disclosed in the banner and `ai status`.
   Acceptance: agent, parser, settings, provider (`complete`) and end-to-end tests; a live run on a
   local model recorded in SECTEST; SEC updated.
-- [ ] 2.14 *py – go –* A man page, `ush.1`, for the command in both implementations: synopsis, the `//`
+- [x] 2.14 *py ✓ go ✓* A man page, `ush.1`, for the command in both implementations: synopsis, the `//`
   forms, options, subcommands, environment (`USH_*`), files, what leaves the machine, exit
   statuses, examples. One source in the repository; `install.sh` installs it to
   `share/man/man1`, and the Go release archive carries it (TODO 5.4). Acceptance: `man ush`
-  after either install; a test that every option in `ush help` appears in the page.
+  after either install; a test that every option in `ush help` appears in the page. Done
+  2026-10-29: `ush/man/ush.1` (man macros, `mandoc -T lint` clean), installed by both installers,
+  in the archive and the formula (DONE).
 - [x] 2.15 *py ✓ go ✓* User allowlist: `ush allow [add|remove RULE]`, `allow` in the settings file. A rule
   (command name and leading words) lets commands the table doesn't know run without approval;
   refused for table commands, runners and interpreters, commands that change or send data, and
@@ -363,8 +365,8 @@ Until 2026-10-29: ushgo TODO 2.1–2.7.
 - [ ] 5.3 Release gate per [AGENTS.md](../../AGENTS.md) and [SEC](SEC.md): conformance on each
   supported OS, ush SECTEST levels 1 and 2 on the binary, `govulncheck`, secret scan. Run for 0.2.0
   on 2026-10-29 in full except Linux amd64 and Intel macOS (no machine) and a live Anthropic run.
-- [ ] 5.4 The man page `ush.1` (TODO 2.14) in the release archive, installed to
-  `share/man/man1`.
+- [x] 5.4 The man page `ush.1` (TODO 2.14) in the release archive, installed to
+  `share/man/man1`. Done 2026-10-29; ships from 0.2.1.
 - [x] 5.5 0.2.0-rc1, the first release, of the Go binaries at parity (user, 2026-10-28): version
   0.2.0-rc1 in both implementations, release notes, the release gate (5.3) on the tagged commit.
   The AI prepares; the user tags and publishes. GAPS Q12 answered 2026-10-29: release with SECTEST
@@ -382,10 +384,11 @@ Until 2026-10-29: ushgo TODO 2.1–2.7.
   github release and homebrew tap"): the release gate (5.3) again on that commit with version
   0.2.0, the tag `v0.2.0`, the GitHub release (5.6) and the tap (5.7), published by the agent at
   the user's request. Done except the tap repository (5.7). Release notes: [docs/releases/0.2.0.md](../../docs/releases/0.2.0.md).
-- [ ] 5.9 0.3.0, the next release, from `main`: the layout (#30), explanations kept per command
-  line (2.24) and notes (2.25). Version `0.3.0-dev` on `main` until then. Release candidate first,
-  then the gate (5.3) on the tagged commit, the GitHub release and the formula from
-  `scripts/formula.sh`, which has the new layout's paths.
+- [ ] 5.9 0.2.1, the next release, from `main` (user, 2026-10-29: "add a man page and re-release to
+  0.2.1"; it replaces the planned 0.3.0): the layout (#30), explanations kept per command line
+  (2.24), notes (2.25) and the man page (2.14, 5.4). Version 0.2.1 in both implementations; after
+  the merge the gate (5.3) on the merge commit, the tag `v0.2.1`, the GitHub release, and the
+  formula from `scripts/formula.sh`, which has the new layout's paths.
 
 ## Old IDs
 

@@ -45,7 +45,8 @@ ush-0.2.0-darwin-arm64/install.sh                 # for you: ~/.local/bin/ush
 ```
 
 `install.sh` copies the binary to `PREFIX/bin/ush` (replacing it atomically) and the zsh plugin to
-`~/.local/share/ush/` (per user) or `PREFIX/lib/ush/` (with `--prefix`). Run from a terminal, it
+`~/.local/share/ush/` (per user) or `PREFIX/lib/ush/` (with `--prefix`), and the manual page to
+`PREFIX/share/man/man1/ush.1` (`man ush` finds it next to the binary on the `PATH`). Run from a terminal, it
 offers to add the plugin line to `~/.zshrc` (`--zshrc` adds it without asking, `--no-zshrc` only
 prints it); it never adds it twice or as root. These are the Python installer's places, so the
 plugin line stays valid when you switch.
@@ -186,7 +187,7 @@ The smoke test keeps the user's settings and history out and writes `smoke-repor
   tag and run `install.sh` again).
 - **Switch implementation:** install the other one into the same prefix; nothing else changes.
   From Python to Go, remove the venv afterwards: `PREFIX/lib/ush/venv` or `~/.local/share/ush/venv`.
-- **Remove:** delete `PREFIX/bin/ush` and `PREFIX/lib/ush/` (or `~/.local/share/ush/`), the plugin
+- **Remove:** delete `PREFIX/bin/ush`, `PREFIX/share/man/man1/ush.1` and `PREFIX/lib/ush/` (or `~/.local/share/ush/`), the plugin
   line in `~/.zshrc`, and per user, if wanted: `ush ai clear-key`, `~/.config/ush/`,
   `~/.local/state/ush/`.
 

@@ -4,12 +4,24 @@ is built."""
 
 import os
 import re
+import shutil
+import subprocess
 import unittest
 
 import helpers  # noqa: F401  puts ush/py/src on the path
 
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..")
 DOCS = os.path.join(ROOT, "ush", "docs")
+MANUAL_PAGE = os.path.join(ROOT, "ush", "man", "ush.1")
+
+
+def manual_page_text() -> str:
+    """The page's source as words: font changes, quotes and comments removed, roff minus signs as
+    hyphens, so `.BR \\-r ", " \\-\\-run` reads `-r, --run`."""
+    with open(MANUAL_PAGE, encoding="utf-8") as f:
+        text = "".join(line for line in f if not line.startswith('.\\"'))
+    text = re.sub(r"\\f[BIRP]", "", text).replace("\\-", "-").replace('"', "")
+    return re.sub(r" +", " ", re.sub(r" +,", ",", text))
 
 
 class SharedDocsTest(unittest.TestCase):
@@ -25,6 +37,26 @@ class SharedDocsTest(unittest.TestCase):
         for command in ("ai configure", "ai status", "ai clear-key", "allow", "explain", "notes",
                         "history", "replay"):
             self.assertIn(f"`ush {command}", guide)
+
+    def test_every_option_and_subcommand_is_in_the_manual_page(self):
+        from ush.cli import USAGE
+        page = manual_page_text()
+        options = re.findall(r"(?m)^  (-\w), (--[\w-]+)", USAGE)
+        self.assertGreaterEqual(len(options), 7)
+        words = [f"{short}, {long}" for short, long in options]
+        words += [f"ush {command}" for command in ("ai configure", "ai status", "ai clear-key",
+                                                  "allow", "explain", "notes", "history",
+                                                  "replay", "help")]
+        words += ["USH_PROVIDER", "USH_MODEL", "USH_CHECKER", "USH_OLLAMA_URL", "USH_NOTES_KEY",
+                  "USH_BARE_SLASH"]
+        for word in words:
+            self.assertTrue(word in page, f"{word} is not in ush/man/ush.1")
+
+    @unittest.skipUnless(shutil.which("mandoc"), "mandoc is not installed")
+    def test_the_manual_page_is_well_formed(self):
+        lint = subprocess.run(["mandoc", "-T", "lint", "-W", "warning", MANUAL_PAGE],
+                              capture_output=True, text=True, timeout=30)
+        self.assertEqual((lint.returncode, lint.stdout + lint.stderr), (0, ""))
 
     def test_one_document_set(self):
         for name in ("USER.md", "ADMIN.md", "ARCH.md", "SEC.md", "SECTEST.md", "SMOKE.md",
