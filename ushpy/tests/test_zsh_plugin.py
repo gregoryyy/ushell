@@ -10,7 +10,8 @@ import sys
 import time
 import unittest
 
-from helpers import TempDirTest, ush_argv
+from helpers import SYNTHETIC_KEY, TempDirTest, ush_argv
+from mock_api import MockAPI
 
 PLUGIN = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "shell", "ush.plugin.zsh")
 ZSH = shutil.which("zsh") or ""
@@ -103,6 +104,11 @@ import json, os, sys
 d = os.environ["USH_HANDOFF"]
 args = sys.argv[1:]
 if args[:1] == ["explain"]:
+    with open(os.path.join(os.environ["HOME"], "explained"), "a") as f:
+        f.write(json.dumps(args[1:]) + "\\n")
+    if os.path.exists(os.path.join(os.environ["HOME"], "fail")):
+        print("EXPLAIN failed")
+        sys.exit(1)
     print("EXPLAIN" + json.dumps(args[1:]))
 elif args == ["//"]:
     def read(name):
@@ -272,6 +278,52 @@ class ZshProposeTest(TempDirTest):
         self.assertIn("proposal removed", out[3])
         self.assertEqual(self.records(out[4]), [None, None])
 
+    def explained(self):
+        try:
+            with open(os.path.join(self.tmp, "explained")) as f:
+                return [json.loads(line)[-1] for line in f]
+        except FileNotFoundError:
+            return []
+
+    def test_down_again_shows_the_kept_explanation_until_the_line_changes(self):
+        out = self.session([
+            ("// capture echo one\r", "PROMPT> echo one"),
+            ("\x1b[B", "EXPLAIN"),          # Down: asks the model
+            ("\x1b[A", "echo one"),          # Up closes it
+            ("\x1b[B", "EXPLAIN"),          # Down: the same line, the kept explanation
+            ("\x1b", "echo one"),            # Esc closes it
+            ("\x1b[B", "EXPLAIN"),          # Down: still kept
+            ("\x1b[A", "echo one"),
+            (" two", "two"),                  # an edit
+            ("\x1b[B", 'echo one two"]'),   # Down: asks again, for the edited line
+            ("\x1b[A", "echo one two"),
+            ("\x1b[B", 'echo one two"]'),   # and keeps that one
+        ])
+        self.assertEqual(self.explained(), ["echo one", "echo one two"])
+        self.assertIn('EXPLAIN["--inline", "--", "echo one"]', out[3])
+        self.assertIn('EXPLAIN["--inline", "--", "echo one two"]', out[10])
+
+    def test_a_failed_explanation_is_not_kept(self):
+        open(os.path.join(self.tmp, "fail"), "w").close()
+        self.session([
+            ("// capture echo one\r", "PROMPT> echo one"),
+            ("\x1b[B", "EXPLAIN failed"),
+            ("\x1b[A", "echo one"),
+            ("\x1b[B", "EXPLAIN failed"),
+        ])
+        self.assertEqual(self.explained(), ["echo one", "echo one"])
+
+    def test_a_new_proposal_starts_without_an_explanation(self):
+        self.session([
+            ("// capture echo one\r", "PROMPT> echo one"),
+            ("\x1b[B", "EXPLAIN"),
+            ("\x1b", "echo one"),
+            ("\x1b", "proposal removed"),
+            ("// capture echo one\r", "PROMPT> echo one"),  # the same command, proposed anew
+            ("\x1b[B", "EXPLAIN"),
+        ])
+        self.assertEqual(self.explained(), ["echo one", "echo one"])
+
     def test_no_handoff_as_root_or_twice(self):
         with open(PLUGIN) as f:
             source = f.read()
@@ -371,6 +423,63 @@ class SessionTest(TempDirTest):
         self.assertIn("echo first-$((40+2))", recalled)
         self.assertIn("first-42", again)
         self.assertEqual(os.waitstatus_to_exitcode(status), 0, end)
+
+
+@unittest.skipUnless(ZSH, "zsh not installed")
+class SessionExplainTest(TempDirTest):
+    """In the `ush>` session, Down on a proposal explains it once per command line: Up or Esc
+    closes the explanation, Down shows the kept one again, and only an edited line asks the model
+    again (ushpy TODO 2.24, ushgo TODO 2.9). Against a local mock of the Messages API."""
+
+    def test_down_asks_the_model_once_per_command_line(self):
+        src = os.path.join(os.path.dirname(PLUGIN), "..", "src")
+        explanation = "Parts:\n- `echo`: prints {}.\nAccess: none."
+        replies = [
+            ([{"type": "tool_use", "id": "p1", "name": "propose_command",
+               "input": {"command": "echo kept-one", "purpose": "say it", "effect": "read",
+                         "interactive": False}}], "tool_use"),
+            ([{"type": "text", "text": explanation.format("FIRST-EXPLANATION")}], "end_turn"),
+            ([{"type": "text", "text": explanation.format("SECOND-EXPLANATION")}], "end_turn"),
+        ]
+        with MockAPI(replies) as api:
+            pid, fd = pty.fork()
+            if pid == 0:
+                os.environ.update({"PYTHONPATH": src, "HOME": self.tmp, "NO_COLOR": "1",
+                                   "TERM": "xterm-256color",
+                                   "XDG_CONFIG_HOME": os.path.join(self.tmp, "config"),
+                                   "XDG_STATE_HOME": os.path.join(self.tmp, "state"),
+                                   "ANTHROPIC_API_KEY": SYNTHETIC_KEY, "USH_BASE_URL": api.url})
+                os.environ.pop("USH_HANDOFF", None)
+                os.chdir(self.tmp)
+                argv = ush_argv()
+                os.execv(argv[0], argv)
+            try:
+                read = ZshPluginTest._read
+                steps = [
+                    ("", "ush> "),
+                    ("// say something\r", "echo kept-one"),
+                    ("\x1b[B", "FIRST-EXPLANATION"),   # Down: asks the model
+                    ("\x1b[A", "echo kept-one"),       # Up closes it
+                    ("\x1b[B", "FIRST-EXPLANATION"),   # Down: kept
+                    ("\x1b", "echo kept-one"),         # Esc closes it
+                    ("\x1b[B", "FIRST-EXPLANATION"),   # Down: kept
+                    ("\x1b[A", "echo kept-one"),
+                    (" x", " x"),                        # an edit
+                    ("\x1b[B", "SECOND-EXPLANATION"),  # Down: asks again
+                    ("\x1b", ""),                       # Esc closes it
+                    ("\x1b", ""),                       # Esc clears the line
+                    ("\x04", ""),                       # Ctrl-D ends the session
+                ]
+                for keys, until in steps:
+                    if keys:
+                        os.write(fd, keys.encode())
+                    read(fd, until, timeout=20)
+            finally:
+                os.close(fd)
+                os.waitpid(pid, 0)
+        explained = [r["body"]["messages"][-1]["content"] for r in api.requests[1:]]
+        self.assertEqual(len(api.requests), 3, explained)
+        self.assertIn("echo kept-one x", json.dumps(explained[-1]))
 
 
 if __name__ == "__main__":

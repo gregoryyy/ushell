@@ -7,8 +7,8 @@ import time
 from helpers import SYNTHETIC_KEY, TempDirTest, fake_identity, text
 from test_agent import assert_every_tool_use_answered
 from ush.agent import PROPOSE_TOOL
-from ush.handoff import (SESSION_TTL, Ran, Sessions, handoff_dir, session_key, take_ran,
-                         write_proposal)
+from ush.handoff import (EXPLANATIONS_KEPT, SESSION_TTL, Explanations, Ran, Sessions,
+                         handoff_dir, session_key, take_ran, write_proposal)
 
 
 def propose_use(command: str, effect: str = "read", interactive: bool = False,
@@ -141,6 +141,47 @@ class ProposeAgentTest(TempDirTest):
         for bad in ({}, {"version": 2, "messages": []}, {"version": 1, "messages": "x"}):
             agent.restore(bad)
             self.assertEqual((agent.messages, agent.proposal), ([], None))
+
+
+class ExplanationsTest(TempDirTest):
+    """Kept explanations (TODO 2.24): by the SHA-256 of the command line, the newest
+    EXPLANATIONS_KEPT, in the same file as ushgo's."""
+
+    def test_kept_by_hash_newest_first_out(self):
+        kept = Explanations(os.path.join(self.tmp, "state"))
+        self.assertIsNone(kept.get("echo hi"))
+        kept.put("echo hi", "says hi")
+        self.assertEqual(kept.get("  echo hi "), "says hi")
+        with open(kept.path) as f:
+            data = json.load(f)
+        self.assertEqual(list(data), ["56a79f3b115448072387c2480044bfa2cf8f90e4f5fddd8c943b4e051b81f80b"])  # ushgo's key too
+        self.assertEqual(os.stat(kept.path).st_mode & 0o777, 0o600)
+        for i in range(EXPLANATIONS_KEPT):
+            kept.put(f"echo {i}", f"says {i}")
+        self.assertIsNone(kept.get("echo hi"))  # the oldest went
+        self.assertEqual(kept.get("echo 0"), "says 0")
+        kept.put("echo 0", "again")  # a new answer moves it to the newest
+        kept.put("echo new", "new")
+        self.assertEqual(kept.get("echo 0"), "again")
+        self.assertIsNone(kept.get("echo 1"))
+        with open(kept.path) as f:
+            self.assertEqual(len(json.load(f)), EXPLANATIONS_KEPT)
+
+    def test_a_broken_or_linked_store_is_ignored(self):
+        state = os.path.join(self.tmp, "state")
+        os.mkdir(state)
+        kept = Explanations(state)
+        with open(kept.path, "w") as f:
+            f.write("not json")
+        self.assertIsNone(kept.get("echo hi"))
+        kept.put("echo hi", "says hi")
+        self.assertEqual(kept.get("echo hi"), "says hi")
+        os.remove(kept.path)
+        target = os.path.join(self.tmp, "elsewhere.json")
+        with open(target, "w") as f:
+            json.dump({Explanations.key("echo hi"): {"answer": "planted"}}, f)
+        os.symlink(target, kept.path)
+        self.assertIsNone(kept.get("echo hi"))  # not read through a link
 
 
 class HandoffTest(TempDirTest):

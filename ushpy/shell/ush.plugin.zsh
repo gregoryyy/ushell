@@ -89,6 +89,7 @@ typeset -g _ush_dir= _ush_state= _ush_mode= _ush_line= _ush_tee= _ush_out= _ush_
 typeset -ga _ush_saved=()   # the key bindings a proposal replaced, as `bindkey -L` prints them
 typeset -gA _ush_orig=()    # key sequence -> the widget it had
 typeset -gi _ush_explained=0  # an explanation is shown above the proposal
+typeset -g _ush_kept_line= _ush_kept_text=  # the last explanation and the line it explains
 zmodload -F zsh/zselect b:zselect 2>/dev/null
 
 _ush_precmd() {
@@ -140,7 +141,8 @@ _ush_end_capture() {
 # come back as soon as the line is run, cleared, or abandoned:
 # - Down, past the last line of the proposal, explains it (`ush explain`, with the model). The
 #   explanation shows above the command, as display-only text (PREDISPLAY); the cursor stays in
-#   the command, to edit it or run it with Enter. Elsewhere Down does what it did before.
+#   the command, to edit it or run it with Enter. Elsewhere Down does what it did before. Down
+#   again on the same line shows the same explanation; only an edited line is explained anew.
 # - Up closes the explanation; without one it is history, as always.
 # - Esc closes the explanation, or else removes the proposal, to start from scratch; `//` then
 #   hears that it didn't run. Only in the emacs keymap: in vi mode Esc switches to command mode
@@ -170,10 +172,18 @@ _ush_up() {
 _ush_explain() {
   if [[ $_ush_state == offered && $HISTNO == $HISTCMD && $RBUFFER != *$'\n'* &&
         -n ${BUFFER//[[:space:]]/} ]]; then
-    PREDISPLAY=$'\n'"ush: explaining…"$'\n'"→ "
-    zle -R
     local text
-    text=$(command ${USH_BIN:-ush} explain --inline -- "$BUFFER" 2>&1 </dev/null)
+    if [[ -z $_ush_kept_text || $BUFFER != $_ush_kept_line ]]; then
+      PREDISPLAY=$'\n'"ush: explaining…"$'\n'"→ "
+      zle -R
+      if text=$(command ${USH_BIN:-ush} explain --inline -- "$BUFFER" 2>&1 </dev/null); then
+        _ush_kept_line=$BUFFER _ush_kept_text=$text
+      else
+        _ush_kept_line= _ush_kept_text=
+      fi
+    else
+      text=$_ush_kept_text
+    fi
     _ush_explained=1
     PREDISPLAY=$'\n'"$text"$'\n'"→ "
   else
@@ -200,7 +210,7 @@ _ush_keys_bind() {
 }
 
 _ush_keys_restore() {
-  _ush_explained=0
+  _ush_explained=0 _ush_kept_line= _ush_kept_text=
   (( ${#_ush_saved} )) || return 0
   local line
   bindkey -M emacs -r $'\e'

@@ -224,6 +224,7 @@ done
 shift $n
 typeset -ga ush=("$@")
 typeset -gi explained=0
+typeset -g kept_line= kept_text=  # the last explanation and the line it explains
 # The prompt is drawn as PREDISPLAY, so an explanation can take its place above the command.
 _ush_init() {
   PREDISPLAY=$prompt
@@ -250,10 +251,18 @@ _ush_up() {
 _ush_down() {
   if [[ -n $offered && $HISTNO == $HISTCMD && $RBUFFER != *$'\n'* &&
         -n ${BUFFER//[[:space:]]/} ]]; then
-    PREDISPLAY="ush: explaining…"$'\n'"→ "
-    zle -R
-    local text
-    text=$("${ush[@]}" explain --inline -- "$BUFFER" 2>&1 </dev/null)
+    if [[ -z $kept_text || $BUFFER != $kept_line ]]; then
+      PREDISPLAY="ush: explaining…"$'\n'"→ "
+      zle -R
+      local text
+      if text=$("${ush[@]}" explain --inline -- "$BUFFER" 2>&1 </dev/null); then
+        kept_line=$BUFFER kept_text=$text
+      else
+        kept_line= kept_text=
+      fi
+    else
+      local text=$kept_text
+    fi
     explained=1
     PREDISPLAY="$text"$'\n'"→ "
   else

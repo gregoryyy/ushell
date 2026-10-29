@@ -12,6 +12,65 @@ top. The format is defined in [SDLC](../../docs/SDLC.md#done-entries).
 
 ---
 
+## 2026-10-29 01:31 — Explain once per command line; kept explanations
+
+TODO items: 2.24 (ushgo 2.9). PR: #29.
+
+Agent: Opus 5.5, reasoning: not exposed, subagents: none.
+
+### Implementation notes
+
+- **The requests:**
+  - "when moving down, the llm is applied again. this should only happen when the command is
+    changed".
+  - Then "also cache any explanation of commands in the history".
+- **On the line:** the plugin (`_ush_explain`) and the session editor (`VARED`) keep the last
+  explanation with the line it explains. Down shows it again while `$BUFFER` is unchanged,
+  without starting ush. A failed explanation is not kept, and a new proposal starts without one.
+- **Across shells:**
+  - `ush explain` keeps every answer in `explanations.json` in the state directory
+    (`handoff.Explanations`): mode 0600, written through a random `O_EXCL` temporary name, read
+    without following links.
+  - The key is the SHA-256 of the trimmed command line, so the file holds hashes and redacted
+    answers, no command lines. The newest 500 are kept.
+  - A command explained before, e.g. recalled from history, is shown without a request; `-v`
+    says "explained before … nothing sent".
+- **Validation:**
+  - `just ush-test`: ushpy 182 tests OK; `go test ./...` with format and vet checks, every
+    package OK; conformance (ushpy's black-box tests against the Go binary) 68 OK, 5 of them new.
+  - New tests:
+    - `test_zsh_plugin` `ZshProposeTest`, with a fake ush that counts its explain calls:
+      - Down, Up, Down and Down, Esc, Down: one call; an edit, then Down: a second call;
+      - a failed explanation is asked for again;
+      - a new proposal of the same command starts without one.
+    - `SessionExplainTest`: the real `ush>` session against `MockAPI`, three requests (one
+      proposal, two explanations) for the same key sequence. It runs against both
+      implementations.
+    - `test_cli` `test_explanations_are_kept_by_command_line`:
+      - the second `ush explain` and the `-v` one send nothing, and `-v` says so;
+      - a refused request (400) is not kept, and the retry is;
+      - the store is 0600 and doesn't contain the command line.
+    - `ExplanationsTest` and ushgo's two handoff tests: the newest 500 are kept, the key equals
+      ushgo's, and a broken or linked file is ignored.
+  - Mutation check: with the plugin's check disabled, the plugin test fails (five calls instead
+    of two).
+
+### Deviations
+
+- **"Commands in the history"** is read as: any command line explained before, wherever it comes
+  from now. Down still explains only a proposal, not a line recalled with Up. That would be a
+  new key binding outside a proposal, which the user has kept free so far.
+- **The kept answer:** it was made with the context of its first request (the request and
+  purpose). Later requests show it unchanged.
+
+### Insights
+
+- `PROPOSER` in the plugin tests is a plain string: `"\n"` in the generated script needs `"\\n"`
+  in the test file. A single backslash broke the fake ush, and with it ten tests that looked like
+  load-related flakiness until the output was read.
+
+---
+
 ## 2026-10-28 22:30 — Security tests; F1 and F2 fixed; four new findings fixed
 
 TODO items: 2.9, 2.10, 2.11 (and 2.22, the session's arrow keys, in the same branch). PR: see

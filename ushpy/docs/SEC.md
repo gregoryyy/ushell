@@ -20,6 +20,8 @@ sandbox.
 - History, which reveals what was investigated.
 - Propose mode's saved conversations (`sessions/`, redacted command output) and the plugin's
   handoff directory (the proposal, what ran, its output).
+- Kept explanations (`explanations.json`, mode 0600): redacted answers, keyed by a hash of the
+  command line, never the command line itself.
 
 ## Trust boundaries
 

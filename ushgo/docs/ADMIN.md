@@ -93,6 +93,7 @@ ush has no system-wide configuration; each user configures their own with `ush a
 | API key | macOS keychain (service `ush`, account `anthropic`), else `~/.config/ush/credentials` | the file must be a regular file owned by the user (or root), mode 0600, not a symlink, or ush refuses it |
 | History | `~/.local/state/ush/history.jsonl` (or `$XDG_STATE_HOME/ush/`) | append-only, mode 0600, no command output |
 | Conversations | `~/.local/state/ush/sessions/KEY.json` | propose mode, one per shell, mode 0600, with redacted output; expire after an hour |
+| Explanations | `~/.local/state/ush/explanations.json` | the newest 500 answers of `ush explain`, mode 0600, keyed by a hash of the command line (no command lines) |
 | Handoff | a `mktemp -d` directory in `$TMPDIR`, as `USH_HANDOFF` | made by the zsh plugin, mode 0700: the proposal, what ran, its output; removed when the shell exits |
 
 Settings in `config.json`:

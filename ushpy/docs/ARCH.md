@@ -108,6 +108,12 @@ propose specific shell commands and prewrite them to be executed by the user"; t
   fixed form (Summary, Parts, Access, Notes); brief shows Parts and Access, `-v` all of it.
 - The explanation is drawn as zle's `PREDISPLAY`, above the command and display-only, so the
   cursor stays in the command.
+- **Explained once** (TODO 2.24): Down again on an unchanged line shows the same explanation
+  without starting ush, in the plugin and in the session editor. `ush explain` itself keeps
+  every answer in `explanations.json` in the state directory (mode 0600, the newest 500). The key
+  is the SHA-256 of the command line, so the file holds no command lines. A command explained
+  before, e.g. one recalled from history, is shown again without a request. Failures are not
+  kept.
 - **Esc** clears the explanation, or else the proposal.
 - **The installers** offer to add the plugin to `~/.zshrc` (`shell/zshrc.sh`).
 

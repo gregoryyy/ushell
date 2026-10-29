@@ -13,10 +13,14 @@ continues the conversation with it.
 - The conversation is saved per shell in the state directory, `sessions/KEY.json`, mode 0600,
   where KEY is the handoff directory's name or, without the plugin, the parent process. It holds
   what was sent to the provider, so redacted command output, and expires after an hour unused.
+- Explanations (`ush explain`, Down on a proposal) are kept in the state directory,
+  `explanations.json`, mode 0600: the model's redacted answer under the SHA-256 of the command
+  line, never the command line itself, so a command recalled from history isn't sent again.
 """
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
@@ -29,6 +33,7 @@ from .config import Identity
 from .execute import _Collector
 
 SESSION_TTL = 3600
+EXPLANATIONS_KEPT = 500
 KEY = re.compile(r"^[A-Za-z0-9._-]{1,64}$")
 
 
@@ -151,6 +156,56 @@ class Sessions:
                     os.remove(path)
             except OSError:
                 pass
+
+
+class Explanations:
+    """Explanations given before, by command line; the newest EXPLANATIONS_KEPT."""
+
+    def __init__(self, state_dir: str):
+        self.directory = state_dir
+        self.path = os.path.join(state_dir, "explanations.json")
+
+    @staticmethod
+    def key(command: str) -> str:
+        return hashlib.sha256(command.strip().encode("utf-8", "surrogatepass")).hexdigest()
+
+    def _load(self) -> dict:
+        text = _read(self.path)
+        try:
+            data = json.loads(text) if text else {}
+        except ValueError:
+            data = {}
+        return data if isinstance(data, dict) else {}
+
+    def get(self, command: str) -> Optional[str]:
+        entry = self._load().get(self.key(command))
+        answer = entry.get("answer") if isinstance(entry, dict) else None
+        return answer if isinstance(answer, str) and answer else None
+
+    def put(self, command: str, answer: str) -> None:
+        """Keep an answer; a failure to write only means it is asked for again."""
+        data = self._load()
+        data.pop(self.key(command), None)
+        data[self.key(command)] = {"answer": answer, "time": int(time.time())}
+        if len(data) > EXPLANATIONS_KEPT:  # oldest first: dicts keep insertion order
+            data = dict(list(data.items())[-EXPLANATIONS_KEPT:])
+        try:
+            os.makedirs(self.directory, mode=0o700, exist_ok=True)
+            for _ in range(100):
+                temporary = f"{self.path}.{os.urandom(6).hex()}.tmp"
+                try:
+                    fd = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
+                                 0o600)
+                    break
+                except FileExistsError:
+                    continue
+            else:
+                return
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                json.dump(data, f)
+            os.replace(temporary, self.path)
+        except OSError:
+            pass
 
 
 def _read(path: str) -> Optional[str]:

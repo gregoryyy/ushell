@@ -216,6 +216,39 @@ class CliTest(TempDirTest):
         self.assertNotIn("Esc closes this", direct.stdout)
         self.assertTrue(inline.stdout.endswith("Esc closes this · Enter runs the command\n"))
 
+    @unittest.skipUnless(HAVE_SDK, "anthropic SDK not installed")
+    def test_explanations_are_kept_by_command_line(self):
+        # ushpy TODO 2.24: a command explained before, say one recalled from history, is shown
+        # again without asking the model; the store holds no command line, and a failure is not
+        # kept.
+        replies = [
+            ([{"type": "text", "text": EXPLANATION}], "end_turn"),
+            (400, {"type": "invalid_request_error", "message": "refused"}),
+            ([{"type": "text", "text": "Parts:\n- grep: searches."}], "end_turn"),
+        ]
+        env = {"ANTHROPIC_API_KEY": SYNTHETIC_KEY}
+        command = "touch kept-marker-7f3a"
+        with MockAPI(replies) as api:
+            env["USH_BASE_URL"] = api.url
+            first = self.ush("explain", "--", command, env=env)
+            again = self.ush("explain", "--", f"  {command} ", env=env)
+            verbose = self.ush("-v", "explain", "--", command, env=env)
+            failed = self.ush("explain", "grep x y", env=env)
+            retried = self.ush("explain", "grep x y", env=env)
+        self.assertEqual(first.returncode, 0, first.stderr)
+        self.assertEqual(again.stdout, first.stdout)
+        self.assertIn("explained before, runs nothing · nothing sent", verbose.stderr)
+        self.assertIn("Notes: harmless.", verbose.stdout)  # -v shows all of the kept answer
+        self.assertEqual(failed.returncode, 1)
+        self.assertEqual(retried.stdout, "Parts:\n- grep: searches.\n")
+        self.assertEqual(len(api.requests), 3)  # the first, the failure, the retry
+        store = os.path.join(self.tmp, "state", "ush", "explanations.json")
+        self.assertEqual(os.stat(store).st_mode & 0o777, 0o600)
+        with open(store) as f:
+            text = f.read()
+        self.assertNotIn("kept-marker", text)
+        self.assertEqual(len(json.loads(text)), 2)
+
     def test_brief_takes_the_parts(self):
         self.assertEqual(cli.brief(EXPLANATION), "Parts:\n- `touch FILE`: creates FILE if missing."
                                                  "\nAccess:\n- files: writes FILE\n- network: none")
