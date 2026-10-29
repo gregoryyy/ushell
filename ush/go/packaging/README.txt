@@ -5,6 +5,7 @@ This archive holds the Go implementation of the command `ush`, built for one pla
   install.sh       installs it: ./install.sh, or sudo ./install.sh --prefix /usr/local
   ush.plugin.zsh   the zsh plugin: proposals on your command line, unquoted `// ...`
   zshrc.sh         used by install.sh to add the plugin to ~/.zshrc (it asks first)
+  ush.1            the manual page: man ush, after install.sh
   LICENSE          MIT
   README.txt       this file
 

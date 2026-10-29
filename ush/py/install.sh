@@ -4,6 +4,7 @@
 #   ./install.sh                          for you: ~/.local/share/ush, ~/.local/bin/ush
 #   sudo ./install.sh --prefix /usr/local root-owned: /usr/local/lib/ush, /usr/local/bin/ush
 #
+# The manual page goes to PREFIX/share/man/man1/ush.1 in both cases.
 # Use the root-owned install if you run `sudo ush`: root then executes only files
 # that root owns. Set PYTHON to choose the interpreter (3.10 or newer).
 # --zshrc adds the zsh plugin to ~/.zshrc without asking, --no-zshrc leaves it alone;
@@ -25,7 +26,7 @@ if [ "$prefix" = "$HOME/.local" ]; then lib="$prefix/share/ush"; else lib="$pref
 src=$(cd "$(dirname "$0")" && pwd)
 
 umask 022
-mkdir -p "$lib" "$prefix/bin"
+mkdir -p "$lib" "$prefix/bin" "$prefix/share/man/man1"
 
 # Use $PYTHON, or the newest Python 3.10+ that can create a virtual environment.
 candidates=${PYTHON:-"python3.14 python3.13 python3.12 python3.11 python3.10 python3"}
@@ -48,6 +49,8 @@ rm -rf "$site/ush"
 cp -R "$src/src/ush" "$site/ush"
 find "$site/ush" -name __pycache__ -prune -exec rm -rf {} +
 cp "$src/../shell/ush.plugin.zsh" "$lib/ush.plugin.zsh"
+cp "$src/../man/ush.1" "$prefix/share/man/man1/ush.1"
+chmod 644 "$prefix/share/man/man1/ush.1"
 
 cat > "$prefix/bin/ush" <<LAUNCHER
 #!/bin/sh

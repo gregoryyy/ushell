@@ -350,7 +350,8 @@ implementations are the command `ush`.
   built on two machines would differ; `archive/tar` and `compress/gzip` from the standard library
   give the same bytes everywhere. Binaries: `CGO_ENABLED=0`, `-trimpath`, `-buildvcs=false`,
   `-ldflags "-s -w -buildid= -X main.version=…"`. Archive members: the binary, `install.sh`, the
-  zsh plugin from `ush/shell/` (one plugin for both implementations) and a README; timestamps
+  zsh plugin from `ush/shell/` (one plugin for both implementations), the manual page `ush.1` from
+  `ush/man/` (one page for both, installed to `PREFIX/share/man/man1`) and a README; timestamps
   are the commit time. The installer uses the same places as ushpy's (`~/.local/bin`,
   `~/.local/share/ush`; `PREFIX/bin`, `PREFIX/lib/ush`), so the plugin line in `~/.zshrc` stays
   valid when switching implementations. On macOS a Go binary links `libSystem` and `libresolv`

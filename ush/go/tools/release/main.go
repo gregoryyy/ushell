@@ -114,7 +114,8 @@ func Build(version string, epoch int64, out string) (string, error) {
 }
 
 // sharedFiles are the members every archive has besides the binary. The zsh plugin and the script
-// that adds it to ~/.zshrc are in ush/shell: one plugin for both implementations of the command.
+// that adds it to ~/.zshrc are in ush/shell, the manual page in ush/man: one of each for both
+// implementations of the command.
 func sharedFiles(root string) ([]File, error) {
 	var files []File
 	for _, f := range []struct {
@@ -125,6 +126,7 @@ func sharedFiles(root string) ([]File, error) {
 		{"README.txt", "packaging/README.txt", 0o644},
 		{"ush.plugin.zsh", "../shell/ush.plugin.zsh", 0o644},
 		{"zshrc.sh", "../shell/zshrc.sh", 0o755},
+		{"ush.1", "../man/ush.1", 0o644},
 		{"LICENSE", "../../LICENSE", 0o644},
 	} {
 		data, err := os.ReadFile(filepath.Join(root, f.path))
