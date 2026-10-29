@@ -118,3 +118,8 @@ against `zsh -f` (ushpy `test_security`).
   explanation again while the command line is unchanged; the plugin is shared already.
 - [ ] 2.10 Port ushpy TODO 2.25: `ush notes`, file context with its refusals and limits; the
   plugin's Ctrl-X n is shared.
+- [ ] 2.11 Port ushpy TODO 2.6: the OS sandbox for what agent mode runs without asking.
+- [ ] 2.12 Port ushpy TODO 2.26: history as context, with the same filter.
+- [ ] 2.13 Port ushpy TODO 2.27: the bash plugin in the release archive and the installer's
+  `~/.bashrc` offer.
+- [ ] 2.14 Port ushpy TODO 2.28: the fish plugin in the archive and the installer.

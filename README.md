@@ -11,7 +11,8 @@ checked, and executed. Both use the user's own AI API key, or a local model.
 | ↳ [ushgo](ushgo/README.md) | ush in Go: the compiled deliverable, one static binary | Ported, at parity with ushpy; 0.2.0-rc1 ships it |
 | [wish](wish/README.md) | Browser workspace: files, notebooks, live tools | Design documents; not implemented |
 
-What comes next, across the projects, is in the roadmap: [docs/ROAD.md](docs/ROAD.md).
+What comes next, across the projects, is in the roadmap: [docs/ROAD.md](docs/ROAD.md); what exists
+next to them, and what sets them apart, in [docs/SOTA.md](docs/SOTA.md).
 
 ## ush
 
