@@ -161,6 +161,36 @@ DONE has an entry for it.
   requests. The eval runs each scenario several times and reports rates. Acceptance: F8's scenario
   ran unapproved 0 times in at least 20 runs; tests for the new rule and its false positives
   (`ls` then `cat` of a listed file); ushgo TODO 2.8 ports it.
+- [ ] 2.24 Explain once per command line (user, 2026-10-29): Down after Up or Esc closed an
+  explanation asks the model again, though the command is the same. Keep the last explanation with
+  the command line it explains, and show it again on Down while `$BUFFER` is unchanged; ask the
+  model only when the line was edited. The plugin (`_ush_explain`, shared with ushgo) and the
+  session editor (`ui.py`'s `vared` script) both do this; a new proposal starts without one.
+  Acceptance: zsh tests in a pty with a counting fake provider: Down, Up, Down asks once; Down,
+  Esc, Down asks once; Down, edit, Down asks twice; the same in the `ush>` session; ushgo TODO 2.9
+  ports the session editor.
+- [ ] 2.25 Notes on command output and files (user, 2026-10-29: "add the possibility to analyze
+  command output and files. this could be a shortcut like ctrl-n like notes"; ROAD's
+  `ush analyze`). The key is Ctrl-X n (GAPS Q7, answered); blocked on Q7's second part, which
+  output. Proposed:
+  - **Ctrl-X n** on the command line asks the model for notes and shows them above the line, as an
+    explanation is shown. A comment on the line is the instruction (`cat app.log # any errors?`);
+    without one, the model summarises and points out what stands out.
+  - **Command output:** on an empty line, notes on the output of the last command the plugin
+    recorded. On a command line, the command runs as a proposal would, with its output recorded,
+    and then gets notes.
+  - **Files:** words on the line that name readable regular files send those files as context.
+  - **Command line:** `ush notes [-v] [INSTRUCTION] FILE…`, also with piped input, for scripts and
+    shells without the plugin.
+  - **Limits:** the same disclosure, redaction and 200 KB limit as piped input; files in secret
+    locations (the policy's list) and binary files are refused with the reason; never under
+    `sudo`.
+
+  Acceptance: zsh pty tests with a fake provider (Ctrl-X n on an empty line, on a command, on a
+  line naming files, with a comment as instruction); the refusals (secret file, binary, too
+  large, sudo) and redaction of file content; `ush notes` with files and piped input; no other
+  binding changed; SEC and SECTEST rows for files sent
+  to the provider; ushgo TODO 2.10 ports it.
 
 ## 3. Release
 
