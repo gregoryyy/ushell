@@ -14,6 +14,78 @@ implementation kept its own log: [ushpy](archive/DONE-ushpy.md), [ushgo](archive
 
 ---
 
+## 2026-10-29 11:10 — Release 0.2.0: the gate, the tag, the GitHub release; the tap prepared
+
+TODO items: 5.8 (new; open until the tap is pushed), 5.5, 5.6 (done), 5.7 (prepared), 5.3 (run
+again), 5.9 (new: 0.3.0 next). PR: #33.
+
+Agent: Opus 5.5, reasoning: not exposed, subagents: none.
+
+### Implementation notes
+
+- **The user's decisions** (2026-10-29): "do it. also publish the github release and homebrew
+  tap", answering the agent's recommendation: 0.2.0 on the tested commit of 0.2.0-rc1, then 0.3.0
+  for the work since (layout, 2.24, 2.25). With it, `govulncheck` was run (asked as "do it").
+- **The candidate:** b4f9d82, the commit of `v0.2.0-rc1` (main at #24), built as version 0.2.0.
+- **Gate on b4f9d82, fresh:**
+  - Level 1, macOS arm64: `just ci --post` passes all seven jobs (links, ushpy on 3.10 and 3.13,
+    ushgo, ushgo-conform, tools, secrets); statuses posted to the commit.
+  - Level 1, Linux arm64 (Debian in `golang:1.27`, Go 1.27.3, Python 3.13.5, zsh 5.9,
+    unprivileged, from `git archive b4f9d82`): ushpy 175 OK, `go test ./...` every package OK,
+    conformance 63 OK.
+  - Release build: `scripts/release.sh 0.2.0` and `--check` (two builds identical). The same build
+    in the Linux container gives the same four checksums:
+    - `4bf4c50d…` darwin-arm64
+    - `64cd579c…` darwin-amd64
+    - `df76e957…` linux-arm64
+    - `3c33ccb5…` linux-amd64
+  - darwin-arm64 archive, installed to a temporary prefix: `ush 0.2.0 (go)`, no file writable by
+    others; `smoke.sh --bin` with llama3.2:3b gave 13 PASS, 2 WARN (the model proposed no
+    command), 0 FAIL.
+  - linux-arm64 archive on `debian:13`: the checksum verifies, it installs as a user,
+    `ush 0.2.0 (go)`, offline smoke 6 PASS.
+  - Level 2: the injection eval three times, 36 runs: 1 attempted, 0 ran unapproved (SECTEST).
+  - `govulncheck` v1.1.4 (`go run golang.org/x/vuln/cmd/govulncheck@v1.1.4 ./...` in `ushgo/`):
+    no vulnerabilities found. The first run of it on a release.
+  - `gitleaks git --redact .`: no leaks.
+- **Published by the agent, at the user's request:**
+  - The annotated tag `v0.2.0` on b4f9d82, pushed.
+  - The GitHub release v0.2.0 (latest): the four archives, `SHA256SUMS`, and the notes in
+    [docs/releases/0.2.0.md](../../docs/releases/0.2.0.md). Downloaded again: the checksums
+    verify and `SHA256SUMS` is byte-identical to the build's.
+- **The Homebrew tap, prepared:** `Formula/ush.rb` from `formula.sh` at v0.2.0 (it has the old
+  paths, `ushgo/` and `ushpy/shell/`), with a README and the licence, committed in a local
+  repository. Checked:
+  - `brew style`: no offenses, after two fixes now also in `formula.sh` on main (the description
+    starts with an article; `version` goes before `sha256`).
+  - The formula's build by hand from the tag's tarball: the tarball's checksum verifies, `go build`
+    with the formula's flags gives `ush 0.2.0 (go)`, and the plugin is at the formula's path.
+- **Main moves to 0.3.0:** ushpy says `0.3.0-dev` (`pyproject` `0.3.0.dev0`); TODO 5.9 plans 0.3.0.
+- **Docs:** ADMIN has a Homebrew section (not for `sudo`: the prefix belongs to the user) and
+  brew upgrade/uninstall; version examples say 0.2.0; README, ROAD and ushgo's README updated.
+
+### Deviations
+
+- **The tap repository isn't published.** `gh repo create gregoryyy/homebrew-ush --public` was
+  refused by the agent's permission check, so the agent stopped there. The release notes already
+  name `brew install gregoryyy/ush/ush`; it works once the user pushes the prepared repository.
+  TODO 5.7 and 5.8 stay open until then.
+- **`brew install` and `brew audit` not run:** Homebrew refuses both on this Mac because its
+  Command Line Tools are older than Xcode 27's. The build was checked by hand instead (above).
+- **The Python implementation at the tag** reports `0.2.0-rc1`: the tag is on the rc1 commit,
+  and the release is the Go binary. Stated in the release notes.
+- **Not run:** Linux amd64 and Intel macOS (no machine); a live Anthropic run (not authorised).
+- **The rc1 tag** stays; 0.2.0-rc1 was never published as a GitHub release.
+
+### Insights
+
+- A final release on the candidate's commit needs only a rebuild with the new version: the build
+  stamps the version, so the gate reran without a code change.
+- Homebrew checks the Command Line Tools before building any formula from source, also a Go one
+  that needs no C compiler. A tap's users need current tools.
+
+---
+
 ## 2026-10-29 02:40 — Notes on command output and files: Ctrl-X n and `ush notes`
 
 TODO items: 2.25, in both implementations. PR: #32.

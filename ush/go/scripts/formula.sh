@@ -5,7 +5,10 @@
 # gregoryyy/homebrew-ush (created by the user). Users then install with:
 #   brew install gregoryyy/ush/ush
 #
-#   scripts/formula.sh 0.2.0-rc1 > ush.rb
+#   scripts/formula.sh 0.3.0 > ush.rb
+#
+# The paths are those of the ush/go layout (#30). Tags before it, v0.2.0 among them, have ushgo/
+# and ushpy/shell/: their formula comes from formula.sh at that tag.
 set -eu
 version=${1:?usage: scripts/formula.sh VERSION}
 case "$version" in *[!0-9A-Za-z.-]*) echo "formula.sh: bad version $version" >&2; exit 2 ;; esac
@@ -13,11 +16,11 @@ url="https://github.com/gregoryyy/ushell/archive/refs/tags/v$version.tar.gz"
 sha=$(curl -fsSL "$url" | shasum -a 256 | cut -d' ' -f1)
 cat <<FORMULA
 class Ush < Formula
-  desc "The you shell: ask at the zsh prompt in plain language, get the commands"
+  desc "Shell assistant for zsh: ask in plain language, get the commands"
   homepage "https://github.com/gregoryyy/ushell"
   url "$url"
-  sha256 "$sha"
   version "$version"
+  sha256 "$sha"
   license "MIT"
 
   depends_on "go" => :build

@@ -3,7 +3,7 @@
 Where ush goes, in both implementations. The phases build on each other, and each one ends with a gate:
 a tested result that decides whether the next phase starts. When a phase starts, its work becomes
 items in [TODO](TODO.md), and this file links to them. Open questions are in [GAPS](GAPS.md).
-Status: 2026-10-29 02:01; phases 1 and 3 are done, 0.2.0-rc1 is released.
+Status: 2026-10-29 11:10; phases 1 and 3 are done, 0.2.0 is released; 0.3.0 is next.
 
 | Phase | Goal | TODO | Gate to the next phase |
 | --- | --- | --- | --- |
@@ -20,7 +20,9 @@ the security test gaps (2.11), then run the release gate. The live smoke test ag
 API (2.1) and the keychain check under sudo (2.2) are manual steps for the user.
 
 Done: the findings were fixed on 2026-10-28, and the first release was 0.2.0-rc1 of the Go binaries
-on 2026-10-29 (TODO 5.5), with SECTEST F8 open and documented (GAPS Q12). Version 0.1 of the Python
+on 2026-10-29 (TODO 5.5), with SECTEST F8 open and documented (GAPS Q12), then 0.2.0 from the
+same commit, published as a GitHub release (5.8); the Homebrew tap's repository is the user's to
+push (5.7). Version 0.1 of the Python
 implementation was never released (3.1).
 
 ## 2. Daily use
@@ -46,9 +48,8 @@ considered: stronger guarantees for the command parser, but no official Anthropi
 effort for the process and terminal work (GAPS Q9).
 
 Done 2026-10-28: every module ported (TODO 4.1–4.12), the policy corpus and ushpy's black-box tests
-passing against the Go binary on macOS and Linux. Releases ship the Go binary (TODO 5); the next
-items are the release gate's open parts (5.3: `govulncheck`), the GitHub release (5.6) and the
-Homebrew tap (5.7). Every new feature now lands in both implementations (TODO, section 2).
+passing against the Go binary on macOS and Linux. Releases ship the Go binary (TODO 5): 0.2.0 is
+out (5.8) as a GitHub release (5.6), its Homebrew formula ready for the tap (5.7); 0.3.0 is next (5.9). Every new feature now lands in both implementations (TODO, section 2).
 
 ## 4. Context and shells
 
