@@ -4,7 +4,7 @@ The repository's roadmap across its projects: what comes next, in which order, a
 step. Each project keeps its own phases and items ([ushpy ROAD](../ushpy/docs/ROAD.md),
 [ushgo ROAD](../ushgo/docs/ROAD.md), [wish ROAD](../wish/docs/ROAD.md)); this file orders them and
 holds the items that belong to no single project. Work becomes items in a project's TODO when it
-starts. Status: 2026-10-28 23:45.
+starts. Status: 2026-10-29 01:29.
 
 ## Overview
 
@@ -63,8 +63,14 @@ release ships the Go binary.
   add friction may follow (ushpy GAPS Q5).
 - A broader built-in command table from real sessions (ushpy TODO 2.4), each command with negative
   tests.
-- An OS sandbox for auto-approved commands (2.6): `sandbox-exec` on macOS, Landlock or namespaces
-  on Linux.
+- ush stays small and focused on a manual workflow; no larger agent (ushpy GAPS Q8). For agent
+  mode, first an OS sandbox for what it runs without asking (ushpy TODO 2.6): no writes, no
+  network; `sandbox-exec` on macOS, bubblewrap or Landlock on Linux. Then argument origin (2.23):
+  a command whose arguments come only from earlier output asks first.
+- History as context (ushpy TODO 2.26), filtered and off by default; bash (2.27) and fish (2.28).
+- More model platforms (ushpy TODO 2.29, 2.30): OpenAI, Mistral, Hugging Face, Gemini, Groq,
+  OpenRouter, Together, DeepSeek, Azure and local OpenAI-compatible servers through one adapter;
+  then AWS Bedrock and Google Vertex AI.
 - Compaction or context editing for long sessions (2.5).
 - Whether the checker model is on by default (ushpy GAPS Q4).
 
@@ -80,9 +86,6 @@ same in ush and wish (ushpy TODO 2.7).
 
 ## Ideas not scheduled
 
-- **More shells** for ush: bash and fish integrations next to the zsh plugin.
-- **More local providers:** OpenAI-compatible local servers (llama.cpp, LM Studio) behind the same
-  loopback rules as Ollama.
 - **Analyse files with a set of instructions:** `ush analyze "INSTRUCTIONS" FILE…`, e.g.
   `ush analyze "list the commands this script runs; flag destructive ones" deploy/*.sh`. The
   instructions apply to each file in turn, with a result per file. The files go to the provider as
@@ -95,11 +98,5 @@ same in ush and wish (ushpy TODO 2.7).
   leaks. Today it never sees command output, so that injected text can't steer it (ushpy ARCH). A
   leak check needs to see that output, so it would be a separate role that can only answer "leak"
   or "no leak" and only block, never approve.
-- **Shell history as context:** let the model see the user's recent commands, so a request such
-  as "repeat that command with these and these changes" works. The plugin would pass the recent
-  history (`fc -ln`) with a request. The commands are filtered before they go to the provider:
-  secrets and credentials redacted, commands that read secret files or carry tokens dropped, at
-  most the last N. That is the data loss prevention filter above, applied to history; the user
-  turns it on and sees it in the disclosure banner.
 - **One policy corpus** for ushpy, ushgo and later wish: command lines with expected decisions, as
   the shared contract (ushgo ROAD).
