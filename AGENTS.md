@@ -7,8 +7,9 @@ It holds projects that share the `//` command paradigm:
 - **ush**, the local command-line shell extension for zsh. It runs real commands on
   the user's machine, possibly as root. One command, two implementations with
   equivalent functionality ([SDLC](docs/SDLC.md#ush-one-command-two-implementations)):
-  Python in [ush/py/](ush/py/), the experimental one where features are tried first, and
-  Go in [ush/go/](ush/go/), the compiled deliverable.
+  Python in [ush/py/](ush/py/) ("ushpy"), the experimental one where features are tried
+  first, and Go in [ush/go/](ush/go/) ("ushgo"), the compiled deliverable. Both share one
+  document set in [ush/docs/](ush/docs/).
 - **wish** ([wish/](wish/)), the browser workspace shell. It is still a design
   project; commands described in `wish/docs/` are proposed behavior until
   implemented and tested.
@@ -17,21 +18,19 @@ The workflow, the document set (TODO, DONE, ARCH, ROAD, SEC, GAPS in each projec
 `docs/`), and the DONE entry format are defined in [docs/SDLC.md](docs/SDLC.md). The
 rules below take precedence over it. The repository's roadmap across projects is
 [docs/ROAD.md](docs/ROAD.md). Each project has independent `x.x` IDs; refer to them
-as "ushpy TODO 1.3", "ushgo TODO 1.1" or "wish GAPS Q2" where the project is not
-obvious. Before 2026-10-28, ushpy was the directory `ush/`, and its items are cited
-as "ush TODO …" in earlier records.
+as "ush TODO 1.3", "ush TODO 4.1" or "wish GAPS Q2" where the project is not
+obvious. Earlier records cite "ushpy TODO …" and "ushgo TODO …" from before the two
+document sets were merged on 2026-10-29; [ush TODO](ush/docs/TODO.md#old-ids) maps them.
 
 ## Start each task
 
 1. Read the project's TODO, DONE, GAPS, and the relevant design documents.
-   ushpy: [TODO](ush/py/docs/TODO.md), [DONE](ush/py/docs/DONE.md), [GAPS](ush/py/docs/GAPS.md),
-   [ARCH](ush/py/docs/ARCH.md), [SEC](ush/py/docs/SEC.md), [SECTEST](ush/py/docs/SECTEST.md),
-   and [ROAD](ush/py/docs/ROAD.md). wish: [TODO](wish/docs/TODO.md),
+   ush: [TODO](ush/docs/TODO.md), [DONE](ush/docs/DONE.md), [GAPS](ush/docs/GAPS.md),
+   [ARCH](ush/docs/ARCH.md), [SEC](ush/docs/SEC.md), [SECTEST](ush/docs/SECTEST.md),
+   and [ROAD](ush/docs/ROAD.md). wish: [TODO](wish/docs/TODO.md),
    [DONE](wish/docs/DONE.md), [GAPS](wish/docs/GAPS.md), [IDEA](wish/docs/IDEA.md),
    [ARCH](wish/docs/ARCH.md), [SEC](wish/docs/SEC.md), and [SOTA](wish/docs/SOTA.md);
    [ROAD](wish/docs/ROAD.md) defines the active phase 1 scope and conditional phase 2.
-   ushgo: [TODO](ush/go/docs/TODO.md), [GAPS](ush/go/docs/GAPS.md),
-   [ARCH](ush/go/docs/ARCH.md), [SEC](ush/go/docs/SEC.md), and ushpy's documents above.
 2. Check the branch, working-tree changes, and applicable repository instructions.
    Preserve unrelated work. If on `main`, create/switch to a feature branch before
    editing; carry existing changes only when their ownership and scope are clear.
@@ -96,8 +95,9 @@ as "ush TODO …" in earlier records.
 - wish: keep the TypeScript core independent of providers and runtimes. Use explicit
   contracts, validated inputs, typed results, and actionable failures.
 - ush: one command, two implementations with equivalent functionality. A feature
-  lands in ushpy (Python, experimental) with the ushgo TODO item that ports it, in
-  the same PR; ushgo (Go) is the deliverable ([SDLC](docs/SDLC.md#ush-one-command-two-implementations)).
+  lands in ushpy (Python, experimental) first or in both at once; its TODO item says
+  where it is built and stays open until ushgo (Go), the deliverable, has it too
+  ([SDLC](docs/SDLC.md#ush-one-command-two-implementations)).
   Keep policy, execution, and history independent of the provider adapter in both.
   Tests use fake providers, a local mock API server, and temporary directories; they
   never call a paid provider or run a mutating command outside a temporary directory.
@@ -142,10 +142,10 @@ and results. Earlier passing checks do not satisfy a new release gate.
 
 1. Run required feature/regression tests and the connected browser acceptance suite
    for every supported execution profile and browser in the release. For ush, run
-   the suite of the shipped implementation (ushgo, or ushpy until ushgo is at parity)
-   and the conformance suite on every supported OS (and Python version for ushpy),
+   the suite of the shipped implementation (ushgo) and the conformance suite on every
+   supported OS (and Python version for ushpy),
    including root/sudo resolution and the zsh integration, plus the user smoke test
-   ([SMOKE](ush/py/docs/SMOKE.md)) on the built artifact.
+   ([SMOKE](ush/docs/SMOKE.md)) on the built artifact.
 2. Run applicable adversarial security tests. For ush: command-policy bypasses,
    prompt injection through command output, secret redaction, credential file and
    key handling under sudo, and history contents. For wish: path traversal and cross-workspace

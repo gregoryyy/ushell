@@ -203,7 +203,7 @@ their environment.
 
 - The read-only policy is a convenience gate, not a sandbox. It judges command lines by
   name and arguments; a "read-only" tool with an unknown side effect would run
-  without asking. See [SEC.md](docs/SEC.md) for the threat model.
+  without asking. See [SEC.md](../docs/SEC.md) for the threat model.
 - Interactive and full-screen programs (`vim`, `top` without `-l`) don't work
   inside ush; leave ush to use them.
 - Starting ush takes about two seconds while the Anthropic SDK loads. Follow-ups
@@ -214,20 +214,20 @@ their environment.
   raise false alarms. It can only make ush ask more, never less.
 - ush does not filter escape sequences in commands and their output yet, so a crafted
   command can look different in the approval prompt; see
-  [SECTEST.md](docs/SECTEST.md) (F1, TODO 2.9).
+  [SECTEST.md](../docs/SECTEST.md) (F1, TODO 2.9).
 
 ## Guides
 
-The [user guide](docs/USER.md) covers asking, approving, the allowlist, the checker, and
-troubleshooting; the [admin guide](docs/ADMIN.md) covers installing (also root-owned for `sudo`),
-settings and files, the network, upgrades, and removal. The same guides are in `ush/go/docs/`; the
-sections about the command are identical in both (checked by `test_docs`).
+The [user guide](../docs/USER.md) covers asking, approving, the allowlist, the checker, and
+troubleshooting; the [admin guide](../docs/ADMIN.md) covers installing (also root-owned for `sudo`),
+settings and files, the network, upgrades, and removal. Both implementations share them, and
+`test_docs` checks that every option and subcommand of `ush help` is in the user guide.
 
 ## Smoke test
 
 To check an installed `ush` (either implementation) on your machine, run
 `scripts/smoke.sh`: offline first, then `--provider ollama --model …` on a local model. It keeps
-your settings and history out and writes a report. [SMOKE.md](docs/SMOKE.md) has the checks and the
+your settings and history out and writes a report. [SMOKE.md](../docs/SMOKE.md) has the checks and the
 manual steps that need a terminal, sudo, or the plugin.
 
 ## Development
@@ -239,10 +239,11 @@ just ushpy-test      # from the repository root; or scripts/test.sh
 The tests use fake providers, a local mock of the Messages API driven through the
 real SDK, temporary directories, and a pseudo-terminal for the zsh plugin and the
 approval prompt. They never call a paid provider. Design notes are in
-[ARCH.md](docs/ARCH.md), the security model in [SEC.md](docs/SEC.md), the security
-test plan in [SECTEST.md](docs/SECTEST.md), the plan in [TODO.md](docs/TODO.md) and
-[ROAD.md](docs/ROAD.md), open questions in [GAPS.md](docs/GAPS.md), and the progress log in
-[DONE.md](docs/DONE.md).
+[ARCH.md](../docs/ARCH.md), the security model in [SEC.md](../docs/SEC.md), the security
+test plan in [SECTEST.md](../docs/SECTEST.md), the plan in [TODO.md](../docs/TODO.md) and
+[ROAD.md](../docs/ROAD.md), open questions in [GAPS.md](../docs/GAPS.md), and the progress log in
+[DONE.md](../docs/DONE.md) (ushpy's log until 2026-10-29 is in [archive/](../docs/archive/DONE-ushpy.md)).
+All are in [ush/docs/](../docs/), shared with the Go implementation.
 
 From the repository root, `just ush '//…'` runs ush from the source tree with the
 variables in `.env` (see [.env.template](../../.env.template)); variables already set in

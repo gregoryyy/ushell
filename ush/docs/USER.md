@@ -2,14 +2,11 @@
 
 How to use `ush`, the `//` shell for zsh: asking, approving, following up, and keeping control of
 what runs and what leaves your machine. For installing ush for others, under `sudo`, or on many
-machines, see the [admin guide](ADMIN.md). Status: 2026-10-28 10:23.
+machines, see the [admin guide](ADMIN.md). Status: 2026-10-29 02:01.
 
-> **Which ush this describes.** `ush` is one command with two implementations that behave the same:
-> the Go one built from `ush/go/`, which releases ship, and the Python one in `ush/py/`. Everything
-> below works in both; ushpy's black-box tests pass against the Go binary. `ush --version` tells you
-> which one you have: `ush 0.2.0-rc1 (go)` or `ush 0.2.0-rc1 (python)`.
-
-<!-- shared:begin (identical in ush/py/docs and ush/go/docs; test_docs) -->
+`ush` has two implementations that behave the same: the Go one in `ush/go/`, which releases ship,
+and the Python one in `ush/py/`, where features are tried first. Everything below works in both;
+`ush --version` tells you which one you have: `ush 0.2.0-rc1 (go)` or `ush 0.2.0-rc1 (python)`.
 
 ## What ush does
 
@@ -229,6 +226,5 @@ configuration error, 130 stopped.
 | `//` says nothing about what you ran | the plugin records only the line run right after the proposal appeared |
 
 To check a whole install, run the smoke test: `ush/py/scripts/smoke.sh --bin "$(command -v ush)"`
-([SMOKE](../../py/docs/SMOKE.md)).
+([SMOKE](SMOKE.md)).
 
-<!-- shared:end -->

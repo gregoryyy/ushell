@@ -25,7 +25,7 @@ anything else. Requests go to Anthropic, or to a local Ollama model and stay on 
 1. **Small and focused.** ush is meant to give maximum productivity in a manual workflow, not
    agentic automation. It proposes one command at a time into the shell the user already works in.
    Planning, multi-step autonomy and file editing are left to coding agents (Claude Code, Codex
-   CLI, Gemini CLI), which ush doesn't try to be (ushpy GAPS Q8).
+   CLI, Gemini CLI), which ush doesn't try to be (ush GAPS Q8).
 2. **The user's shell, and what really ran.** The proposal is ordinary text on the zsh command
    line: `cd` and variables persist, and it lands in the shell's history. The plugin records the
    command line the user actually ran, edited or not, with its exit status and output, and `//`
@@ -43,7 +43,7 @@ anything else. Requests go to Anthropic, or to a local Ollama model and stay on 
      question, never approve (the "dual LLM" pattern below).
 4. **Explanations of access.** Down shows, above the command, what each part does and what it
    reads and writes on disk and on the network, and whether secrets end up exposed. Each command
-   line is explained once (ushpy TODO 2.24). shell_gpt's `--describe-shell` and explainshell
+   line is explained once (ush TODO 2.24). shell_gpt's `--describe-shell` and explainshell
    explain syntax, not access.
 5. **Privacy by construction.**
    - Known secret formats are redacted before anything is sent.
@@ -59,7 +59,7 @@ anything else. Requests go to Anthropic, or to a local Ollama model and stay on 
    - Releases are reproducible: the same checksums on macOS and Linux.
 7. **Injection tested at release.** A model-in-the-loop eval plants instructions in READMEs,
    logs, commit messages, HTML, file names and DNS answers. Its results are part of the release
-   gate (ushpy SECTEST), including the open finding F8.
+   gate (ush SECTEST), including the open finding F8.
 
 ### Comparison
 
@@ -90,12 +90,12 @@ Apache-2.0); the Python original continues as a community fork (AGPL-3.0).
 
 | Gap | Who has it | ush |
 | --- | --- | --- |
-| Enforced read-only: an OS sandbox | Claude Code, Codex CLI, Gemini CLI, Copilot CLI, Kiro CLI | ushpy TODO 2.6, first of the agent-mode work: no writes and no network for what agent mode runs unasked |
-| Untrusted output choosing what runs | CaMeL's data-flow policies (research) | ushpy TODO 2.23: a command whose arguments come only from earlier output asks first (finding F8) |
-| History as context | Butterfish, Warp | ushpy TODO 2.26: recent history, filtered, off by default |
-| bash and fish | Atuin AI, ShellOracle, shell_gpt (bash) | ushpy TODO 2.27 (bash), 2.28 (fish) |
-| Notes on output and files | Butterfish, Warp (blocks as context) | ushpy TODO 2.25: Ctrl-X n |
-| Many model platforms | aichat, ShellOracle, shell_gpt (through LiteLLM), Copilot CLI (BYOK) | ushpy TODO 2.29: OpenAI-compatible platforms and local servers; 2.30: Bedrock, Vertex AI |
+| Enforced read-only: an OS sandbox | Claude Code, Codex CLI, Gemini CLI, Copilot CLI, Kiro CLI | ush TODO 2.6, first of the agent-mode work: no writes and no network for what agent mode runs unasked |
+| Untrusted output choosing what runs | CaMeL's data-flow policies (research) | ush TODO 2.23: a command whose arguments come only from earlier output asks first (finding F8) |
+| History as context | Butterfish, Warp | ush TODO 2.26: recent history, filtered, off by default |
+| bash and fish | Atuin AI, ShellOracle, shell_gpt (bash) | ush TODO 2.27 (bash), 2.28 (fish) |
+| Notes on output and files | Butterfish, Warp (blocks as context) | ush TODO 2.25: Ctrl-X n |
+| Many model platforms | aichat, ShellOracle, shell_gpt (through LiteLLM), Copilot CLI (BYOK) | ush TODO 2.29: OpenAI-compatible platforms and local servers; 2.30: Bedrock, Vertex AI |
 | Explanations grounded in man pages | explainshell's extractor | Not planned; a possible check on Down's explanations |
 
 ### Research

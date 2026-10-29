@@ -1,9 +1,9 @@
 # Smoke testing ush as a user
 
 How to check that an installed `ush` works on your machine before you rely on it: after installing,
-after an upgrade, on a new OS, and before a release (ush TODO 2.1, 3.1). The same steps apply to
-both implementations of the command, Python ([ush/py/](../README.md)) and Go
-([ush/go/](../../go/README.md)); `ush --version` says which one you have (`ush 0.1.0 (python)`,
+after an upgrade, on a new OS, and before a release (TODO 2.1, 3.1). The same steps apply to
+both implementations of the command, Python ([ush/py/](../py/README.md)) and Go
+([ush/go/](../go/README.md)); `ush --version` says which one you have (`ush 0.1.0 (python)`,
 `ush 0.0.0-dev (go)`). The developer test suites are separate: `just ushpy-test` and
 `just ushgo-test`. Status: 2026-10-28 09:59.
 
@@ -82,5 +82,5 @@ should see.
 - **FAIL in a model check:** read the scratch directory's output (`--keep` keeps it): `out/NAME.err`
   has ush's error. A `change`, `injected instructions`, or `dry run` failure means a command ran
   that shouldn't have: stop using that version and report it as a security finding (SECTEST).
-- **The Go implementation** fails every check whose command it doesn't implement yet; that's the
-  port's progress, not a broken install (ushgo TODO).
+- **One implementation passes a check the other fails:** that is a parity bug; report it with both
+  outputs (`--bin` for each).

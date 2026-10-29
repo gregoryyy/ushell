@@ -1,6 +1,11 @@
-# DONE
+# DONE: the Python implementation (ushpy), until 2026-10-29
 
-Progress log for [TODO](TODO.md), newest first. Each entry starts with the date and time of day
+> **Archived.** This was ushpy's own log until the two document sets were merged into
+> [ush/docs](../) on 2026-10-29; new entries go to [DONE](../DONE.md). The entries below are
+> unchanged; TODO and GAPS numbers in them are the old ones ([Old IDs](../TODO.md#old-ids)), and
+> only link targets were updated when files moved.
+
+Progress log for [TODO](../TODO.md), newest first. Each entry starts with the date and time of day
 (local time) and a title, then the TODO items and the PR, then the agent that did the work as
 `Agent: <model>, reasoning: <level>, subagents: <none or which>.` (or `Agent: human`), then:
 - **Implementation notes:** what was built and where, with the exact validation and its results.
@@ -574,7 +579,7 @@ Agent: Opus 5.5, reasoning: not exposed, subagents: none.
   history), model checks without a terminal (read-only request, disclosure and checker banners,
   declined change, injected instructions, piped input, dry run, replay); a model check whose
   request fails fails; `--paid` required for Anthropic; `--ollama-url`; `smoke-report.md`.
-- [SMOKE.md](SMOKE.md): principles, the checks, manual checks M1–M10, what a failure means.
+- [SMOKE.md](../SMOKE.md): principles, the checks, manual checks M1–M10, what a failure means.
 - `ush --version` prints `ush 0.1.0 (python)`, so the report says which implementation ran.
 - Docs: README smoke section; SDLC section on the two implementations (Python experimental, Go the
   deliverable, how a feature moves, the shared contract); ROAD phase 3.
@@ -665,7 +670,7 @@ Agent: Opus 5.5, reasoning: not exposed, subagents: none.
 ### Implementation notes
 
 - `ush/TODO.md` and `ush/DONE.md` moved to `ush/docs/`, `docs/DESIGN.md` renamed to
-  [ARCH.md](ARCH.md), and [ROAD.md](ROAD.md) and [GAPS.md](GAPS.md) added, following
+  [ARCH.md](../ARCH.md), and [ROAD.md](../ROAD.md) and [GAPS.md](../GAPS.md) added, following
   [SDLC](../../../docs/SDLC.md). TODO IDs and their status are unchanged.
 - This log is now newest first. The entries below the marker use the earlier, oldest-first format
   and are kept as they were, except for one path-only link fix in the 1.1–1.9 entry (its links to
@@ -709,8 +714,8 @@ Implemented:
   provider), provider (real SDK against `tests/mock_api.py`), CLI end-to-end
   without a terminal and in a pty, and the zsh plugin in a pty with fake
   `ush`/`sudo`.
-- Docs: [README.md](../README.md), [DESIGN.md](ARCH.md), [SEC.md](SEC.md),
-  [TODO.md](TODO.md). Repository CI: `.github/workflows/checks.yml` (links; ush on
+- Docs: [README.md](../../py/README.md), [DESIGN.md](../ARCH.md), [SEC.md](../SEC.md),
+  [TODO.md](../TODO.md). Repository CI: `.github/workflows/checks.yml` (links; ush on
   Ubuntu/macOS × Python 3.10/3.13; actions pinned by commit SHA).
 
 Validation (macOS 26, arm64, zsh 5.9):

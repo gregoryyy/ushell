@@ -1,8 +1,8 @@
 # ush security model
 
-Status: applies to ush 0.1.0 (2026-10-26), the local Ollama provider (TODO 2.8,
-2026-10-27), the checker model (TODO 2.13, 2026-10-27), and propose mode (TODO 2.17,
-2026-10-28). Design: [ARCH.md](ARCH.md).
+Status: applies to both implementations of ush as of 2026-10-29 (0.2.0-rc1 and the work since): the
+local Ollama provider (TODO 2.8), the checker model (2.13), propose mode (2.17) and kept
+explanations (2.24). What the Go implementation changes is at the end. Design: [ARCH.md](ARCH.md).
 Security tests and open findings: [SECTEST.md](SECTEST.md).
 
 In propose mode (the default) ush runs nothing: an AI model proposes commands, and the user runs
@@ -73,7 +73,7 @@ sandbox.
 
 - **The policy infers, it does not enforce.** A listed command with an unknown side
   effect (or a malicious binary earlier on `PATH`) would run unprompted. Planned:
-  OS sandboxing for auto-approved commands (ush TODO 2.6).
+  OS sandboxing for auto-approved commands (TODO 2.6).
 - **Disclosure through read-only commands.** Auto-approved commands can print data
   outside the secret list: logs, `system_profiler` serial numbers, file names,
   process lists. Everything is sent to the provider after redaction, and redaction
@@ -111,9 +111,42 @@ sandbox.
 
 ## Security tests before a release
 
-Per [AGENTS.md](../../../AGENTS.md), each release candidate reruns `just ushpy-test` on
+Per [AGENTS.md](../../AGENTS.md), each release candidate reruns `just ushpy-test` on
 every supported OS and Python. The policy, injection, redaction, credential, and
 history tests listed above are its adversarial suite. Policy changes add negative
 cases to `test_policy.py`; credential or storage changes add cases to
 `test_config.py`. [SECTEST.md](SECTEST.md) is the full test plan: test levels,
 the test classes with their status, open findings, and the release gate.
+
+## What the Go implementation changes
+
+The Go binary has the threat model above unchanged: the same assets, trust boundaries, threats and
+controls, and the same findings in [SECTEST](SECTEST.md). ushpy's security tests that run ush pass
+against it (`ush/go/scripts/conform.sh`). This section records only what a compiled implementation
+changes; until 2026-10-29 it was ushgo's own SEC.
+
+### What gets better
+
+- **Nothing for root to trust but the binary.** ush under `sudo` runs a root-owned Python and a venv
+  of installed packages, and has to keep `PYTHON*` variables and user site directories out
+  (`python -I`). A static Go binary (`CGO_ENABLED=0`) has no interpreter, no import path and no
+  dynamic libraries beyond the system's. A root-owned binary is the whole install.
+- **Memory safety** is the same as Python's; the parser and redaction run on untrusted text in a
+  memory-safe language either way.
+
+### What is new
+
+| Risk | Control | TODO |
+| --- | --- | --- |
+| **Behavioural drift.** The two implementations decide differently on a command line, so a command ush asks about runs unasked in ushgo. | `ush/conform/policy.json`: 1545 command lines with ushpy's verdicts and reasons, compared in full by ushgo's `TestConformance`; ushpy's `test_conform` keeps the corpus current, and ushpy's tokenizer is fuzzed against `zsh -f`. ushpy's black-box tests run against the Go binary (`ushgo-conform`). Any difference fails the build. The corpus found F7 in ushpy. | 4.1, 4.10 (done) |
+| **Go toolchain and modules.** A dependency or the toolchain is compromised. | ushgo has no dependencies: standard library only, including the Messages API client (ARCH). `govulncheck` before each release covers the standard library and the toolchain; `GOTOOLCHAIN=local` in tests and CI, so no toolchain is fetched. | 5.3 |
+| **An HTTP client of our own.** It mishandles TLS, redirects, or a broken stream. | `net/http` with default TLS verification; no redirects followed; for Ollama, no proxy; a reply cut off mid-stream is an error, not a crash (F6); retries only for connection errors and 408/409/429/5xx. Tests against a mock server, a redirecting server and a server that drops the connection. | 4.6 (done) |
+| **Patterns on untrusted text.** Redaction or validation stalls on crafted input. | Go's RE2 matches in linear time; no backtracking pattern can stall (ushpy F3). | 4.2 (done) |
+| **Release binaries.** A binary differs from the source, or an archive is altered. | Deterministic builds (`tools/release`: `-trimpath`, no build ID, no symbols, fixed archive order, owners and times from the commit), so anyone can rebuild a tag and compare `SHA256SUMS`; the installer writes nothing writable by others. Unsigned on macOS (GAPS Q11). | 5.1 (5.1.1 done), 5.3 |
+| **Shared files with ush.** ushgo writes settings, keys or history that ush then trusts. | The same validation as ush on every read (0600 files, owner, no symlinks); the conformance tests cover the file formats. | 4.4, 4.5 |
+
+### Release gate
+
+Every release of the Go binary runs ush's release gate on it: the conformance suite on each
+supported OS, the adversarial tests in SECTEST (levels 1 and 2), `govulncheck`, a secret scan,
+and the policy corpus against both implementations.

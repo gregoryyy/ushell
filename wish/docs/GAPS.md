@@ -17,7 +17,7 @@ not to ask; check them and correct any that are wrong. The rules for this file a
 ### Q1. When does wish implementation start?
 
 wish has been design-only since 2026-10-14, while ush was built and is heading for its first
-release ([ush ROAD](../../ush/py/docs/ROAD.md)).
+release ([ush ROAD](../../ush/docs/ROAD.md)).
 
 - **Proposed:** after the ush 0.1 release, starting with TODO 1.1 and the just-bash spike (2.1).
 
@@ -39,7 +39,7 @@ carries the key, which changes the security profile ([SEC](SEC.md)).
 
 ### Q4. Which licence?
 
-The repository has no licence file. The same question for ush is [ush GAPS](../../ush/py/docs/GAPS.md)
+The repository has no licence file. The same question for ush is [ush GAPS](../../ush/docs/GAPS.md)
 Q1; one answer covers both.
 
 **Answer** (2026-10-28 21:20, Gregor Heinrich): MIT. **Resolved:** [LICENSE](../../LICENSE).
