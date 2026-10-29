@@ -19,5 +19,5 @@ typed pipelines and public resource handles remain deferred.
 - [GAPS.md](docs/GAPS.md): questions for the user and assumptions to check.
 - [DONE.md](docs/DONE.md): progress log, newest first.
 
-The local command-line counterpart, [ush](../ushpy/README.md), applies the same `//`
+The local command-line counterpart, [ush](../ush/py/README.md), applies the same `//`
 paradigm to a zsh session on the user's own machine.

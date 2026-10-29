@@ -7,8 +7,8 @@ It holds projects that share the `//` command paradigm:
 - **ush**, the local command-line shell extension for zsh. It runs real commands on
   the user's machine, possibly as root. One command, two implementations with
   equivalent functionality ([SDLC](docs/SDLC.md#ush-one-command-two-implementations)):
-  Python in [ushpy/](ushpy/), the experimental one where features are tried first, and
-  Go in [ushgo/](ushgo/), the compiled deliverable.
+  Python in [ush/py/](ush/py/), the experimental one where features are tried first, and
+  Go in [ush/go/](ush/go/), the compiled deliverable.
 - **wish** ([wish/](wish/)), the browser workspace shell. It is still a design
   project; commands described in `wish/docs/` are proposed behavior until
   implemented and tested.
@@ -24,14 +24,14 @@ as "ush TODO …" in earlier records.
 ## Start each task
 
 1. Read the project's TODO, DONE, GAPS, and the relevant design documents.
-   ushpy: [TODO](ushpy/docs/TODO.md), [DONE](ushpy/docs/DONE.md), [GAPS](ushpy/docs/GAPS.md),
-   [ARCH](ushpy/docs/ARCH.md), [SEC](ushpy/docs/SEC.md), [SECTEST](ushpy/docs/SECTEST.md),
-   and [ROAD](ushpy/docs/ROAD.md). wish: [TODO](wish/docs/TODO.md),
+   ushpy: [TODO](ush/py/docs/TODO.md), [DONE](ush/py/docs/DONE.md), [GAPS](ush/py/docs/GAPS.md),
+   [ARCH](ush/py/docs/ARCH.md), [SEC](ush/py/docs/SEC.md), [SECTEST](ush/py/docs/SECTEST.md),
+   and [ROAD](ush/py/docs/ROAD.md). wish: [TODO](wish/docs/TODO.md),
    [DONE](wish/docs/DONE.md), [GAPS](wish/docs/GAPS.md), [IDEA](wish/docs/IDEA.md),
    [ARCH](wish/docs/ARCH.md), [SEC](wish/docs/SEC.md), and [SOTA](wish/docs/SOTA.md);
    [ROAD](wish/docs/ROAD.md) defines the active phase 1 scope and conditional phase 2.
-   ushgo: [TODO](ushgo/docs/TODO.md), [GAPS](ushgo/docs/GAPS.md),
-   [ARCH](ushgo/docs/ARCH.md), [SEC](ushgo/docs/SEC.md), and ushpy's documents above.
+   ushgo: [TODO](ush/go/docs/TODO.md), [GAPS](ush/go/docs/GAPS.md),
+   [ARCH](ush/go/docs/ARCH.md), [SEC](ush/go/docs/SEC.md), and ushpy's documents above.
 2. Check the branch, working-tree changes, and applicable repository instructions.
    Preserve unrelated work. If on `main`, create/switch to a feature branch before
    editing; carry existing changes only when their ownership and scope are clear.
@@ -145,7 +145,7 @@ and results. Earlier passing checks do not satisfy a new release gate.
    the suite of the shipped implementation (ushgo, or ushpy until ushgo is at parity)
    and the conformance suite on every supported OS (and Python version for ushpy),
    including root/sudo resolution and the zsh integration, plus the user smoke test
-   ([SMOKE](ushpy/docs/SMOKE.md)) on the built artifact.
+   ([SMOKE](ush/py/docs/SMOKE.md)) on the built artifact.
 2. Run applicable adversarial security tests. For ush: command-policy bypasses,
    prompt injection through command output, secret redaction, credential file and
    key handling under sudo, and history contents. For wish: path traversal and cross-workspace

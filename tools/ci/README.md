@@ -14,8 +14,8 @@ stays the one definition of CI; the local run reads it.
 | Job | What it checks |
 | --- | --- |
 | `links` | relative links and images in all Markdown files (`tools/check-links.py`) |
-| `ushpy` | the Python ush suite (`ushpy/scripts/test.sh`) on Ubuntu and macOS × Python 3.10 and 3.13 |
-| `ushgo` | the Go ush (`ushgo/scripts/test.sh`: gofmt, vet, tests) on Ubuntu and macOS, Go 1.27 |
+| `ushpy` | the Python ush suite (`ush/py/scripts/test.sh`) on Ubuntu and macOS × Python 3.10 and 3.13 |
+| `ushgo` | the Go ush (`ush/go/scripts/test.sh`: gofmt, vet, tests) on Ubuntu and macOS, Go 1.27 |
 | `tools` | the local CI's own code (`tools/ci/`): ruff, format, pyright, its tests |
 | `secrets` | gitleaks over the history; [.gitleaksignore](../../.gitleaksignore) lists synthetic test tokens |
 

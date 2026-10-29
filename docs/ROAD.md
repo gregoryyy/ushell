@@ -1,8 +1,8 @@
 # Roadmap
 
 The repository's roadmap across its projects: what comes next, in which order, and what gates each
-step. Each project keeps its own phases and items ([ushpy ROAD](../ushpy/docs/ROAD.md),
-[ushgo ROAD](../ushgo/docs/ROAD.md), [wish ROAD](../wish/docs/ROAD.md)); this file orders them and
+step. Each project keeps its own phases and items ([ushpy ROAD](../ush/py/docs/ROAD.md),
+[ushgo ROAD](../ush/go/docs/ROAD.md), [wish ROAD](../wish/docs/ROAD.md)); this file orders them and
 holds the items that belong to no single project. Work becomes items in a project's TODO when it
 starts. Status: 2026-10-29 01:29.
 

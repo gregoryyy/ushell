@@ -1,8 +1,8 @@
 # Development process
 
 How work moves from an idea to merged, documented, tested code in this repository. It applies to
-people and coding agents alike, and to every project in it: [ush](../ushpy/README.md),
-[ushgo](../ushgo/README.md) and [wish](../wish/README.md). [AGENTS.md](../AGENTS.md) holds the
+people and coding agents alike, and to every project in it: [ush](../ush/py/README.md),
+[ushgo](../ush/go/README.md) and [wish](../wish/README.md). [AGENTS.md](../AGENTS.md) holds the
 rules that override everything else (human merges, security, release gate); this document describes
 the documents and the workflow. The regime follows `../propeller/docs/SDLC.md`. Status:
 2026-10-28 09:59.
@@ -160,9 +160,9 @@ project in TODO order:
 ## ush: one command, two implementations
 
 `ush` is one command with two implementations that must behave the same (decided 2026-10-28,
-[ushgo GAPS](../ushgo/docs/GAPS.md) Q2):
+[ushgo GAPS](../ush/go/docs/GAPS.md) Q2):
 
-| | Python, [ushpy/](../ushpy/README.md) | Go, [ushgo/](../ushgo/README.md) |
+| | Python, [ush/py/](../ush/py/README.md) | Go, [ush/go/](../ush/go/README.md) |
 | --- | --- | --- |
 | Role | Experimental: features are designed and tried here first | The compiled deliverable: what users install |
 | Tests | `just ushpy-test` (unittest; fake providers, mock API, pty) | `just ushgo-test` (gofmt, vet, `go test`) |
@@ -179,14 +179,14 @@ project in TODO order:
 4. **Port it to Go** in a separate PR, with the Python tests ported or run as conformance tests
    against the Go binary (ushgo TODO 1.10). A difference in behaviour is a bug in one of the two
    unless ARCH records it.
-5. **Smoke-test both** as a user, with the same script ([SMOKE](../ushpy/docs/SMOKE.md)):
-   `ushpy/scripts/smoke.sh --bin <either ush>`.
+5. **Smoke-test both** as a user, with the same script ([SMOKE](../ush/py/docs/SMOKE.md)):
+   `ush/py/scripts/smoke.sh --bin <either ush>`.
 
 **Shared contract:** settings (`~/.config/ush/config.json`), key store, history format, exit
 statuses, environment variables (`USH_*`) and the zsh plugin are the same for both; a change to any
 of them is made in both, or in Python with the ushgo item that follows.
 
-**Security-relevant code first in both:** fixes for findings in [SECTEST](../ushpy/docs/SECTEST.md)
+**Security-relevant code first in both:** fixes for findings in [SECTEST](../ush/py/docs/SECTEST.md)
 go into Python and get their ushgo item in the same PR; the ushgo port of the policy (TODO 1.1)
 starts from the fixed version.
 

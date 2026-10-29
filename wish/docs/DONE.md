@@ -99,10 +99,10 @@ Agent: Opus 5.5, reasoning: not exposed, subagents: none.
   security, release gate); its TODO/DONE section now describes newest-first entries and GAPS.
 - **Moves (`git mv`, IDs and status unchanged):** `wish/TODO.md` and `wish/DONE.md` to
   `wish/docs/`, `wish/docs/PHASES.md` to [ROAD.md](ROAD.md); `ush/TODO.md` and `ush/DONE.md` to
-  `ush/docs/`, `ush/docs/DESIGN.md` to [ARCH.md](../../ushpy/docs/ARCH.md).
+  `ush/docs/`, `ush/docs/DESIGN.md` to [ARCH.md](../../ush/py/docs/ARCH.md).
 - **New:** [GAPS](GAPS.md) for wish (Q1 start, Q2 browsers, Q3 providers, Q4 licence; A1–A3) and
-  for ush ([GAPS](../../ushpy/docs/GAPS.md): Q1 licence and Q2 distribution, both blocking the 0.1
-  release, Q3 platforms; A1–A4); [ush ROAD](../../ushpy/docs/ROAD.md) with four phases and gates; a
+  for ush ([GAPS](../../ush/py/docs/GAPS.md): Q1 licence and Q2 distribution, both blocking the 0.1
+  release, Q3 platforms; A1–A4); [ush ROAD](../../ush/py/docs/ROAD.md) with four phases and gates; a
   phase table with gates on top of wish's ROAD; `.github/pull_request_template.md` with the
   definition of done.
 - **TODO and DONE headers** in the new form: status legend and tags, newest-first logs. The earlier
