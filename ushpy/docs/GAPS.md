@@ -3,7 +3,7 @@
 Open questions and explicit assumptions for ush. **Questions** are for the user to answer.
 **Assumptions** are what the documents currently take for granted because they seemed clear enough
 not to ask; check them and correct any that are wrong. The rules for this file are in
-[SDLC](../../docs/SDLC.md#work-items). Status: 2026-10-29 01:05.
+[SDLC](../../docs/SDLC.md#work-items). Status: 2026-10-29 01:29.
 
 - Answers carry date, time and author: `**Answer** (2026-10-27 15:10, Gregor Heinrich): …`. Short
   answers are fine. A changed answer goes on top; earlier ones stay below it, struck through.
@@ -84,7 +84,7 @@ prints the result without showing what was executed". Asked as three questions.
 
 **Resolved:** propose mode, [ARCH](ARCH.md#propose-mode), TODO 2.17.
 
-### Q7. Notes (TODO 2.25): which key, and which output? — part 2 blocking for TODO 2.25
+### Q7. Notes (TODO 2.25): which key, and which output?
 
 Two decisions, from the user's request of 2026-10-29.
 
@@ -103,6 +103,23 @@ Two decisions, from the user's request of 2026-10-29.
    - **Proposed:** Ctrl-N on an empty line takes the last recorded output. Ctrl-N on a typed
      command runs it the way a proposal runs, recorded, and then gives notes. Any other command's
      output is not recorded.
+   - **Answer** (2026-10-29, Gregor Heinrich): "implement the changes", given after the
+     agent asked to confirm this or say otherwise; taken as acceptance of the proposal, with the
+     key Ctrl-X n. **Resolved:** TODO 2.25 as proposed.
+
+### Q8. Should ush add an agent and a sandbox?
+
+Asked by the user on 2026-10-29, with the state of the art (docs/SOTA.md) in view.
+
+- **Proposed** (agent): no larger agent. ush is small and focused on a manual workflow;
+  planning, multi-step autonomy and file editing are what Claude Code, Codex CLI and Gemini CLI
+  do, and `--run` already covers investigation. Instead, the OS sandbox (TODO 2.6) for what agent
+  mode runs without asking, first; the argument-origin rule (2.23) unconditional rather than a
+  fallback to the checker. Propose mode needs neither: the user runs every command.
+- **Answer** (2026-10-29, Gregor Heinrich): "do it. promote the named items" (history as
+  context, bash and other shells, argument origin).
+- **Resolved:** TODO 2.6 and 2.23 rewritten; 2.26 (history), 2.27 (bash) and 2.28 (fish) added;
+  ROAD reordered.
 
 ## Assumptions
 
@@ -110,7 +127,7 @@ Two decisions, from the user's request of 2026-10-29.
 | --- | --- | --- | --- |
 | A1 | One person uses ush per account; under `sudo`, the invoking user (`SUDO_USER`) owns the key and settings. | [SEC](SEC.md), `config.py` | |
 | A2 | Users accept that redacted command output goes to the selected provider, as the banner says before each request. | [SEC](SEC.md), README | |
-| A3 | zsh is the only supported shell; bash and fish users quote requests or don't use the plugin. | [ARCH](ARCH.md), plugin | |
+| A3 | zsh is the only supported shell; bash and fish users quote requests or don't use the plugin. | [ARCH](ARCH.md), plugin | Until TODO 2.27 (bash) and 2.28 (fish) |
 | A4 | Anthropic's default model stays `claude-opus-5-5` with effort `medium`, even though it is the most expensive choice. | `config.py`, README | |
 | A5 | "An adversarial model to check the proposed implementation that takes independent sources; it can be a small model" (2026-10-27) means a runtime checker: a second model that judges each command or script the assistant proposes, from independent input (the user's requests only, not the output the assistant read). Not a reviewer of code changes in this repository. | TODO 2.13, [ARCH](ARCH.md), `check.py` | |
 | A6 | The checker is off unless configured: it needs a model, adds a request per command, and small models raise false alarms. | `config.py`, README | |

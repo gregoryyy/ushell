@@ -63,9 +63,15 @@ DONE has an entry for it.
 - [ ] 2.4 Extend the read-only command table from real sessions (Linux package
   managers, `podman`, `kubectl get`, `zfs list`, …) with negative tests per command.
 - [ ] 2.5 Compaction or context editing for long sessions; measure token use.
-- [ ] 2.6 Enforce read-only execution with an OS sandbox (macOS `sandbox-exec`, Linux
-  Landlock/namespaces) for auto-approved commands. Acceptance: a write attempt by an
-  auto-approved command fails; update SEC.
+- [ ] 2.6 Enforce read-only execution in agent mode with an OS sandbox (GAPS Q8, first of the
+  agent-mode work). The commands agent mode runs without asking run without write access (apart
+  from a private temporary directory) and without network: macOS `sandbox-exec` (Seatbelt),
+  Linux bubblewrap or Landlock, as Claude Code's and Codex CLI's sandboxes do (docs/SOTA.md). Then
+  "read-only" is enforced, not only inferred by the policy, and an injected read (F8) can't leave
+  the machine. Approved commands and propose mode run unsandboxed, as the user's own commands.
+  Acceptance: a write and a network connection by an auto-approved command fail on macOS and
+  Linux; where the sandbox can't be set up, auto-approval is off and every command asks (fail
+  closed, with the reason); SEC and SECTEST updated; ushgo TODO 2.11 ports it.
 - [ ] 2.7 Align the `//` contract and policy semantics with wish once wish's shell
   integration (wish 2.1/6.2) exists.
 - [x] 2.8 Local models through Ollama's Anthropic-compatible API: provider setting
@@ -154,13 +160,14 @@ DONE has an entry for it.
   proposal went to Python's plain `input()`, which echoed `^[[A`. Up closes an explanation, in
   the session and in the plugin, and is history otherwise. Acceptance: a real `ush` session in a
   pty (Up recalls and reruns a line, Ctrl-D ends it), Up in the plugin and the session editor.
-- [ ] 2.23 Injected read-only commands in agent mode (SECTEST F8, GAPS answer in ushgo Q4): run
-  the injection eval's DNS TXT scenario with a checker (llama3.2:3b and a tool-using model) and
-  record whether it flags the injected `cat`. If it doesn't, agent mode asks before a command
-  whose arguments occur only in earlier command output or piped input, not in the user's
-  requests. The eval runs each scenario several times and reports rates. Acceptance: F8's scenario
-  ran unapproved 0 times in at least 20 runs; tests for the new rule and its false positives
-  (`ls` then `cat` of a listed file); ushgo TODO 2.8 ports it.
+- [ ] 2.23 Argument origin in agent mode (SECTEST F8, ushgo GAPS Q4; unconditional since GAPS Q8):
+  agent mode asks before a command whose arguments (paths, hosts, words beyond the command's
+  name and options) occur only in earlier command output or piped input, not in the user's
+  requests, with that as the reason. Data from output then can't choose what runs unasked, the
+  idea of CaMeL's data-flow policies (docs/SOTA.md). The checker is measured on F8's scenario too,
+  and the eval runs each scenario several times and reports rates. Acceptance: F8's scenario ran
+  unapproved 0 times in at least 20 runs; tests for the rule and its false positives (`ls` then
+  `cat` of a listed file, a path the user named); ushgo TODO 2.8 ports it.
 - [ ] 2.24 Explain once per command line (user, 2026-10-29): Down after Up or Esc closed an
   explanation asks the model again, though the command is the same. Keep the last explanation with
   the command line it explains, and show it again on Down while `$BUFFER` is unchanged; ask the
@@ -191,6 +198,54 @@ DONE has an entry for it.
   large, sudo) and redaction of file content; `ush notes` with files and piped input; no other
   binding changed; SEC and SECTEST rows for files sent
   to the provider; ushgo TODO 2.10 ports it.
+- [ ] 2.26 History as context (ROAD idea, scheduled 2026-10-29): with the plugin, a request
+  carries the shell's recent history (`fc -ln`, at most the last N lines), so "repeat that with
+  these changes" works. The lines are filtered before they leave: secrets redacted, lines that
+  read secret files (the policy's list) or carry tokens dropped, ush's own `//` lines dropped.
+  Off by default; a setting turns it on, and the disclosure banner says so. Acceptance: zsh pty
+  tests with a fake provider (history reaches the request when on, never when off, filtered
+  lines absent); redaction tests with synthetic secrets; SEC, SECTEST, USER updated; ushgo TODO
+  2.12 ports it.
+- [ ] 2.27 bash (ROAD idea, scheduled 2026-10-29): a bash plugin with the zsh plugin's behaviour
+  as far as bash allows: `// …` without quotes (a `DEBUG` trap or `bind -x` on Enter), the
+  proposal pre-filled (`bind -x` sets `READLINE_LINE`, bash 4 or newer), output recorded,
+  Esc and Down on a proposal, the installer offering `~/.bashrc`. The `ush>` session keeps
+  zsh's `vared` where zsh exists. Acceptance: the zsh plugin's pty tests, ported to bash 4 and
+  5 (macOS ships bash 3.2: the plugin refuses it with the reason); ushgo TODO 2.13 ports the
+  installer part.
+- [ ] 2.28 fish (ROAD idea, scheduled 2026-10-29): the same in fish (`commandline`, `bind`,
+  `fish_preexec`/`fish_postexec`), after bash. Acceptance: as for 2.27, in fish 3; ushgo TODO
+  2.14.
+- [ ] 2.29 More model platforms (user, 2026-10-29: "widen the compatibility with external models:
+  openai, mistral, huggingface, any other important platforms"). One adapter for the OpenAI Chat
+  Completions API with tool calling, which most platforms serve. The agent keeps its `Provider`
+  protocol (ARCH).
+  - **Presets**, each a known host checked against the platform's docs when implemented:
+    `openai`, `mistral`, `huggingface` (the Inference Providers router), `gemini` (Google's
+    OpenAI-compatible endpoint), `groq`, `openrouter`, `together`, `deepseek`, `azure` (the
+    user's resource URL).
+  - **Any other endpoint:** `openai-compatible` with an explicit URL, `https` or loopback `http`.
+    Local servers (llama.cpp, LM Studio, vLLM) get Ollama's loopback rules: no proxies, no
+    redirects, "stays on this machine".
+  - **Keys:** per platform, in the keychain (account = preset) or the 0600 file, or from the
+    platform's usual variable (`OPENAI_API_KEY`, `MISTRAL_API_KEY`, `HF_TOKEN`, …) as for
+    Anthropic, never as root. The key is redacted from everything sent, and those variables are
+    removed from the commands ush runs.
+  - **Disclosure:** the banner names the platform and host. `ush ai configure` offers the presets,
+    and the checker can use any of them (`provider:model`).
+  - **Acceptance:**
+    - a local mock of Chat Completions, streamed and not, with tool calls split across chunks;
+      errors, retries and rate limits; tests for every preset's URL and key source, the
+      loopback rules, key redaction, and root ignoring the variables;
+    - a live smoke test and the injection eval on at least one OpenAI-compatible local server,
+      free; paid platforms only with explicit configuration;
+    - SEC (new destinations), ADMIN (network table), USER and SOTA updated;
+    - ushgo TODO 2.15 ports it.
+- [ ] 2.30 Cloud platforms that need their own signing, after 2.29: AWS Bedrock (SigV4) and
+  Google Vertex AI (service accounts), for Anthropic and other models there. Where a platform's
+  OpenAI-compatible endpoint covers tool calling, 2.29's adapter is used instead. Acceptance: as
+  for 2.29, with signing tested against fixed vectors; credentials from the platform's standard
+  chain, never logged; ushgo TODO 2.16.
 
 ## 3. Release
 
