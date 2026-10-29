@@ -7,8 +7,8 @@ checked, and executed. Both use the user's own AI API key, or a local model.
 | Project | What | Status |
 | --- | --- | --- |
 | **ush** | The `//` shell for zsh on your machine, optionally under `sudo`; one command, two implementations | |
-| ↳ [ushpy](ushpy/README.md) | ush in Python: the experimental implementation, where features are tried first | Complete; not yet released |
-| ↳ [ushgo](ushgo/README.md) | ush in Go: the compiled deliverable, one static binary | Ported, at parity with ushpy; 0.2.0-rc1 ships it |
+| ↳ [ushpy](ush/py/README.md) | ush in Python: the experimental implementation, where features are tried first | Complete; not yet released |
+| ↳ [ushgo](ush/go/README.md) | ush in Go: the compiled deliverable, one static binary | Ported, at parity with ushpy; 0.2.0-rc1 ships it |
 | [wish](wish/README.md) | Browser workspace: files, notebooks, live tools | Design documents; not implemented |
 
 What comes next, across the projects, is in the roadmap: [docs/ROAD.md](docs/ROAD.md); what exists
@@ -27,29 +27,29 @@ On the command line, a proposal waits for you: Enter runs it, Down explains it (
 does, which files and network it reads and writes), Esc removes it. `ush explain COMMAND` explains
 any command line, and `-v` gives the full explanation.
 
-`ush` is one command with two implementations that must behave the same: Python in `ushpy/` and Go
-in `ushgo/`. `ush --version` says which one you have (`(python)` or `(go)`). Features land in Python
+`ush` is one command with two implementations that must behave the same: Python in `ush/py/` and Go
+in `ush/go/`. `ush --version` says which one you have (`(python)` or `(go)`). Features land in Python
 first and are then ported to Go; releases ship the Go binary once it passes the same black-box tests
 ([SDLC](docs/SDLC.md#ush-one-command-two-implementations)). Until then, install the Python one.
 
 ```sh
-cd ushpy && ./install.sh         # installs ~/.local/bin/ush; offers to add the plugin to ~/.zshrc
+cd ush/py && ./install.sh         # installs ~/.local/bin/ush; offers to add the plugin to ~/.zshrc
 ush ai configure                 # mode, provider, model, key (macOS keychain or a 0600 file)
 // find out why my machine does not have enough disk space      # in a new terminal
 ```
 
 To check an installed `ush` of either implementation, run the user smoke test
-([SMOKE](ushpy/docs/SMOKE.md)): `ushpy/scripts/smoke.sh` offline, then with
+([SMOKE](ush/py/docs/SMOKE.md)): `ush/py/scripts/smoke.sh` offline, then with
 `--provider ollama --model …` on a local model, or `--bin PATH` for another binary.
 
 ### ushpy: Python
 
 The reference for behaviour and the place to try features: zsh plugin, `sudo` use, local models,
 the checker model, and what is sent to the provider are described in
-[ushpy/README.md](ushpy/README.md). Its plan and records are in [ushpy/docs/](ushpy/docs/):
-[TODO](ushpy/docs/TODO.md), [ROAD](ushpy/docs/ROAD.md), [ARCH](ushpy/docs/ARCH.md),
-[SEC](ushpy/docs/SEC.md), [SECTEST](ushpy/docs/SECTEST.md), [GAPS](ushpy/docs/GAPS.md), and
-[DONE](ushpy/docs/DONE.md). It needs Python 3.10 or newer.
+[ush/py/README.md](ush/py/README.md). Its plan and records are in [ush/py/docs/](ush/py/docs/):
+[TODO](ush/py/docs/TODO.md), [ROAD](ush/py/docs/ROAD.md), [ARCH](ush/py/docs/ARCH.md),
+[SEC](ush/py/docs/SEC.md), [SECTEST](ush/py/docs/SECTEST.md), [GAPS](ush/py/docs/GAPS.md), and
+[DONE](ush/py/docs/DONE.md). It needs Python 3.10 or newer.
 
 ### ushgo: Go
 
@@ -59,16 +59,16 @@ of ushpy, and ushpy's black-box tests pass against it (`just ushgo-conform`).
 
 ```sh
 just ushgo-test                                  # gofmt, go vet, go test (Go 1.27: brew install go)
-cd ushgo && go build -o ush ./cmd/ush            # writes ./ush
+cd ush/go && go build -o ush ./cmd/ush            # writes ./ush
 ./ush --version                                  # ush 0.0.0-dev (go)
 just ushgo-conform                               # ushpy's black-box tests against the Go binary
 ```
 
-The [user guide](ushgo/docs/USER.md) and the [admin guide](ushgo/docs/ADMIN.md) describe the `ush`
-command; ushpy has the same guides ([USER](ushpy/docs/USER.md), [ADMIN](ushpy/docs/ADMIN.md)). See [ushgo/README.md](ushgo/README.md) and its plan in
-[ushgo/docs/](ushgo/docs/):
-[TODO](ushgo/docs/TODO.md), [ROAD](ushgo/docs/ROAD.md), [ARCH](ushgo/docs/ARCH.md),
-[SEC](ushgo/docs/SEC.md), [GAPS](ushgo/docs/GAPS.md), and [DONE](ushgo/docs/DONE.md).
+The [user guide](ush/go/docs/USER.md) and the [admin guide](ush/go/docs/ADMIN.md) describe the `ush`
+command; ushpy has the same guides ([USER](ush/py/docs/USER.md), [ADMIN](ush/py/docs/ADMIN.md)). See [ush/go/README.md](ush/go/README.md) and its plan in
+[ush/go/docs/](ush/go/docs/):
+[TODO](ush/go/docs/TODO.md), [ROAD](ush/go/docs/ROAD.md), [ARCH](ush/go/docs/ARCH.md),
+[SEC](ush/go/docs/SEC.md), [GAPS](ush/go/docs/GAPS.md), and [DONE](ush/go/docs/DONE.md).
 
 ## wish
 
@@ -93,8 +93,10 @@ AGENTS.md                 rules for contributors and agents: human merges, tests
 CLAUDE.md                 points to AGENTS.md
 docs/SDLC.md              the development process shared by all projects
 docs/ROAD.md              the roadmap across projects
-ushpy/                    ush in Python, experimental: README, docs/, src/, tests/, shell/
-ushgo/                    ush in Go, the deliverable: README, docs/, cmd/ush/, scripts/
+ush/py/                   ush in Python, experimental: README, docs/, src/, tests/, scripts/
+ush/go/                   ush in Go, the deliverable: README, docs/, cmd/ush/, internal/, scripts/
+ush/shell/                the zsh plugin and the installers' ~/.zshrc step, shared by both
+ush/conform/              policy.json, the verdicts both implementations must give
 wish/                     browser workspace: README, docs/
 tools/                    the Markdown link checker, PDF build scripts (pdf/), local CI (ci/)
 .github/                  CI workflow (ci.yml), PR template
@@ -129,7 +131,7 @@ Set `CHROME_BIN` to select a different browser executable.
 
 ```sh
 just pdf wish/docs/IDEA.md  # write wish/docs/IDEA.md.pdf
-just pdfs                 # build README.md and all Markdown documents in docs/, ushpy/, ushgo/, and wish/
+just pdfs                 # build README.md and all Markdown documents in docs/, ush/py/, ush/go/, and wish/
 just pdfs wish/docs       # build only wish/docs/
 just pdfs 'path with spaces'
 ```

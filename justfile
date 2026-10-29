@@ -9,7 +9,7 @@ default:
 pdf file:
     @cd {{quote(invocation_directory())}} && {{quote(justfile_directory() + "/tools/pdf/pdf.sh")}} "$@"
 
-# Build PDFs under PATHS (default README.md, docs/, ushpy/, ushgo/, and wish/), skipping unchanged documents
+# Build PDFs under PATHS (default README.md, docs/, ush/, and wish/), skipping unchanged documents
 [positional-arguments]
 pdfs *paths:
     @cd {{quote(invocation_directory())}} && {{quote(justfile_directory() + "/tools/pdf/pdfs.sh")}} "$@"
@@ -19,20 +19,20 @@ ush-test: ushpy-test ushgo-test ushgo-conform
 
 # Run the Python ush suite (unit, mock-provider integration, and zsh plugin tests)
 ushpy-test:
-    @cd ushpy && ./scripts/test.sh
+    @cd ush/py && ./scripts/test.sh
 
 # Format-check, vet and test ushgo (Go 1.27: brew install go)
 ushgo-test:
-    @ushgo/scripts/test.sh
+    @ush/go/scripts/test.sh
 
 # ushpy's black-box tests against the Go binary: the two implementations behave the same
 ushgo-conform:
-    @ushgo/scripts/conform.sh
+    @ush/go/scripts/conform.sh
 
-# Build the Go release archives into ushgo/dist/, e.g. `just ushgo-release 0.1.0` (`--check` to
+# Build the Go release archives into ush/go/dist/, e.g. `just ushgo-release 0.1.0` (`--check` to
 # build twice and compare). Building only; publishing a release is a human's step.
 ushgo-release version *args:
-    @ushgo/scripts/release.sh {{version}} {{args}}
+    @ush/go/scripts/release.sh {{version}} {{args}}
 
 # Check relative links and images in all Markdown files
 links:
@@ -53,13 +53,13 @@ ci *ARGS:
 # Run ush from the source tree with the settings in .env (see .env.template), e.g.
 # `just ush '//why is my disk full?'`. Variables already set in the shell win over .env; the file is
 # read as KEY=value lines, not executed; a ` # comment` after a value is dropped. Runs the Python
-# implementation; needs ushpy/.venv (created by `just ushpy-test`).
+# implementation; needs ush/py/.venv (created by `just ushpy-test`).
 [positional-arguments]
 ush *args:
     #!/usr/bin/env bash
     set -euo pipefail
     root={{quote(justfile_directory())}}
-    [ -x "$root/ushpy/.venv/bin/python" ] || { echo "ushpy/.venv is missing; run: just ushpy-test" >&2; exit 1; }
+    [ -x "$root/ush/py/.venv/bin/python" ] || { echo "ush/py/.venv is missing; run: just ushpy-test" >&2; exit 1; }
     if [ -f "$root/.env" ]; then
         while IFS='=' read -r key value || [ -n "$key" ]; do
             [[ $key =~ ^[A-Z_][A-Z0-9_]*$ ]] || continue
@@ -68,4 +68,4 @@ ush *args:
         done < "$root/.env"
     fi
     cd {{quote(invocation_directory())}}
-    PYTHONPATH="$root/ushpy/src" exec "$root/ushpy/.venv/bin/python" -m ush "$@"
+    PYTHONPATH="$root/ush/py/src" exec "$root/ush/py/.venv/bin/python" -m ush "$@"

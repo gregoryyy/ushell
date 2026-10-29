@@ -54,7 +54,7 @@ jobs:
       - name: Install zsh
         run: command -v zsh >/dev/null || { sudo apt-get update && sudo apt-get install -y zsh; }
       - name: Test
-        working-directory: ushpy
+        working-directory: ush/py
         run: PYTHON=python ./scripts/test.sh
 
   # The Go ush (ushgo): format, vet and tests on each supported platform. Locally only this
@@ -68,7 +68,7 @@ jobs:
         os: [ubuntu-latest, macos-latest]
     defaults:
       run:
-        working-directory: ushgo
+        working-directory: ush/go
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -102,7 +102,7 @@ jobs:
       - name: Install zsh
         run: command -v zsh >/dev/null || { sudo apt-get update && sudo apt-get install -y zsh; }
       - name: Conformance
-        run: PYTHON=python ./ushgo/scripts/conform.sh
+        run: PYTHON=python ./ush/go/scripts/conform.sh
 
   # The local CI's own code (tools/ci/).
   tools:
