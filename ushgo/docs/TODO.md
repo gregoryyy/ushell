@@ -116,3 +116,5 @@ against `zsh -f` (ushpy `test_security`).
 - [ ] 2.8 Port ushpy TODO 2.23: agent mode asks before an injected read-only command (SECTEST F8).
 - [ ] 2.9 Port ushpy TODO 2.24: the session editor (`ui.go`'s `vared` script) shows the kept
   explanation again while the command line is unchanged; the plugin is shared already.
+- [ ] 2.10 Port ushpy TODO 2.25: `ush notes`, file context with its refusals and limits; the
+  plugin's Ctrl-N is shared.

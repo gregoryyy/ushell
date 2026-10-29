@@ -86,7 +86,8 @@ same in ush and wish (ushpy TODO 2.7).
 - **Analyse files with a set of instructions:** `ush analyze "INSTRUCTIONS" FILE…`, e.g.
   `ush analyze "list the commands this script runs; flag destructive ones" deploy/*.sh`. The
   instructions apply to each file in turn, with a result per file. The files go to the provider as
-  context, under the same redaction and disclosure as piped input.
+  context, under the same redaction and disclosure as piped input. Scheduled with Ctrl-N for
+  notes as ushpy TODO 2.25.
 - **Data loss prevention on the way to the provider:** filters on everything ush sends (requests,
   command output, piped input, files) that remove credentials and system internals (host names,
   internal addresses, user and path names beyond what the request needs). This would go further

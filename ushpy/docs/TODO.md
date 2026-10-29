@@ -169,6 +169,27 @@ DONE has an entry for it.
   Acceptance: zsh tests in a pty with a counting fake provider: Down, Up, Down asks once; Down,
   Esc, Down asks once; Down, edit, Down asks twice; the same in the `ush>` session; ushgo TODO 2.9
   ports the session editor.
+- [ ] 2.25 Notes on command output and files (user, 2026-10-29: "add the possibility to analyze
+  command output and files. this could be a shortcut like ctrl-n like notes"; ROAD's
+  `ush analyze`). Blocked on GAPS Q7 (the key, and which output). Proposed:
+  - **Ctrl-N** on the command line asks the model for notes and shows them above the line, as an
+    explanation is shown. A comment on the line is the instruction (`cat app.log # any errors?`);
+    without one, the model summarises and points out what stands out.
+  - **Command output:** on an empty line, notes on the output of the last command the plugin
+    recorded. On a command line, the command runs as a proposal would, with its output recorded,
+    and then gets notes.
+  - **Files:** words on the line that name readable regular files send those files as context.
+  - **Command line:** `ush notes [-v] [INSTRUCTION] FILE…`, also with piped input, for scripts and
+    shells without the plugin.
+  - **Limits:** the same disclosure, redaction and 200 KB limit as piped input; files in secret
+    locations (the policy's list) and binary files are refused with the reason; never under
+    `sudo`.
+
+  Acceptance: zsh pty tests with a fake provider (Ctrl-N on an empty line, on a command, on a
+  line naming files, with a comment as instruction); the refusals (secret file, binary, too
+  large, sudo) and redaction of file content; `ush notes` with files and piped input; the key's
+  previous meaning restored where the plugin doesn't use it; SEC and SECTEST rows for files sent
+  to the provider; ushgo TODO 2.10 ports it.
 
 ## 3. Release
 

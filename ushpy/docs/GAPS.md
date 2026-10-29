@@ -3,7 +3,7 @@
 Open questions and explicit assumptions for ush. **Questions** are for the user to answer.
 **Assumptions** are what the documents currently take for granted because they seemed clear enough
 not to ask; check them and correct any that are wrong. The rules for this file are in
-[SDLC](../../docs/SDLC.md#work-items). Status: 2026-10-28 18:40.
+[SDLC](../../docs/SDLC.md#work-items). Status: 2026-10-29 01:01.
 
 - Answers carry date, time and author: `**Answer** (2026-10-27 15:10, Gregor Heinrich): …`. Short
   answers are fine. A changed answer goes on top; earlier ones stay below it, struck through.
@@ -83,6 +83,21 @@ prints the result without showing what was executed". Asked as three questions.
   `//` continues with its output and proposes the next one.
 
 **Resolved:** propose mode, [ARCH](ARCH.md#propose-mode), TODO 2.17.
+
+### Q7. Notes (TODO 2.25): which key, and which output? — blocking for TODO 2.25
+
+Two decisions, from the user's request of 2026-10-29.
+
+1. **The key.** Ctrl-N is zsh's "next history line" in emacs mode (Down does the same).
+   Ctrl-N for notes would be the first key ush takes over outside a proposal; so far the user
+   chose to keep keys as they are there (Esc, 2026-10-28).
+   - **Proposed:** bind Ctrl-N in emacs mode for notes, as asked; Down keeps history. Make the key
+     a setting, `USH_NOTES_KEY` (empty: no binding). In vi mode, leave it unbound.
+2. **Which output.** The plugin records output only for commands ush proposed. Recording every
+   command's output would run every command with its output piped (no colours, no pagers).
+   - **Proposed:** Ctrl-N on an empty line takes the last recorded output. Ctrl-N on a typed
+     command runs it the way a proposal runs, recorded, and then gives notes. Any other command's
+     output is not recorded.
 
 ## Assumptions
 
