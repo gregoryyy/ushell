@@ -94,7 +94,7 @@ Apache-2.0); the Python original continues as a community fork (AGPL-3.0).
 | Untrusted output choosing what runs | CaMeL's data-flow policies (research) | ush TODO 2.23: a command whose arguments come only from earlier output asks first (finding F8) |
 | History as context | Butterfish, Warp | ush TODO 2.26: recent history, filtered, off by default |
 | bash and fish | Atuin AI, ShellOracle, shell_gpt (bash) | ush TODO 2.27 (bash), 2.28 (fish) |
-| Notes on output and files | Butterfish, Warp (blocks as context) | ush TODO 2.25: Ctrl-X n |
+| Notes on output and files | Butterfish, Warp (blocks as context) | Built 2026-10-29 (ush TODO 2.25): Ctrl-X n and `ush notes` |
 | Many model platforms | aichat, ShellOracle, shell_gpt (through LiteLLM), Copilot CLI (BYOK) | ush TODO 2.29: OpenAI-compatible platforms and local servers; 2.30: Bedrock, Vertex AI |
 | Explanations grounded in man pages | explainshell's extractor | Not planned; a possible check on Down's explanations |
 

@@ -8,7 +8,7 @@ from helpers import SYNTHETIC_KEY, TempDirTest, fake_identity, text
 from test_agent import assert_every_tool_use_answered
 from ush.agent import PROPOSE_TOOL
 from ush.handoff import (EXPLANATIONS_KEPT, SESSION_TTL, Explanations, Ran, Sessions,
-                         handoff_dir, session_key, take_ran, write_proposal)
+                         handoff_dir, last_ran, session_key, take_ran, write_proposal)
 
 
 def propose_use(command: str, effect: str = "read", interactive: bool = False,
@@ -218,7 +218,7 @@ class HandoffTest(TempDirTest):
         with open(os.path.join(self.dir, "proposal")) as f:
             self.assertEqual(f.read(), "interactive\nless log")
 
-    def test_take_ran_reads_bounds_and_removes(self):
+    def test_take_ran_reads_bounds_and_keeps_it_only_for_notes(self):
         self.assertIsNone(take_ran(self.dir, 1000))
         with open(os.path.join(self.dir, "ran"), "w") as f:
             f.write("3\ngrep -r x .\n")
@@ -229,11 +229,30 @@ class HandoffTest(TempDirTest):
                          ("grep -r x .", 3, True, True))
         self.assertLessEqual(len(ran.output), 1100)
         self.assertTrue(ran.output.endswith("END"))
-        self.assertEqual(os.listdir(self.dir), [])
+        self.assertEqual(sorted(os.listdir(self.dir)), ["last-output", "last-ran"])
+        self.assertIsNone(take_ran(self.dir, 1000))  # `//` gets a run once
         with open(os.path.join(self.dir, "ran"), "w") as f:
             f.write("x\nvim notes")
         ran = take_ran(self.dir, 1000)
         self.assertEqual((ran.exit_code, ran.captured), (None, False))
+        self.assertEqual(sorted(os.listdir(self.dir)), ["last-ran"])  # no stale output
+
+    def test_last_ran_is_the_newest_run_and_removes_nothing(self):
+        # Notes (TODO 2.25) on an empty line: the last run, taken by `//` or not.
+        self.assertIsNone(last_ran(self.dir, 1000))
+        with open(os.path.join(self.dir, "ran"), "w") as f:
+            f.write("0\nmake")
+        with open(os.path.join(self.dir, "output"), "w") as f:
+            f.write("built")
+        self.assertEqual(last_ran(self.dir, 1000).output, "built")
+        self.assertEqual(sorted(os.listdir(self.dir)), ["output", "ran"])
+        take_ran(self.dir, 1000)
+        self.assertEqual((last_ran(self.dir, 1000).command, last_ran(self.dir, 1000).output),
+                         ("make", "built"))
+        with open(os.path.join(self.dir, "ran"), "w") as f:
+            f.write("1\nmake test")
+        ran = last_ran(self.dir, 1000)
+        self.assertEqual((ran.command, ran.exit_code, ran.captured), ("make test", 1, False))
 
     def test_take_ran_refuses_a_symlinked_output(self):
         secret = os.path.join(self.tmp, "secret")

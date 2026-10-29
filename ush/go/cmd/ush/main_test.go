@@ -8,6 +8,10 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/gregoryyy/ushell/ush/go/internal/agent"
+	"github.com/gregoryyy/ushell/ush/go/internal/config"
+	"github.com/gregoryyy/ushell/ush/go/internal/ui"
 )
 
 // The command line's behaviour is tested from outside by ushpy's black-box tests against the
@@ -50,6 +54,17 @@ func TestBriefTakesThePartsAndAccess(t *testing.T) {
 	if brief("Parts:\n- a\nSummary: late") != "Parts:\n- a" || brief("free text") != "free text" ||
 		brief("Notes: x\nAccess: none\nParts:\n- a") != "Parts:\n- a\nAccess: none" {
 		t.Error("brief cases")
+	}
+}
+
+// ush notes never runs as root: it would send what only root can read (TODO 2.25).
+func TestNotesNeverAsRoot(t *testing.T) {
+	file := filepath.Join(t.TempDir(), "app.log")
+	os.WriteFile(file, []byte("x"), 0o600)
+	root := config.Identity{UID: 0, Name: "root", Home: "/var/root", OwnerUID: 0, OwnerName: "root", OwnerHome: "/var/root"}
+	code, err := notesCommand([]string{file}, ui.New(), root, config.Settings{}, nil, agent.Options{})
+	if code != 2 || err == nil || !strings.Contains(err.Error(), "doesn't run as root") {
+		t.Errorf("exit %d, %v", code, err)
 	}
 }
 

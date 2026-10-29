@@ -39,6 +39,10 @@ usage:
   ush [OPTIONS] //             continue: send what you ran, get the next proposal
   ush explain COMMAND...       explain a command line with the model, without running it
                                (with the plugin: Down on a proposal)
+  ush notes [INSTRUCTION] FILE...
+                               notes on files or piped input with the model, e.g.
+                               ush notes 'any errors?' app.log (with the plugin:
+                               Ctrl-X n, also on a command's output)
   ush [OPTIONS]                start a session
   ush ai configure [--file]    set the provider (Anthropic or a local Ollama), API key
                                (keychain on macOS), model, and effort
@@ -205,6 +209,8 @@ func realMain(argv []string, term *ui.Terminal) (int, error) {
 			return allowCommand(rest[1:], term, id)
 		case "explain":
 			return explainCommand(rest[1:], term, id, settings, keys, options)
+		case "notes":
+			return notesCommand(rest[1:], term, id, settings, keys, options)
 		case "replay":
 			return replayCommand(rest[1:], term, id, hist, settings, options)
 		}

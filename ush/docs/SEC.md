@@ -59,7 +59,9 @@ sandbox.
 | A proposal that hides what it does on the command line (escape sequences, `\r`, bidi overrides, zero-width characters) | Refused before display or handoff; the model is asked to propose it again | `test_propose` (control characters) |
 | The user runs a harmful proposal by habit | ush runs nothing itself; changes and commands the policy can't verify are marked in yellow, with the checker's objection if one is configured | `test_propose` (notes) |
 | Another user or a planted link reads or swaps the handoff files | The plugin's `mktemp -d` directory (0700); ush refuses a directory that isn't the user's, is open to others, or is a link, and reads `ran` and `output` only as regular files without following links | `test_propose` (HandoffTest) |
-| Captured output kept on disk | `output` lives only until the next `//` (then deleted) or shell exit; the saved conversation is 0600 in the state directory and expires after an hour; history keeps no output | `test_propose` (sessions) |
+| Captured output kept on disk | `output` lives in the handoff directory (0700) until `//` takes it, then as `last-output` for notes until the next run replaces it or the shell exits (TODO 2.25); the saved conversation is 0600 in the state directory and expires after an hour; history keeps no output | `test_propose` (sessions, `last_ran`); Go `TestLastRanIsTheNewestRunAndRemovesNothing` |
+| Notes (`ush notes`, Ctrl-X n) send a file the user didn't mean to share, or a secret one (TODO 2.25) | Only files named on the line, the plugin's recorded output, or piped input. Before sending, one line names each item and where it goes. Refused, with the reason: secret locations (the policy's list, by the name given and by what a link resolves to), directories, special files (a FIFO is opened without blocking), binary files, anything past 200 KB in all. Redacted, between random-tag markers as data; never as root; the plugin refuses sudo and ush lines | `test_cli` (notes tests, against both implementations); `test_notes`; Go `internal/notes`, `TestNotesNeverAsRoot`; `test_zsh_plugin` |
+| Ctrl-X n runs a command the user didn't mean to run | It runs only the line the user typed, as Enter would, recorded like a proposal; on a line that isn't a command it runs `ush notes`, never the line | `test_zsh_plugin` (`ZshProposeTest` notes tests, `ZshNotesTest`) |
 | An explanation (`ush explain`, Down) sends more than the user expects | Only the command line, and for a proposal the last request and its purpose; redacted; the command between random-tag markers as data; nothing runs; `-v` shows the destination | `test_cli` (explain tests) |
 | The installer changes `~/.zshrc` without consent | It asks, only from a terminal; `--zshrc` or `--no-zshrc` decide explicitly; never as root or twice; only appends one `source` line | `test_install` |
 | Text that the terminal acts on: escape sequences, OSC 52, bidi overrides in commands, output, answers, history (F1) | Everything ush writes passes `ui.visible`, which writes them out as `^[`, `^M`, `<U+202E>` | `test_security` `DisplayTest` |
@@ -105,6 +107,11 @@ sandbox.
 - **Captured commands run with a pipe as stdout.** Tools that check for a terminal behave
   differently (no colours, no pager); a command the model wrongly marks non-interactive may wait
   for input it can't show properly. Ctrl-C stops it as usual.
+- **Notes send what a file holds.** A file the user names goes to the provider whole, and
+  redaction is pattern-based: personal data, internal names and secrets in unknown formats pass.
+  The secret-location list covers known places, not every secret. The disclosure line names
+  every file before the request; a file read for notes can also carry prompt injection, but
+  notes run nothing and propose nothing.
 - **Small local models** follow injected instructions more readily and call tools less
   reliably. The policy and approval prompt contain them the same way, but answers are
   less trustworthy.

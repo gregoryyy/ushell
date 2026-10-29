@@ -79,6 +79,8 @@ confirms nothing raw reaches the terminal.
 | Reading secret paths (`~/.ssh`, keychains, `.env`) without approval | Covered: `test_reading_secret_files_needs_approval` |
 | Anthropic key sent to a local Ollama | Covered: `test_requests_carry_no_anthropic_options_and_no_real_key` |
 | Banner says data stays local while it doesn't (Ollama cloud model) | Covered: `test_ollama_cloud_model_is_disclosed`, `test_cloud_models_are_never_reported_as_local` |
+| `ush notes` sends a secret file, or one through a link (TODO 2.25) | Covered: `test_notes_refuse_secret_binary_large_and_special_files` (`.env`, a link to `~/.ssh/config`, a broken link into `~/.ssh`), against both implementations; ushgo `TestReadFileSendsTextAndSaysWhyNot` |
+| Secrets in a file or recorded output sent for notes | Covered: redacted like piped input, `test_notes_on_files_and_piped_input`, `test_notes_on_the_last_recorded_command` (the synthetic key absent from the request) |
 | Redaction corpus: gitleaks' rule set as test vectors | Covered: `test_security` `RedactionCorpusTest`, 28 formats; added Stripe, Google OAuth, npm, PyPI, SendGrid, Slack webhooks, DigitalOcean, Hugging Face, Bearer and Basic values, `.netrc` passwords, Azure account keys, PGP key blocks. It found F3 |
 
 ## 5. Endpoint and egress
@@ -126,6 +128,9 @@ by commit. See [tools/ci/README.md](../../tools/ci/README.md).
 | A command to explain that closes the request's markers and instructs the model | Covered: random-tag markers, `ExplainTest` |
 | The explanation sends more than the command | Covered: `test_explain_runs_nothing_and_uses_the_proposal_context` (no tools, nothing run, key redacted) |
 | Kept explanations leak command lines, or a planted store is read | Covered: the file holds hashes and redacted answers only, mode 0600; a symlink or broken file is ignored (`test_explanations_are_kept_by_command_line`, `ExplanationsTest`, ushgo `TestABrokenOrLinkedExplanationStoreIsIgnored`); a kept answer is shown through the same display filter as a new one |
+| Material for notes that closes the markers and instructs the model | Partly covered: the request puts the material between markers and the system prompt calls it data (`test_notes_on_files_and_piped_input`); that a file can't close them early rests on the random tag per request, as for explanations. Notes run nothing and propose nothing |
+| `ush notes` blocks on a FIFO, reads a directory or device, sends binary data or more than 200 KB, or runs as root | Covered: `test_notes_refuse_secret_binary_large_and_special_files`, `test_notes_send_what_fits_and_say_what_doesnt`, `test_notes_never_as_root`, ushgo `TestNotesNeverAsRoot` |
+| Ctrl-X n runs something on a sudo or ush line, or takes over a key the user bound | Covered: `test_ctrl_x_n_refuses_sudo_and_ush_lines`, `test_the_notes_key_changes_no_binding` (only Ctrl-X n added, in emacs and viins; a user's binding kept; `USH_NOTES_KEY`) |
 | The plugin leaves Esc, Down or Up rebound | Covered: `test_zsh_plugin` (bindings restored after running, removing, abandoning a proposal) |
 | The installer changes `~/.zshrc` without consent | Covered: `test_install` |
 

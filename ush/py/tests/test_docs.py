@@ -22,8 +22,8 @@ class SharedDocsTest(unittest.TestCase):
         for option in options:
             for spelling in option:
                 self.assertIn(f"`{spelling}", guide)
-        for command in ("ai configure", "ai status", "ai clear-key", "allow", "explain", "history",
-                        "replay"):
+        for command in ("ai configure", "ai status", "ai clear-key", "allow", "explain", "notes",
+                        "history", "replay"):
             self.assertIn(f"`ush {command}", guide)
 
     def test_one_document_set(self):
