@@ -16,7 +16,7 @@ implementation kept its own log: [ushpy](archive/DONE-ushpy.md), [ushgo](archive
 
 ## 2026-10-29 02:40 — Notes on command output and files: Ctrl-X n and `ush notes`
 
-TODO items: 2.25, in both implementations. PR: see the branch `feat/ush-2.25-notes`.
+TODO items: 2.25, in both implementations. PR: #32.
 
 Agent: Opus 5.5, reasoning: not exposed, subagents: none.
 
