@@ -68,6 +68,9 @@ release ships the Go binary.
   network; `sandbox-exec` on macOS, bubblewrap or Landlock on Linux. Then argument origin (2.23):
   a command whose arguments come only from earlier output asks first.
 - History as context (ushpy TODO 2.26), filtered and off by default; bash (2.27) and fish (2.28).
+- More model platforms (ushpy TODO 2.29, 2.30): OpenAI, Mistral, Hugging Face, Gemini, Groq,
+  OpenRouter, Together, DeepSeek, Azure and local OpenAI-compatible servers through one adapter;
+  then AWS Bedrock and Google Vertex AI.
 - Compaction or context editing for long sessions (2.5).
 - Whether the checker model is on by default (ushpy GAPS Q4).
 
@@ -83,8 +86,6 @@ same in ush and wish (ushpy TODO 2.7).
 
 ## Ideas not scheduled
 
-- **More local providers:** OpenAI-compatible local servers (llama.cpp, LM Studio) behind the same
-  loopback rules as Ollama.
 - **Analyse files with a set of instructions:** `ush analyze "INSTRUCTIONS" FILE…`, e.g.
   `ush analyze "list the commands this script runs; flag destructive ones" deploy/*.sh`. The
   instructions apply to each file in turn, with a result per file. The files go to the provider as

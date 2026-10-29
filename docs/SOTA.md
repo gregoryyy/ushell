@@ -95,6 +95,7 @@ Apache-2.0); the Python original continues as a community fork (AGPL-3.0).
 | History as context | Butterfish, Warp | ushpy TODO 2.26: recent history, filtered, off by default |
 | bash and fish | Atuin AI, ShellOracle, shell_gpt (bash) | ushpy TODO 2.27 (bash), 2.28 (fish) |
 | Notes on output and files | Butterfish, Warp (blocks as context) | ushpy TODO 2.25: Ctrl-X n |
+| Many model platforms | aichat, ShellOracle, shell_gpt (through LiteLLM), Copilot CLI (BYOK) | ushpy TODO 2.29: OpenAI-compatible platforms and local servers; 2.30: Bedrock, Vertex AI |
 | Explanations grounded in man pages | explainshell's extractor | Not planned; a possible check on Down's explanations |
 
 ### Research

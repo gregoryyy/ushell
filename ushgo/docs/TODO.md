@@ -123,3 +123,6 @@ against `zsh -f` (ushpy `test_security`).
 - [ ] 2.13 Port ushpy TODO 2.27: the bash plugin in the release archive and the installer's
   `~/.bashrc` offer.
 - [ ] 2.14 Port ushpy TODO 2.28: the fish plugin in the archive and the installer.
+- [ ] 2.15 Port ushpy TODO 2.29: a Chat Completions client on `net/http` beside the Messages
+  client (streaming, tool calls, retries), the presets and their keys.
+- [ ] 2.16 Port ushpy TODO 2.30: Bedrock and Vertex signing, standard library only.

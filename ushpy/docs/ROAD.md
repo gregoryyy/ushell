@@ -10,7 +10,7 @@ Status: 2026-10-29 01:29.
 | 1. Release 0.1 | The local `//` shell, safe to hand to others | 1 (done), 2.9–2.11, 3.1 | The release gate in [AGENTS.md](../../AGENTS.md) and [SECTEST](SECTEST.md): no open High finding, the suite on macOS and Linux, model-in-the-loop results recorded; licence and distribution decided (GAPS Q1, Q2) |
 | 2. Daily use | Fewer approvals for harmless commands, enforced read-only in agent mode, long sessions | 2.6, 2.23, 2.4, 2.5, 2.24, 2.25 | A few weeks of daily use without a policy bypass; approvals per request measured and falling; F8's scenario at 0 in 20 |
 | 3. Compiled port | The same `ush` as a single static Go binary, the deliverable | [ushgo TODO](../../ushgo/docs/TODO.md) | The Go binary passes ush's black-box tests and the smoke test; releases then ship it |
-| 4. Context and shells | Requests that see recent history; bash and fish | 2.26–2.28 | The plugin's pty tests pass in each shell; history filtered as SEC requires |
+| 4. Context, shells, platforms | Requests that see recent history; bash and fish; more model platforms | 2.26–2.30 | The plugin's pty tests pass in each shell; history filtered as SEC requires; each platform's mock tests and one free live run |
 | 5. Shared paradigm with wish | One `//` contract and policy semantics for both shells | 2.7 | wish's shell integration (wish TODO 2.1, 6.2) exists |
 
 ## 1. Release 0.1
@@ -45,6 +45,9 @@ effort for the process and terminal work.
 
 - History as context (2.26): recent commands with a request, filtered, off by default.
 - bash (2.27), then fish (2.28): the plugin's behaviour in each, as far as the shell allows.
+- More model platforms (2.29): one OpenAI-compatible adapter with presets for OpenAI, Mistral,
+  Hugging Face, Gemini, Groq, OpenRouter, Together, DeepSeek and Azure, any other endpoint by
+  URL, and local servers under Ollama's loopback rules. Then Bedrock and Vertex (2.30).
 
 ## 5. Shared paradigm with wish
 
@@ -53,7 +56,5 @@ policy semantics with wish once wish has a shell (2.7).
 
 ## Ideas not scheduled
 
-- **More providers:** OpenAI-compatible local servers (llama.cpp, LM Studio) through the same
-  loopback rules as Ollama.
 - **A command explainer:** `ush explain CMD` that runs nothing and describes what a command line
   would do, using the policy's own parse.

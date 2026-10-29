@@ -216,6 +216,36 @@ DONE has an entry for it.
 - [ ] 2.28 fish (ROAD idea, scheduled 2026-10-29): the same in fish (`commandline`, `bind`,
   `fish_preexec`/`fish_postexec`), after bash. Acceptance: as for 2.27, in fish 3; ushgo TODO
   2.14.
+- [ ] 2.29 More model platforms (user, 2026-10-29: "widen the compatibility with external models:
+  openai, mistral, huggingface, any other important platforms"). One adapter for the OpenAI Chat
+  Completions API with tool calling, which most platforms serve. The agent keeps its `Provider`
+  protocol (ARCH).
+  - **Presets**, each a known host checked against the platform's docs when implemented:
+    `openai`, `mistral`, `huggingface` (the Inference Providers router), `gemini` (Google's
+    OpenAI-compatible endpoint), `groq`, `openrouter`, `together`, `deepseek`, `azure` (the
+    user's resource URL).
+  - **Any other endpoint:** `openai-compatible` with an explicit URL, `https` or loopback `http`.
+    Local servers (llama.cpp, LM Studio, vLLM) get Ollama's loopback rules: no proxies, no
+    redirects, "stays on this machine".
+  - **Keys:** per platform, in the keychain (account = preset) or the 0600 file, or from the
+    platform's usual variable (`OPENAI_API_KEY`, `MISTRAL_API_KEY`, `HF_TOKEN`, …) as for
+    Anthropic, never as root. The key is redacted from everything sent, and those variables are
+    removed from the commands ush runs.
+  - **Disclosure:** the banner names the platform and host. `ush ai configure` offers the presets,
+    and the checker can use any of them (`provider:model`).
+  - **Acceptance:**
+    - a local mock of Chat Completions, streamed and not, with tool calls split across chunks;
+      errors, retries and rate limits; tests for every preset's URL and key source, the
+      loopback rules, key redaction, and root ignoring the variables;
+    - a live smoke test and the injection eval on at least one OpenAI-compatible local server,
+      free; paid platforms only with explicit configuration;
+    - SEC (new destinations), ADMIN (network table), USER and SOTA updated;
+    - ushgo TODO 2.15 ports it.
+- [ ] 2.30 Cloud platforms that need their own signing, after 2.29: AWS Bedrock (SigV4) and
+  Google Vertex AI (service accounts), for Anthropic and other models there. Where a platform's
+  OpenAI-compatible endpoint covers tool calling, 2.29's adapter is used instead. Acceptance: as
+  for 2.29, with signing tested against fixed vectors; credentials from the platform's standard
+  chain, never logged; ushgo TODO 2.16.
 
 ## 3. Release
 
