@@ -4,7 +4,7 @@ The repository's roadmap across its projects: what comes next, in which order, a
 step. Each project keeps its own phases and items ([ush ROAD](../ush/docs/ROAD.md),
 [wish ROAD](../wish/docs/ROAD.md)); this file orders them and
 holds the items that belong to no single project. Work becomes items in a project's TODO when it
-starts. Status: 2026-10-29 02:01.
+starts. Status: 2026-10-30 05:16.
 
 ## Overview
 
@@ -70,10 +70,12 @@ release ships the Go binary.
   mode, first an OS sandbox for what it runs without asking (ush TODO 2.6): no writes, no
   network; `sandbox-exec` on macOS, bubblewrap or Landlock on Linux. Then argument origin (2.23):
   a command whose arguments come only from earlier output asks first.
-- History as context (ush TODO 2.26), filtered and off by default; bash (2.27) and fish (2.28).
-- More model platforms (ush TODO 2.29, 2.30): OpenAI, Mistral, Hugging Face, Gemini, Groq,
-  OpenRouter, Together, DeepSeek, Azure and local OpenAI-compatible servers through one adapter;
-  then AWS Bedrock and Google Vertex AI.
+- More model platforms (ush TODO 2.29, 2.30), first OpenAI, Mistral, other European platforms
+  and local OpenAI-compatible servers beyond Ollama, through one adapter; then Hugging Face,
+  Gemini, Groq, OpenRouter, Together, DeepSeek and Azure; then AWS Bedrock and Google Vertex AI.
+- The user's shell in the core (ush TODO 2.32), then bash (2.27), POSIX sh (2.33), fish (2.28)
+  and PowerShell 7 on macOS and Linux (2.34); history as context (2.26), filtered and off by
+  default.
 - Compaction or context editing for long sessions (2.5).
 - Whether the checker model is on by default (ush GAPS Q4).
 

@@ -6,7 +6,7 @@ where features are tried first, and Go in [ush/go](../go/), the deliverable. Wha
 [ROAD](ROAD.md), open questions in [GAPS](GAPS.md), progress in [DONE](DONE.md). The process is
 [SDLC](../../docs/SDLC.md); the rules in [AGENTS.md](../../AGENTS.md) take precedence. IDs are ush's
 own, independent of wish's. Until 2026-10-29 each implementation had its own TODO; their old IDs
-map to these as listed in [Old IDs](#old-ids). Status: 2026-10-29 02:01.
+map to these as listed in [Old IDs](#old-ids). Status: 2026-10-30 05:16.
 
 Status: `[ ]` open, `[x]` done. An item of section 2 also says where it is built: *py ✓ go ✓* in
 both, *py ✓ go –* in Python so far, *py – go –* in neither. Tags:
@@ -238,48 +238,65 @@ Done in Python, and in Go through the port (section 4).
   and output; SEC and SECTEST rows for files sent to the provider. The plugin's Ctrl-X n is shared
   by both.
 - [ ] 2.26 *py – go –* History as context (ROAD idea, scheduled 2026-10-29): with the plugin, a request
-  carries the shell's recent history (`fc -ln`, at most the last N lines), so "repeat that with
+  carries the shell's recent history (at most the last N lines: `fc -ln` in zsh and bash,
+  `history` in fish, `Get-History` in PowerShell; none in sh), so "repeat that with
   these changes" works. The lines are filtered before they leave: secrets redacted, lines that
   read secret files (the policy's list) or carry tokens dropped, ush's own `//` lines dropped.
   Off by default; a setting turns it on, and the disclosure banner says so. Acceptance: zsh pty
   tests with a fake provider (history reaches the request when on, never when off, filtered
   lines absent); redaction tests with synthetic secrets; SEC, SECTEST, USER updated.
-- [ ] 2.27 *py – go –* bash (ROAD idea, scheduled 2026-10-29): a bash plugin with the zsh plugin's behaviour
-  as far as bash allows: `// …` without quotes (a `DEBUG` trap or `bind -x` on Enter), the
-  proposal pre-filled (`bind -x` sets `READLINE_LINE`, bash 4 or newer), output recorded,
+- [ ] 2.27 *py – go –* bash (ROAD idea, scheduled 2026-10-29), after 2.32: a bash plugin with the zsh plugin's
+  behaviour as far as bash allows: `// …` without quotes (a `DEBUG` trap or `bind -x` on Enter),
+  the proposal pre-filled (`bind -x` sets `READLINE_LINE`, bash 4 or newer), output recorded,
   Esc and Down on a proposal, the installer offering `~/.bashrc`. The `ush>` session keeps
   zsh's `vared` where zsh exists. Acceptance: the zsh plugin's pty tests, ported to bash 4 and
   5 (macOS ships bash 3.2: the plugin refuses it with the reason); the Go release archive carries
   the bash plugin, and its installer offers `~/.bashrc`.
 - [ ] 2.28 *py – go –* fish (ROAD idea, scheduled 2026-10-29): the same in fish (`commandline`, `bind`,
-  `fish_preexec`/`fish_postexec`), after bash. Acceptance: as for 2.27, in fish 3, with the Go
-  archive and installer.
+  `fish_preexec`/`fish_postexec`), after bash, with proposals in fish's syntax (GAPS Q15).
+  Acceptance: as for 2.27, in fish 3, with the Go archive and installer.
 - [ ] 2.29 *py – go –* More model platforms (user, 2026-10-29: "widen the compatibility with external models:
-  openai, mistral, huggingface, any other important platforms"). One adapter for the OpenAI Chat
-  Completions API with tool calling, which most platforms serve. The agent keeps its `Provider`
-  protocol (ARCH).
-  - **Presets**, each a known host checked against the platform's docs when implemented:
-    `openai`, `mistral`, `huggingface` (the Inference Providers router), `gemini` (Google's
-    OpenAI-compatible endpoint), `groq`, `openrouter`, `together`, `deepseek`, `azure` (the
-    user's resource URL).
-  - **Any other endpoint:** `openai-compatible` with an explicit URL, `https` or loopback `http`.
-    Local servers (llama.cpp, LM Studio, vLLM) get Ollama's loopback rules: no proxies, no
-    redirects, "stays on this machine".
+  openai, mistral, huggingface, any other important platforms"; 2026-10-30: "we need in
+  particular mistral, openai, if possible other european providers and other local apis beyond
+  ollama"). One adapter for the OpenAI Chat Completions API with tool calling, which most
+  platforms serve. The agent keeps its `Provider` protocol and its Anthropic-shaped messages
+  (ARCH); the adapter translates at its edge (`tool_use` to `tool_calls`, `tool_result` to
+  `role: tool`, tool-call arguments streamed in pieces, stop reasons, strict schemas where the
+  platform has them). In the user's order of need, one PR each, in both implementations:
+  - [ ] 2.29.1 A provider table in both implementations: name, display name, host, local or
+    remote, key source and variable, model pattern, network rules. Anthropic and Ollama move onto
+    it with no change in behaviour; the `provider == "ollama"` checks in the CLI and settings
+    become lookups. Acceptance: the existing suites pass unchanged in both.
+  - [ ] 2.29.2 The Chat Completions adapter and `openai-compatible` with an explicit URL (`https`,
+    or loopback `http`), and presets for local servers beyond Ollama, each with its default
+    loopback port: llama.cpp's `llama-server`, LM Studio, vLLM, LocalAI, Jan, llamafile and
+    `mlx_lm.server` (GAPS Q13). Local servers get Ollama's loopback rules: no proxies, no
+    redirects, "stays on this machine"; 2.31's reading of tool calls written as text applies.
+    Go: a Chat Completions client on `net/http` beside the Messages client, no dependencies.
+  - [ ] 2.29.3 `openai` and `mistral` (La Plateforme, `api.mistral.ai`), with their keys.
+  - [ ] 2.29.4 Other European platforms with an OpenAI-compatible API and tool calling, candidates
+    to confirm against each one's documentation (GAPS Q13): Scaleway Generative APIs, OVHcloud
+    AI Endpoints, IONOS AI Model Hub, STACKIT AI Model Serving, Nebius AI Studio. `ush ai
+    configure` and the banner show the platform's country and region.
+  - [ ] 2.29.5 The remaining presets: `huggingface` (the Inference Providers router), `gemini`
+    (Google's OpenAI-compatible endpoint), `groq`, `openrouter`, `together`, `deepseek`, `azure`
+    (the user's resource URL).
+  - **Presets:** each a known host checked against the platform's docs when implemented; a
+    platform whose models don't call tools reliably through its API is left out, with the reason
+    in DONE.
   - **Keys:** per platform, in the keychain (account = preset) or the 0600 file, or from the
     platform's usual variable (`OPENAI_API_KEY`, `MISTRAL_API_KEY`, `HF_TOKEN`, …) as for
     Anthropic, never as root. The key is redacted from everything sent, and those variables are
-    removed from the commands ush runs.
+    removed from the commands ush runs. Local servers need none unless configured.
   - **Disclosure:** the banner names the platform and host. `ush ai configure` offers the presets,
     and the checker can use any of them (`provider:model`).
-  - **Acceptance:**
+  - **Acceptance** (each sub-item for what it adds):
     - a local mock of Chat Completions, streamed and not, with tool calls split across chunks;
       errors, retries and rate limits; tests for every preset's URL and key source, the
       loopback rules, key redaction, and root ignoring the variables;
     - a live smoke test and the injection eval on at least one OpenAI-compatible local server,
       free; paid platforms only with explicit configuration;
-    - SEC (new destinations), ADMIN (network table), USER and SOTA updated;
-    - Go: a Chat Completions client on `net/http` beside the Messages client (streaming, tool
-      calls, retries), with the same presets and keys; no dependencies.
+    - SEC (new destinations), ADMIN (network table), USER and SOTA updated.
 - [ ] 2.30 *py – go –* Cloud platforms that need their own signing, after 2.29: AWS Bedrock (SigV4) and
   Google Vertex AI (service accounts), for Anthropic and other models there. Where a platform's
   OpenAI-compatible endpoint covers tool calling, 2.29's adapter is used instead. Acceptance: as
@@ -292,6 +309,32 @@ Done in Python, and in Go through the port (section 4).
   tools when it refuses an unknown one, and three turns of refused calls stop a request.
   Acceptance: unit, provider (mock Ollama) and CLI tests in both implementations; llama3.2:3b
   proposes a command for the request in 6 of 6 runs in each. Done 2026-10-29 (DONE).
+
+- [ ] 2.32 *py – go –* The user's shell in the core (user, 2026-10-30: "bash, sh, potentially fish and
+  powershell"), before 2.27: the prompts, proposals and explanations say "the user's shell is
+  zsh" today (agent and CLI prompts), so a proposal for a bash or fish user is written for zsh.
+  The plugin tells ush its shell (`USH_SHELL`, set when it loads); without a plugin, ush takes
+  the shell from `$SHELL`, and a setting overrides both. Proposals, explanations and notes name
+  that shell and its version family (bash, POSIX sh, fish, PowerShell). Agent mode keeps running
+  its commands under `zsh -f`, because the read-only policy follows zsh's rules (GAPS Q15). The
+  plugin's contract with ush (the `USH_HANDOFF` files, exit status, recorded output, keys) is
+  written down in ARCH, and the pty tests take the shell as a parameter. Acceptance: tests that
+  the shell from `USH_SHELL`, `$SHELL` or the setting reaches the system prompt, in that order of
+  precedence; a proposal that doesn't parse in the user's shell (`bash -n`, `sh -n`,
+  `fish --no-execute`) is sent back to the model once, then shown with a warning, tested
+  against the mock; ARCH, USER, the man page updated.
+- [ ] 2.33 *py – go –* POSIX sh (`dash`, BusyBox `ash`, `sh` on macOS) (user, 2026-10-30), after 2.32. These
+  shells have no line editor ush can hook into, so there is no plugin: `ush '//…'` is quoted,
+  proposals are in POSIX syntax and are printed, and running one is the user's step (GAPS Q14).
+  Acceptance: the CLI tests under `dash` and BusyBox `sh`; proposals pass `sh -n`; USER says
+  what sh users don't get (no `// …`, no pre-filled line, no recorded output unless Q14 adds it).
+- [ ] 2.34 *py – go –* PowerShell 7 (`pwsh`) on macOS and Linux (user, 2026-10-30: "potentially"), after
+  2.28: a module for the profile with PSReadLine (`Set-PSReadLineKeyHandler` on Enter for
+  `// …`, `[Microsoft.PowerShell.PSConsoleReadLine]::Replace` to pre-fill the proposal, the
+  exit status from `$?`/`$LASTEXITCODE`, output through `Tee-Object`), proposals in PowerShell's
+  syntax, propose mode only (GAPS Q15). Windows is out of scope until GAPS Q16 is answered.
+  Acceptance: the plugin's pty tests ported to pwsh 7 on macOS and Linux; the installer offers
+  the profile; the Go archive carries the module.
 
 ## 3. Release
 
