@@ -250,6 +250,17 @@ can only add friction (always ask, or never run, even when approved) is safe and
     command runs in that shell itself.
   - The saved conversation holds redacted output. It is a per-user, 0600 file that expires after
     an hour; history still keeps no output.
+- **Providers and models behind tables, not checks** (TODO 2.29.1, 2026-10-30, GAPS Q13). A
+  provider table holds each platform's host, keys and network rules; a model profile holds what
+  a model takes (effort or reasoning, strict tool schemas, output limits, tool calls written as
+  text). Settings stay neutral and each adapter maps them, so adding OpenAI, Mistral and the
+  platforms after them adds rows rather than `provider == …` branches in the CLI.
+- **Shells behind one interface** (TODO 2.32, 2026-10-30, GAPS Q15). Each shell supplies its
+  syntax for the prompts, a parse check, the plugin's capabilities and, optionally, agent mode (a
+  policy tokenizer and an executor). Proposals are in the syntax of the shell ush runs in, or of
+  `--shell NAME`. Agent mode is refused in a shell without its own policy and executor, rather
+  than running zsh commands for a bash or fish user: the policy is only sound for the shell it
+  models, and only zsh has one now.
 - **Name:** `wsh` (Wave Terminal's CLI) and `zish` (an active Zig shell) were taken.
   `ush`, "the you shell", collides only with small, unrelated npm/PyPI packages.
 

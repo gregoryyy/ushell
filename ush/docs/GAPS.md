@@ -4,7 +4,7 @@ Open questions and explicit assumptions for ush, both implementations. Q9–Q12 
 ushgo's Q1–Q4 and A1–A3 until 2026-10-29. **Questions** are for the user to answer.
 **Assumptions** are what the documents currently take for granted because they seemed clear enough
 not to ask; check them and correct any that are wrong. The rules for this file are in
-[SDLC](../../docs/SDLC.md#work-items). Status: 2026-10-30 05:16.
+[SDLC](../../docs/SDLC.md#work-items). Status: 2026-10-30 05:40.
 
 - Answers carry date, time and author: `**Answer** (2026-10-27 15:10, Gregor Heinrich): …`. Short
   answers are fine. A changed answer goes on top; earlier ones stay below it, struck through.
@@ -200,6 +200,13 @@ working, so the list is worth choosing rather than growing by default.
   on-premises platform, which `openai-compatible` with a URL covers.
 - **Alternative:** Mistral and the generic `openai-compatible` URL only; any other platform is
   configured by its URL.
+- **Answer** (2026-10-30 05:40, Gregor Heinrich): "first openai, mistral model settings
+  (consider internal abstraction?)". Taken as: OpenAI and Mistral are the first presets; their
+  model settings (effort or reasoning, strict tool schemas, output limits) go through an internal
+  abstraction rather than checks per platform. The other European platforms and the local
+  presets stay as proposed, after OpenAI and Mistral; the list is still open.
+- **Resolved** (in part): TODO 2.29.1 (provider table and model profiles), 2.29.2 (OpenAI and
+  Mistral moved first); [ARCH](ARCH.md#decisions).
 
 ### Q14. How does a POSIX sh user run a proposal?
 
@@ -224,6 +231,17 @@ security-critical part.
   propose mode only (TODO 2.34).
 - **Alternative:** proposals in POSIX sh for every shell, wrapped as `sh -c '…'` in fish and
   PowerShell: one syntax to check, but awkward lines for those users.
+- **Answer** (2026-10-30 05:40, Gregor Heinrich): "agent mode not accepted in shells that don't
+  support it. (again abstraction; i believe this is an interface not a capability problem)" and
+  "create proposals in fish syntax — (generally generate in the syntax of the shell ush runs in.
+  system prompts can easily change; start using ush --shell bash etc. if the user shell is not
+  compatible)".
+- **Resolved:** a shell interface in the core, [ARCH](ARCH.md#decisions), TODO 2.32. Proposals,
+  explanations and notes are in the syntax of the shell ush runs in; `--shell NAME` (and a
+  setting) chooses one when that shell isn't supported. Agent mode is a part of the interface:
+  a shell whose implementation has no policy and executor refuses `--run` with the reason, and
+  only zsh has them for now. The proposal above (agent mode under `zsh -f` for every shell) is
+  not taken.
 
 ### Q16. PowerShell on Windows?
 

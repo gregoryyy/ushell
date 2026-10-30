@@ -3,7 +3,7 @@
 Where ush goes, in both implementations. The phases build on each other, and each one ends with a gate:
 a tested result that decides whether the next phase starts. When a phase starts, its work becomes
 items in [TODO](TODO.md), and this file links to them. Open questions are in [GAPS](GAPS.md).
-Status: 2026-10-30 05:16; phases 1 and 3 are done, 0.2.1 is released; 0.2.2 is merged and its
+Status: 2026-10-30 05:40; phases 1 and 3 are done, 0.2.1 is released; 0.2.2 is merged and its
 release is next (TODO 5.10). Phase 4 was widened on 2026-10-30: European and local platforms, sh
 and PowerShell.
 
@@ -59,17 +59,18 @@ Two tracks that touch different code and can run side by side: the platforms liv
 provider adapters, the shells in the plugins and the prompts. In the user's order of need
 (2026-10-30):
 
-- **Platforms (2.29),** one PR each: the provider table (2.29.1); the Chat Completions adapter
-  with any OpenAI-compatible URL and the local servers beyond Ollama (llama.cpp, LM Studio, vLLM,
-  LocalAI, Jan, llamafile, MLX), under Ollama's loopback rules (2.29.2); OpenAI and Mistral
-  (2.29.3); other European platforms such as Scaleway, OVHcloud, IONOS, STACKIT and Nebius
+- **Platforms (2.29),** one PR each: the provider table and model profiles (2.29.1); the Chat
+  Completions adapter with OpenAI, Mistral and any OpenAI-compatible URL (2.29.2); the local
+  servers beyond Ollama (llama.cpp, LM Studio, vLLM, LocalAI, Jan, llamafile, MLX), under
+  Ollama's loopback rules (2.29.3); other European platforms such as Scaleway, OVHcloud, IONOS, STACKIT and Nebius
   (2.29.4); then Hugging Face, Gemini, Groq, OpenRouter, Together, DeepSeek and Azure (2.29.5).
   More, and smaller, models make SECTEST F8 more likely, so argument origin (2.23) goes with them
   (GAPS Q17). Bedrock and Vertex (2.30) last.
-- **Shells:** first the user's shell in the core (2.32), since proposals are written for zsh
-  today; then bash (2.27), POSIX sh without a plugin (2.33), fish (2.28) and PowerShell 7 on
-  macOS and Linux (2.34). Agent mode keeps running commands under `zsh -f` (GAPS Q15); Windows
-  is a separate decision (GAPS Q16).
+- **Shells:** first a shell interface in the core (2.32): proposals in the syntax of the shell
+  ush runs in, `--shell NAME` to choose one; then bash (2.27), POSIX sh without a plugin (2.33),
+  fish (2.28) and PowerShell 7 on macOS and Linux (2.34). Agent mode only where a shell's
+  implementation has a policy and executor, zsh for now (GAPS Q15); Windows is a separate
+  decision (GAPS Q16).
 - **History as context (2.26),** per shell, once the shells exist: filtered, off by default.
 
 ## 5. Shared paradigm with wish
@@ -78,6 +79,9 @@ Align the `//` contract (what counts as a request, what history records, what re
 policy semantics with wish once wish has a shell (2.7).
 
 ## Ideas not scheduled
+
+- **Agent mode in bash and other shells:** a policy tokenizer and executor for bash (or POSIX sh)
+  behind the shell interface of TODO 2.32, with its own corpus and negative tests (GAPS Q15).
 
 - **One policy contract for ush and wish:** the corpus in `ush/conform/` could become the shared
   `//` policy contract that TODO 2.7 wants for wish.

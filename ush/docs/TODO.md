@@ -6,7 +6,7 @@ where features are tried first, and Go in [ush/go](../go/), the deliverable. Wha
 [ROAD](ROAD.md), open questions in [GAPS](GAPS.md), progress in [DONE](DONE.md). The process is
 [SDLC](../../docs/SDLC.md); the rules in [AGENTS.md](../../AGENTS.md) take precedence. IDs are ush's
 own, independent of wish's. Until 2026-10-29 each implementation had its own TODO; their old IDs
-map to these as listed in [Old IDs](#old-ids). Status: 2026-10-30 05:16.
+map to these as listed in [Old IDs](#old-ids). Status: 2026-10-30 05:40.
 
 Status: `[ ]` open, `[x]` done. An item of section 2 also says where it is built: *py ✓ go ✓* in
 both, *py ✓ go –* in Python so far, *py – go –* in neither. Tags:
@@ -248,12 +248,14 @@ Done in Python, and in Go through the port (section 4).
 - [ ] 2.27 *py – go –* bash (ROAD idea, scheduled 2026-10-29), after 2.32: a bash plugin with the zsh plugin's
   behaviour as far as bash allows: `// …` without quotes (a `DEBUG` trap or `bind -x` on Enter),
   the proposal pre-filled (`bind -x` sets `READLINE_LINE`, bash 4 or newer), output recorded,
-  Esc and Down on a proposal, the installer offering `~/.bashrc`. The `ush>` session keeps
+  Esc and Down on a proposal, the installer offering `~/.bashrc`; proposals in bash's syntax,
+  no agent mode until bash has a policy and executor (GAPS Q15). The `ush>` session keeps
   zsh's `vared` where zsh exists. Acceptance: the zsh plugin's pty tests, ported to bash 4 and
   5 (macOS ships bash 3.2: the plugin refuses it with the reason); the Go release archive carries
   the bash plugin, and its installer offers `~/.bashrc`.
 - [ ] 2.28 *py – go –* fish (ROAD idea, scheduled 2026-10-29): the same in fish (`commandline`, `bind`,
-  `fish_preexec`/`fish_postexec`), after bash, with proposals in fish's syntax (GAPS Q15).
+  `fish_preexec`/`fish_postexec`), after bash, with proposals in fish's syntax and no agent
+  mode (GAPS Q15).
   Acceptance: as for 2.27, in fish 3, with the Go archive and installer.
 - [ ] 2.29 *py – go –* More model platforms (user, 2026-10-29: "widen the compatibility with external models:
   openai, mistral, huggingface, any other important platforms"; 2026-10-30: "we need in
@@ -263,17 +265,23 @@ Done in Python, and in Go through the port (section 4).
   (ARCH); the adapter translates at its edge (`tool_use` to `tool_calls`, `tool_result` to
   `role: tool`, tool-call arguments streamed in pieces, stop reasons, strict schemas where the
   platform has them). In the user's order of need, one PR each, in both implementations:
-  - [ ] 2.29.1 A provider table in both implementations: name, display name, host, local or
-    remote, key source and variable, model pattern, network rules. Anthropic and Ollama move onto
-    it with no change in behaviour; the `provider == "ollama"` checks in the CLI and settings
-    become lookups. Acceptance: the existing suites pass unchanged in both.
-  - [ ] 2.29.2 The Chat Completions adapter and `openai-compatible` with an explicit URL (`https`,
-    or loopback `http`), and presets for local servers beyond Ollama, each with its default
-    loopback port: llama.cpp's `llama-server`, LM Studio, vLLM, LocalAI, Jan, llamafile and
-    `mlx_lm.server` (GAPS Q13). Local servers get Ollama's loopback rules: no proxies, no
-    redirects, "stays on this machine"; 2.31's reading of tool calls written as text applies.
-    Go: a Chat Completions client on `net/http` beside the Messages client, no dependencies.
-  - [ ] 2.29.3 `openai` and `mistral` (La Plateforme, `api.mistral.ai`), with their keys.
+  - [ ] 2.29.1 A provider table and model profiles in both implementations (GAPS Q13: "consider
+    internal abstraction"). The table: name, display name, host, local or remote, key source and
+    variable, model pattern, network rules. A model profile: what a model takes (effort or
+    reasoning levels, strict tool schemas, tool choice, output limit, streamed tool arguments,
+    tool calls written as text), so settings stay neutral (`effort`) and each adapter maps them,
+    or says in `ush ai` that a model ignores one. Anthropic and Ollama move onto both with no
+    change in behaviour; the `provider == "ollama"` checks in the CLI and settings become
+    lookups. Acceptance: the existing suites pass unchanged in both; tests for the mapping of each
+    setting per profile.
+  - [ ] 2.29.2 The Chat Completions adapter, with `openai` and `mistral` (La Plateforme,
+    `api.mistral.ai`) and their keys, the first presets (GAPS Q13), and `openai-compatible` with
+    an explicit URL (`https`, or loopback `http`). Go: a Chat Completions client on `net/http`
+    beside the Messages client, no dependencies.
+  - [ ] 2.29.3 Presets for local servers beyond Ollama, each with its default loopback port:
+    llama.cpp's `llama-server`, LM Studio, vLLM, LocalAI, Jan, llamafile and `mlx_lm.server`
+    (GAPS Q13). Local servers get Ollama's loopback rules: no proxies, no redirects, "stays on
+    this machine"; 2.31's reading of tool calls written as text applies.
   - [ ] 2.29.4 Other European platforms with an OpenAI-compatible API and tool calling, candidates
     to confirm against each one's documentation (GAPS Q13): Scaleway Generative APIs, OVHcloud
     AI Endpoints, IONOS AI Model Hub, STACKIT AI Model Serving, Nebius AI Studio. `ush ai
@@ -310,22 +318,30 @@ Done in Python, and in Go through the port (section 4).
   Acceptance: unit, provider (mock Ollama) and CLI tests in both implementations; llama3.2:3b
   proposes a command for the request in 6 of 6 runs in each. Done 2026-10-29 (DONE).
 
-- [ ] 2.32 *py – go –* The user's shell in the core (user, 2026-10-30: "bash, sh, potentially fish and
-  powershell"), before 2.27: the prompts, proposals and explanations say "the user's shell is
-  zsh" today (agent and CLI prompts), so a proposal for a bash or fish user is written for zsh.
-  The plugin tells ush its shell (`USH_SHELL`, set when it loads); without a plugin, ush takes
-  the shell from `$SHELL`, and a setting overrides both. Proposals, explanations and notes name
-  that shell and its version family (bash, POSIX sh, fish, PowerShell). Agent mode keeps running
-  its commands under `zsh -f`, because the read-only policy follows zsh's rules (GAPS Q15). The
-  plugin's contract with ush (the `USH_HANDOFF` files, exit status, recorded output, keys) is
-  written down in ARCH, and the pty tests take the shell as a parameter. Acceptance: tests that
-  the shell from `USH_SHELL`, `$SHELL` or the setting reaches the system prompt, in that order of
-  precedence; a proposal that doesn't parse in the user's shell (`bash -n`, `sh -n`,
-  `fish --no-execute`) is sent back to the model once, then shown with a warning, tested
-  against the mock; ARCH, USER, the man page updated.
+- [ ] 2.32 *py – go –* A shell interface in the core (user, 2026-10-30: "bash, sh, potentially fish and
+  powershell"; GAPS Q15), before 2.27. The prompts, proposals and explanations say "the user's
+  shell is zsh" today, so a proposal for a bash or fish user is written for zsh. Each shell is an
+  implementation of one interface: its name and syntax for the prompts, a parse check for
+  proposals, the plugin's capabilities (pre-filled line, recorded output, keys), and, optionally,
+  agent mode (a policy tokenizer and an executor). zsh is the first implementation and the only
+  one with agent mode; bash, sh, fish and PowerShell get theirs in 2.27, 2.33, 2.28 and 2.34.
+  - **Which shell:** the shell ush runs in. The plugin tells ush (`USH_SHELL`, set when it
+    loads); without a plugin, the parent process, then `$SHELL`. `--shell NAME` and a `shell`
+    setting choose one, e.g. `ush --shell bash` in a shell ush doesn't support; an unsupported
+    shell without them is refused with the names ush supports.
+  - **Agent mode:** `--run` (or `mode: run`) in a shell whose implementation has no agent mode is
+    refused with the reason; propose mode works in every implemented shell.
+  - **The plugin's contract** with ush (the `USH_HANDOFF` files, exit status, recorded output,
+    keys) is written down in ARCH, and the pty tests take the shell as a parameter.
+  - **Acceptance:** tests that the shell from `--shell`, the setting, `USH_SHELL`, the parent and
+    `$SHELL` reaches the system prompt, in that order of precedence; `--run` refused in a shell
+    without agent mode; a proposal that doesn't parse in the shell (`bash -n`, `sh -n`,
+    `fish --no-execute`) sent back to the model once, then shown with a warning, against the mock;
+    the zsh suites unchanged; ARCH, USER, the man page updated.
 - [ ] 2.33 *py – go –* POSIX sh (`dash`, BusyBox `ash`, `sh` on macOS) (user, 2026-10-30), after 2.32. These
   shells have no line editor ush can hook into, so there is no plugin: `ush '//…'` is quoted,
   proposals are in POSIX syntax and are printed, and running one is the user's step (GAPS Q14).
+  No agent mode (GAPS Q15).
   Acceptance: the CLI tests under `dash` and BusyBox `sh`; proposals pass `sh -n`; USER says
   what sh users don't get (no `// …`, no pre-filled line, no recorded output unless Q14 adds it).
 - [ ] 2.34 *py – go –* PowerShell 7 (`pwsh`) on macOS and Linux (user, 2026-10-30: "potentially"), after
