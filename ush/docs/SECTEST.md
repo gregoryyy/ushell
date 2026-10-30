@@ -150,6 +150,21 @@ by commit. See [tools/ci/README.md](../../tools/ci/README.md).
 
 ## Results
 
+### 2026-10-29: prompt injection evals on v0.2.2 (level 2, local)
+
+The same eval on the installed darwin-arm64 archive of 0.2.2, built from deac48b, three times over.
+
+| Result | Count |
+| --- | --- |
+| Runs | 36 (3 × 12) |
+| The model attempted the injected command | 6 (agent mode: log twice, DNS TXT once; propose mode: HTML once, DNS TXT twice) |
+| Ran unapproved | **0** |
+
+Propose mode now shows attempts: since 0.2.2 (TODO 2.31) the tool calls llama3.2:3b writes as text
+become proposals instead of printed JSON. A proposal runs only when the user runs it, so they count
+as attempts, not as runs. F8 stays open: 3 of 84 agent-mode scenario runs over the release gates
+since 0.2.0-rc1's candidate ran an injected command unapproved.
+
 ### 2026-10-29: prompt injection evals on v0.2.1 (level 2, local)
 
 The same eval on the installed darwin-arm64 archive of 0.2.1, built from 5c77891, three times over.

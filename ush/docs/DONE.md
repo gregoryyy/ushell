@@ -14,6 +14,60 @@ implementation kept its own log: [ushpy](archive/DONE-ushpy.md), [ushgo](archive
 
 ---
 
+## 2026-10-30 08:45 — Release 0.2.2, and 0.3.0 planned
+
+TODO items: 5.10 (done), 5.11 (new: 0.3.0), 5.3 (run again). PR: #40.
+
+Agent: Opus 5.5, reasoning: not exposed, subagents: none.
+
+### Implementation notes
+
+- **The user's request:** "deploy to a homebrew tap", for the fix of TODO 2.31 (#36). The user
+  merged the version change (#37).
+- **Gate on deac48b**, the merge of #37, as 0.2.2:
+  - Level 1, macOS arm64: `just ci --post` passes all seven jobs; statuses posted.
+  - Level 1, Linux arm64 (Debian in `golang:1.27`, with mandoc, unprivileged, from
+    `git archive`): ushpy 216 OK, `go test ./...` every package OK, conformance 81 OK.
+  - Release build: `scripts/release.sh 0.2.2` and `--check` (two builds identical); the Linux
+    container gives the same four checksums:
+    - `decb5c64…` darwin-arm64
+    - `a4ac8b9f…` darwin-amd64
+    - `37af8129…` linux-arm64
+    - `ca7bacf4…` linux-amd64
+  - darwin-arm64 archive in a temporary prefix: `ush 0.2.2 (go)`, nothing writable by others,
+    `man ush` renders; `smoke.sh --bin` with llama3.2:3b: 13 PASS, 2 WARN (the model ran or
+    proposed nothing for two checks), 0 FAIL.
+  - linux-arm64 archive on `debian:13`: the checksum verifies, `ush 0.2.2 (go)`, `man ush`
+    renders, offline smoke 6 PASS.
+  - Level 2: the injection eval three times, 36 runs: 6 attempted, 0 ran unapproved (SECTEST).
+  - `govulncheck` v1.1.4: no vulnerabilities. `gitleaks git --redact .`: no leaks.
+- **Published by the agent, at the user's request:**
+  - the tag `v0.2.2` on deac48b;
+  - the GitHub release v0.2.2 (latest), with the four archives, `SHA256SUMS` and the notes.
+    Downloaded again: the checksums verify, and `SHA256SUMS` is byte-identical to the build's;
+  - the 0.2.2 formula in `gregoryyy/homebrew-ush`, `brew style` clean, its build reproduced by
+    hand from the tag's tarball (`ush 0.2.2 (go)`, the plugin and the page at its paths).
+- **0.3.0 (TODO 5.11):**
+  - The user asked for "bash, sh and other commonly used shells" in 0.3.0, and accepted the
+    agent's proposal with "write to pr as proposed".
+  - The proposal is adjusted to the answers to GAPS Q15–Q17, merged meanwhile in #38: agent
+    mode only in zsh rather than a bash executor, and argument origin (2.23) before the new
+    adapter ships.
+  - PowerShell, the local server presets and the other platforms come after 0.3.0, as proposed.
+- **Docs:** README and ushgo's README say 0.2.2; ROAD has the 0.3.0 paragraph; SECTEST the eval.
+
+### Deviations
+
+- **`brew install` still not run here** (outdated Command Line Tools on this Mac).
+- **Not run:** Linux amd64 and Intel macOS (no machine); a live Anthropic run (not authorised).
+
+### Insights
+
+- Propose mode's eval counts moved from 0 attempts to some once written-out calls became real
+  proposals (2.31). The eval measures what the model tries; what runs unapproved is still 0.
+
+---
+
 ## 2026-10-29 21:20 — Tool calls that local models write as text
 
 TODO items: 2.31 (new), in both implementations. PR: #36.
