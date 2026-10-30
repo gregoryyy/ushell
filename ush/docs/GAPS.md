@@ -4,7 +4,7 @@ Open questions and explicit assumptions for ush, both implementations. Q9–Q12 
 ushgo's Q1–Q4 and A1–A3 until 2026-10-29. **Questions** are for the user to answer.
 **Assumptions** are what the documents currently take for granted because they seemed clear enough
 not to ask; check them and correct any that are wrong. The rules for this file are in
-[SDLC](../../docs/SDLC.md#work-items). Status: 2026-10-29 02:01.
+[SDLC](../../docs/SDLC.md#work-items). Status: 2026-10-30 06:05.
 
 - Answers carry date, time and author: `**Answer** (2026-10-27 15:10, Gregor Heinrich): …`. Short
   answers are fine. A changed answer goes on top; earlier ones stay below it, struck through.
@@ -185,13 +185,115 @@ command that ran unapproved. Propose mode, the default, attempted nothing.
   from earlier command output.
 - **Alternative:** block the release until a mitigation passes the eval.
 
+### Q13. Which European platforms and local servers get presets?
+
+Asked by the user on 2026-10-30: "mistral, openai, if possible other european providers and other
+local apis beyond ollama". Every preset is a host ush sends redacted output to, and a name to keep
+working, so the list is worth choosing rather than growing by default.
+
+- **Proposed:** remote, in this order: Mistral (France), then Scaleway Generative APIs (France),
+  OVHcloud AI Endpoints (France), IONOS AI Model Hub (Germany), STACKIT AI Model Serving
+  (Germany) and Nebius AI Studio (Netherlands), each kept only if its documentation and a mock
+  test show an OpenAI-compatible API with tool calling for the models it offers. Local:
+  llama.cpp's `llama-server`, LM Studio, vLLM, LocalAI, Jan, llamafile and `mlx_lm.server`, each
+  a default loopback port over the generic adapter. Aleph Alpha is left out: it is sold as an
+  on-premises platform, which `openai-compatible` with a URL covers.
+- **Alternative:** Mistral and the generic `openai-compatible` URL only; any other platform is
+  configured by its URL.
+- **Answer** (2026-10-30 05:40, Gregor Heinrich): "first openai, mistral model settings
+  (consider internal abstraction?)". Taken as: OpenAI and Mistral are the first presets; their
+  model settings (effort or reasoning, strict tool schemas, output limits) go through an internal
+  abstraction rather than checks per platform. The other European platforms and the local
+  presets stay as proposed, after OpenAI and Mistral; the list is still open.
+- **Resolved** (in part): TODO 2.29.1 (provider table and model profiles), 2.29.2 (OpenAI and
+  Mistral moved first); [ARCH](ARCH.md#decisions).
+
+### Q14. How does a POSIX sh user run a proposal?
+
+`dash`, BusyBox `ash` and other plain `sh` have no line editor ush can hook into (TODO 2.33), so
+the proposal can't be put on the command line, and the output isn't recorded.
+
+- **Proposed:** ush prints the proposal; `ush --print //…` prints only the command, so
+  `eval "$(ush --print '//…')"` runs it after the user saw it. Without the plugin, `//` continues
+  without the output of what ran, and says so.
+- **Alternative:** print only, and leave running it to copy and paste.
+- **Question back** (2026-10-30 06:05, Gregor Heinrich): "if the shell has access to history and
+  output, why not print the proposal to the shell line and let the user press enter. this gives
+  the possibility of editing. doesn't this work with all shells?"
+- **Reply** (2026-10-30 06:05, agent): it works in every shell with a line editor that a
+  function can write to: zsh (`BUFFER`), bash 4 or newer (`READLINE_LINE`), fish
+  (`commandline`), PowerShell (PSReadLine), and ksh93 (`.sh.edchar` in a `KEYBD` trap). That
+  covers every shell in TODO except POSIX sh. `dash` and BusyBox `ash` have no such interface:
+  their line editor, where they have one, can't be set from a function, they have no hook before
+  or after a command, and `dash` keeps no history without libedit. The only way left to put text
+  on their command line is to fake keystrokes with the `TIOCSTI` ioctl, which Linux turns off by
+  default since 6.2 and OpenBSD removed, because it lets any program type into a terminal; ush
+  shouldn't depend on it.
+- **Proposed instead** (2026-10-30, agent): for sh, ush itself shows the proposal on an editable
+  line (on `/dev/tty`, pre-filled, Enter to accept, Esc to drop), as the `ush>` session does
+  today. A small function sourced from `~/.profile` or `$ENV`, `u '…'` (POSIX doesn't allow `//`
+  as a function name), then runs the accepted line in the user's own shell with `eval`, so `cd`
+  and variables take effect, and records its exit status for the next `//`. Editing and Enter
+  work as in zsh; what sh users don't get is `// …` without quotes, the line in the shell's
+  history, and the output, which can't be recorded without a subshell that would lose `cd`.
+
+### Q15. Proposals in each shell's syntax, and agent mode under zsh?
+
+fish and PowerShell differ from zsh in syntax (fish: `set`, `and`/`or`, its own quoting;
+PowerShell: cmdlets, objects in pipes). The read-only policy (ARCH) follows `zsh -f`'s word rules
+and runs agent-mode commands under `zsh -f`; writing a policy per shell would multiply the
+security-critical part.
+
+- **Proposed:** propose mode writes proposals in the user's shell's syntax (TODO 2.32). Agent mode
+  (`--run`) keeps writing and checking zsh commands and running them under `zsh -f` whatever the
+  user's shell; where zsh isn't installed, `--run` refuses with the reason. PowerShell gets
+  propose mode only (TODO 2.34).
+- **Alternative:** proposals in POSIX sh for every shell, wrapped as `sh -c '…'` in fish and
+  PowerShell: one syntax to check, but awkward lines for those users.
+- **Answer** (2026-10-30 05:40, Gregor Heinrich): "agent mode not accepted in shells that don't
+  support it. (again abstraction; i believe this is an interface not a capability problem)" and
+  "create proposals in fish syntax — (generally generate in the syntax of the shell ush runs in.
+  system prompts can easily change; start using ush --shell bash etc. if the user shell is not
+  compatible)".
+- **Resolved:** a shell interface in the core, [ARCH](ARCH.md#decisions), TODO 2.32. Proposals,
+  explanations and notes are in the syntax of the shell ush runs in; `--shell NAME` (and a
+  setting) chooses one when that shell isn't supported. Agent mode is a part of the interface:
+  a shell whose implementation has no policy and executor refuses `--run` with the reason, and
+  only zsh has them for now. The proposal above (agent mode under `zsh -f` for every shell) is
+  not taken.
+
+### Q16. PowerShell on Windows?
+
+TODO 2.34 targets `pwsh` 7 on macOS and Linux, inside A11 (no Windows). Windows would need its own
+execution (no process groups, no `/dev/tty`), the Credential Manager instead of the keychain,
+Windows release archives, and a policy for Windows commands.
+
+- **Proposed:** not now. PowerShell on macOS and Linux first; Windows as a separate ROAD phase if
+  the user asks for it, starting with propose mode only.
+- **Answer** (2026-10-30 06:05, Gregor Heinrich): "not now".
+- **Resolved:** TODO 2.34 is PowerShell 7 on macOS and Linux; A11 stands.
+
+### Q17. Argument origin before the new platforms are released?
+
+The injection eval (SECTEST F8) failed with a 3B local model in agent mode. TODO 2.29 adds many
+models, local and small among them.
+
+- **Proposed:** a release that ships 2.29.2 or later also ships argument origin (TODO 2.23), and
+  the release gate runs the injection eval on one model per new adapter. The platforms can be
+  built and merged before; the release waits.
+- **Alternative:** release the platforms with F8 documented, as for 0.2.0 and 0.2.1 (Q12).
+- **Answer** (2026-10-30 06:05, Gregor Heinrich): "wait for injection fix before releasing".
+- **Resolved:** TODO 2.29 (release condition) and [ROAD](ROAD.md) phase 4: the platforms can be
+  built and merged, but no release ships them before TODO 2.23, and that release's gate runs the
+  injection eval on one model per new adapter.
+
 ## Assumptions
 
 | ID | Assumption | Where it matters | Correction |
 | --- | --- | --- | --- |
 | A1 | One person uses ush per account; under `sudo`, the invoking user (`SUDO_USER`) owns the key and settings. | [SEC](SEC.md), `config.py` | |
 | A2 | Users accept that redacted command output goes to the selected provider, as the banner says before each request. | [SEC](SEC.md), README | |
-| A3 | zsh is the only supported shell; bash and fish users quote requests or don't use the plugin. | [ARCH](ARCH.md), plugin | Until TODO 2.27 (bash) and 2.28 (fish) |
+| A3 | zsh is the only supported shell; bash and fish users quote requests or don't use the plugin. | [ARCH](ARCH.md), plugin | Until TODO 2.32 (the user's shell), 2.27 (bash), 2.33 (sh), 2.28 (fish), 2.34 (PowerShell) |
 | A4 | Anthropic's default model stays `claude-opus-5-5` with effort `medium`, even though it is the most expensive choice. | `config.py`, README | |
 | A5 | "An adversarial model to check the proposed implementation that takes independent sources; it can be a small model" (2026-10-27) means a runtime checker: a second model that judges each command or script the assistant proposes, from independent input (the user's requests only, not the output the assistant read). Not a reviewer of code changes in this repository. | TODO 2.13, [ARCH](ARCH.md), `check.py` | |
 | A6 | The checker is off unless configured: it needs a model, adds a request per command, and small models raise false alarms. | `config.py`, README | |
@@ -199,5 +301,5 @@ command that ran unapproved. Propose mode, the default, attempted nothing.
 | A8 | In propose mode, the line the user runs from the prompt that held the proposal is its result, even if they replaced it entirely; only another `ush` call there counts as not running it. | plugin, `handoff.py` | |
 | A9 | A conversation continues in the same shell for an hour without use; `--new` starts over. Under `sudo` it doesn't continue, because each `sudo` is a new parent process. | `handoff.py`, `cli.py` | |
 | A10 | ushgo uses ush's settings, key store and history files, in the same formats, so users can switch between them. | [ARCH](ARCH.md), TODO 4.4, 4.5 | |
-| A11 | macOS and Linux only, on arm64 and amd64, as for ush; no Windows. | TODO 5.1 | |
+| A11 | macOS and Linux only, on arm64 and amd64, as for ush; no Windows. | TODO 5.1, 2.34 | PowerShell 7 on macOS and Linux only; Windows is Q16 |
 | A12 | Developers install Go with Homebrew (`brew install go`, 1.27); CI pins 1.27 through `actions/setup-go`. | README, CI | |
