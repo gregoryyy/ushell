@@ -209,12 +209,13 @@ Done in Python, and in Go through the port (section 4).
   ignores a broken or linked file; the Go session editor and store use the same file and keys.
 - [x] 2.25 *py ✓ go ✓* Notes on command output and files (user, 2026-10-29: "add the possibility to analyze
   command output and files. this could be a shortcut like ctrl-n like notes"; ROAD's
-  `ush analyze`). The key is Ctrl-X n, and the output is the plugin's recorded output (GAPS Q7,
-  both answered):
-  - **Ctrl-X n** on the command line asks the model for notes and prints them before the next
+  `ush analyze`). The key is Ctrl-N (Ctrl-X n until 2026-10-30), and the output is the plugin's
+  recorded output (GAPS Q7, both answered):
+  - **Ctrl-N** on the command line asks the model for notes and prints them before the next
     prompt, so they stay in the scrollback. A comment ending the line is the question
     (`cat app.log # any errors?`); without one, the model says what it is and what stands out.
-    `USH_NOTES_KEY` sets another key (empty: none); the key is bound only where it is free.
+    `USH_NOTES_KEY` sets another key (empty: none). Ctrl-N is taken only where it still has
+    zsh's own meaning, another key only where it is free.
   - **Command output:** on an empty line, or one with only a question, notes on the output of the
     last command the plugin recorded, whether or not `//` has taken it (it stays as `last-ran` and
     `last-output` in the handoff directory). On a command line, the command runs as a proposal
