@@ -6,7 +6,7 @@ where features are tried first, and Go in [ush/go](../go/), the deliverable. Wha
 [ROAD](ROAD.md), open questions in [GAPS](GAPS.md), progress in [DONE](DONE.md). The process is
 [SDLC](../../docs/SDLC.md); the rules in [AGENTS.md](../../AGENTS.md) take precedence. IDs are ush's
 own, independent of wish's. Until 2026-10-29 each implementation had its own TODO; their old IDs
-map to these as listed in [Old IDs](#old-ids). Status: 2026-10-30 05:40.
+map to these as listed in [Old IDs](#old-ids). Status: 2026-10-30 06:05.
 
 Status: `[ ]` open, `[x]` done. An item of section 2 also says where it is built: *py ✓ go ✓* in
 both, *py ✓ go –* in Python so far, *py – go –* in neither. Tags:
@@ -305,6 +305,9 @@ Done in Python, and in Go through the port (section 4).
     - a live smoke test and the injection eval on at least one OpenAI-compatible local server,
       free; paid platforms only with explicit configuration;
     - SEC (new destinations), ADMIN (network table), USER and SOTA updated.
+  - **Release:** the platforms are built and merged as they come, but no release ships 2.29.2 or
+    later before argument origin (2.23); that release's gate runs the injection eval on one model
+    per new adapter (GAPS Q17).
 - [ ] 2.30 *py – go –* Cloud platforms that need their own signing, after 2.29: AWS Bedrock (SigV4) and
   Google Vertex AI (service accounts), for Anthropic and other models there. Where a platform's
   OpenAI-compatible endpoint covers tool calling, 2.29's adapter is used instead. Acceptance: as
@@ -348,7 +351,7 @@ Done in Python, and in Go through the port (section 4).
   2.28: a module for the profile with PSReadLine (`Set-PSReadLineKeyHandler` on Enter for
   `// …`, `[Microsoft.PowerShell.PSConsoleReadLine]::Replace` to pre-fill the proposal, the
   exit status from `$?`/`$LASTEXITCODE`, output through `Tee-Object`), proposals in PowerShell's
-  syntax, propose mode only (GAPS Q15). Windows is out of scope until GAPS Q16 is answered.
+  syntax, propose mode only (GAPS Q15). Not on Windows (GAPS Q16: "not now").
   Acceptance: the plugin's pty tests ported to pwsh 7 on macOS and Linux; the installer offers
   the profile; the Go archive carries the module.
 

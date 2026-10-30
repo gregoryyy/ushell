@@ -4,7 +4,7 @@ Open questions and explicit assumptions for ush, both implementations. Q9–Q12 
 ushgo's Q1–Q4 and A1–A3 until 2026-10-29. **Questions** are for the user to answer.
 **Assumptions** are what the documents currently take for granted because they seemed clear enough
 not to ask; check them and correct any that are wrong. The rules for this file are in
-[SDLC](../../docs/SDLC.md#work-items). Status: 2026-10-30 05:40.
+[SDLC](../../docs/SDLC.md#work-items). Status: 2026-10-30 06:05.
 
 - Answers carry date, time and author: `**Answer** (2026-10-27 15:10, Gregor Heinrich): …`. Short
   answers are fine. A changed answer goes on top; earlier ones stay below it, struck through.
@@ -217,6 +217,25 @@ the proposal can't be put on the command line, and the output isn't recorded.
   `eval "$(ush --print '//…')"` runs it after the user saw it. Without the plugin, `//` continues
   without the output of what ran, and says so.
 - **Alternative:** print only, and leave running it to copy and paste.
+- **Question back** (2026-10-30 06:05, Gregor Heinrich): "if the shell has access to history and
+  output, why not print the proposal to the shell line and let the user press enter. this gives
+  the possibility of editing. doesn't this work with all shells?"
+- **Reply** (2026-10-30 06:05, agent): it works in every shell with a line editor that a
+  function can write to: zsh (`BUFFER`), bash 4 or newer (`READLINE_LINE`), fish
+  (`commandline`), PowerShell (PSReadLine), and ksh93 (`.sh.edchar` in a `KEYBD` trap). That
+  covers every shell in TODO except POSIX sh. `dash` and BusyBox `ash` have no such interface:
+  their line editor, where they have one, can't be set from a function, they have no hook before
+  or after a command, and `dash` keeps no history without libedit. The only way left to put text
+  on their command line is to fake keystrokes with the `TIOCSTI` ioctl, which Linux turns off by
+  default since 6.2 and OpenBSD removed, because it lets any program type into a terminal; ush
+  shouldn't depend on it.
+- **Proposed instead** (2026-10-30, agent): for sh, ush itself shows the proposal on an editable
+  line (on `/dev/tty`, pre-filled, Enter to accept, Esc to drop), as the `ush>` session does
+  today. A small function sourced from `~/.profile` or `$ENV`, `u '…'` (POSIX doesn't allow `//`
+  as a function name), then runs the accepted line in the user's own shell with `eval`, so `cd`
+  and variables take effect, and records its exit status for the next `//`. Editing and Enter
+  work as in zsh; what sh users don't get is `// …` without quotes, the line in the shell's
+  history, and the output, which can't be recorded without a subshell that would lose `cd`.
 
 ### Q15. Proposals in each shell's syntax, and agent mode under zsh?
 
@@ -251,6 +270,8 @@ Windows release archives, and a policy for Windows commands.
 
 - **Proposed:** not now. PowerShell on macOS and Linux first; Windows as a separate ROAD phase if
   the user asks for it, starting with propose mode only.
+- **Answer** (2026-10-30 06:05, Gregor Heinrich): "not now".
+- **Resolved:** TODO 2.34 is PowerShell 7 on macOS and Linux; A11 stands.
 
 ### Q17. Argument origin before the new platforms are released?
 
@@ -261,6 +282,10 @@ models, local and small among them.
   the release gate runs the injection eval on one model per new adapter. The platforms can be
   built and merged before; the release waits.
 - **Alternative:** release the platforms with F8 documented, as for 0.2.0 and 0.2.1 (Q12).
+- **Answer** (2026-10-30 06:05, Gregor Heinrich): "wait for injection fix before releasing".
+- **Resolved:** TODO 2.29 (release condition) and [ROAD](ROAD.md) phase 4: the platforms can be
+  built and merged, but no release ships them before TODO 2.23, and that release's gate runs the
+  injection eval on one model per new adapter.
 
 ## Assumptions
 

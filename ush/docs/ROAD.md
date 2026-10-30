@@ -3,7 +3,7 @@
 Where ush goes, in both implementations. The phases build on each other, and each one ends with a gate:
 a tested result that decides whether the next phase starts. When a phase starts, its work becomes
 items in [TODO](TODO.md), and this file links to them. Open questions are in [GAPS](GAPS.md).
-Status: 2026-10-30 05:40; phases 1 and 3 are done, 0.2.1 is released; 0.2.2 is merged and its
+Status: 2026-10-30 06:05; phases 1 and 3 are done, 0.2.1 is released; 0.2.2 is merged and its
 release is next (TODO 5.10). Phase 4 was widened on 2026-10-30: European and local platforms, sh
 and PowerShell.
 
@@ -12,7 +12,7 @@ and PowerShell.
 | 1. First release (done) | The local `//` shell, safe to hand to others | 1, 2.9–2.11 (done); 5.3, 5.5 | The release gate in [AGENTS.md](../../AGENTS.md) and [SECTEST](SECTEST.md): no open High finding, the suite on macOS and Linux, model-in-the-loop results recorded; licence and distribution decided (GAPS Q1, Q2) |
 | 2. Daily use | Fewer approvals for harmless commands, enforced read-only in agent mode, long sessions | 2.6, 2.23, 2.4, 2.5, 2.24, 2.25 | A few weeks of daily use without a policy bypass; approvals per request measured and falling; F8's scenario at 0 in 20 |
 | 3. Compiled port (done) | The same `ush` as a single static Go binary, the deliverable | 0, 4 (done); 5 | The Go binary passes ush's black-box tests and the smoke test; releases then ship it |
-| 4. Platforms, shells, context | More model platforms (OpenAI, Mistral, European, local servers); bash, sh, fish, PowerShell; requests that see recent history | 2.29, 2.32, 2.27, 2.33, 2.28, 2.34, 2.26, 2.30 | Each platform's mock tests and one free live run, with the injection eval; the plugin's pty tests pass in each shell; history filtered as SEC requires |
+| 4. Platforms, shells, context | More model platforms (OpenAI, Mistral, European, local servers); bash, sh, fish, PowerShell; requests that see recent history | 2.29, 2.23, 2.32, 2.27, 2.33, 2.28, 2.34, 2.26, 2.30 | No release of the new platforms before 2.23 (GAPS Q17); each platform's mock tests and one free live run, with the injection eval; the plugin's pty tests pass in each shell; history filtered as SEC requires |
 | 5. Shared paradigm with wish | One `//` contract and policy semantics for both shells | 2.7 | wish's shell integration (wish TODO 2.1, 6.2) exists |
 
 ## 1. First release
@@ -64,13 +64,13 @@ provider adapters, the shells in the plugins and the prompts. In the user's orde
   servers beyond Ollama (llama.cpp, LM Studio, vLLM, LocalAI, Jan, llamafile, MLX), under
   Ollama's loopback rules (2.29.3); other European platforms such as Scaleway, OVHcloud, IONOS, STACKIT and Nebius
   (2.29.4); then Hugging Face, Gemini, Groq, OpenRouter, Together, DeepSeek and Azure (2.29.5).
-  More, and smaller, models make SECTEST F8 more likely, so argument origin (2.23) goes with them
-  (GAPS Q17). Bedrock and Vertex (2.30) last.
+  More, and smaller, models make SECTEST F8 more likely, so no release ships them before
+  argument origin (2.23) (GAPS Q17). Bedrock and Vertex (2.30) last.
 - **Shells:** first a shell interface in the core (2.32): proposals in the syntax of the shell
   ush runs in, `--shell NAME` to choose one; then bash (2.27), POSIX sh without a plugin (2.33),
   fish (2.28) and PowerShell 7 on macOS and Linux (2.34). Agent mode only where a shell's
-  implementation has a policy and executor, zsh for now (GAPS Q15); Windows is a separate
-  decision (GAPS Q16).
+  implementation has a policy and executor, zsh for now (GAPS Q15); not on Windows for now
+  (GAPS Q16).
 - **History as context (2.26),** per shell, once the shells exist: filtered, off by default.
 
 ## 5. Shared paradigm with wish
