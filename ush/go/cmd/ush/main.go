@@ -20,6 +20,7 @@ import (
 	"github.com/gregoryyy/ushell/ush/go/internal/execute"
 	"github.com/gregoryyy/ushell/ush/go/internal/policy"
 	"github.com/gregoryyy/ushell/ush/go/internal/provider"
+	"github.com/gregoryyy/ushell/ush/go/internal/providers"
 	"github.com/gregoryyy/ushell/ush/go/internal/ui"
 )
 
@@ -280,12 +281,7 @@ type lazyProvider struct {
 	provider provider.Provider
 }
 
-func (l *lazyProvider) Name() string {
-	if l.factory.settings.Provider == "ollama" {
-		return "Ollama"
-	}
-	return "Anthropic"
-}
+func (l *lazyProvider) Name() string  { return providers.MustGet(l.factory.settings.Provider).Label }
 func (l *lazyProvider) Model() string { return l.factory.settings.ActiveModel() }
 func (l *lazyProvider) get() (provider.Provider, error) {
 	if l.provider == nil {
@@ -319,19 +315,28 @@ type providerFactory struct {
 	key      string
 }
 
-func (f *providerFactory) ollama() bool { return f.settings.Provider == "ollama" }
-
 // secrets checks that the provider and the checker can be used and returns the secrets to redact.
 func (f *providerFactory) secrets() ([]string, error) {
-	if f.ollama() && f.settings.OllamaModel == "" {
-		return nil, usageError("no Ollama model; run `ush ai configure` or set USH_MODEL (see `ollama list`)")
-	}
-	if !f.ollama() || f.settings.CheckerProvider() == "anthropic" {
-		key, err := f.resolveKey()
-		if err != nil {
-			return nil, err
+	spec := providers.MustGet(f.settings.Provider)
+	if f.settings.ActiveModel() == "" {
+		hint := ""
+		if spec.ModelHint != "" {
+			hint = " (" + spec.ModelHint + ")"
 		}
-		return []string{key}, nil
+		return nil, usageError("no %s model; run `ush ai configure` or set USH_MODEL%s", spec.Label, hint)
+	}
+	used := []string{f.settings.Provider}
+	if p := f.settings.CheckerProvider(); p != "" {
+		used = append(used, p)
+	}
+	for _, p := range used {
+		if providers.MustGet(p).KeyStore {
+			key, err := f.resolveKey()
+			if err != nil {
+				return nil, err
+			}
+			return []string{key}, nil
+		}
 	}
 	return nil, nil
 }
@@ -363,14 +368,19 @@ func (f *providerFactory) baseURL() string {
 }
 
 func (f *providerFactory) create() (provider.Provider, error) {
-	if f.ollama() {
-		return provider.NewOllama(f.settings.OllamaModel, f.settings.OllamaURL), nil
+	return f.client(f.settings.Provider, f.settings.ActiveModel(), f.settings.Effort)
+}
+
+// client is the adapter for a provider's row: Ollama's for one on this machine, else Anthropic's.
+func (f *providerFactory) client(name, model, effort string) (*provider.Client, error) {
+	if providers.MustGet(name).Loopback {
+		return provider.NewOllama(model, f.settings.Endpoint(name)), nil
 	}
 	key, err := f.resolveKey()
 	if err != nil {
 		return nil, err
 	}
-	return provider.NewAnthropic(key, f.settings.Model, f.settings.Effort, f.baseURL()), nil
+	return provider.NewAnthropic(key, model, effort, f.baseURL()), nil
 }
 
 // checker is the checker model, if one is configured; its client is created on first use.
@@ -379,16 +389,7 @@ func (f *providerFactory) checker() *check.Checker {
 	if p == "" {
 		return nil
 	}
-	return check.New(model, func() (check.Completer, error) {
-		if p == "ollama" {
-			return provider.NewOllama(model, f.settings.OllamaURL), nil
-		}
-		key, err := f.resolveKey()
-		if err != nil {
-			return nil, err
-		}
-		return provider.NewAnthropic(key, model, "", f.baseURL()), nil
-	})
+	return check.New(model, func() (check.Completer, error) { return f.client(p, model, "") })
 }
 
 // interrupts turns Ctrl-C into cancelling the running request, or into a flag while ush reads.

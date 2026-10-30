@@ -265,7 +265,7 @@ Done in Python, and in Go through the port (section 4).
   (ARCH); the adapter translates at its edge (`tool_use` to `tool_calls`, `tool_result` to
   `role: tool`, tool-call arguments streamed in pieces, stop reasons, strict schemas where the
   platform has them). In the user's order of need, one PR each, in both implementations:
-  - [ ] 2.29.1 A provider table and model profiles in both implementations (GAPS Q13: "consider
+  - [x] 2.29.1 A provider table and model profiles in both implementations (GAPS Q13: "consider
     internal abstraction"). The table: name, display name, host, local or remote, key source and
     variable, model pattern, network rules. A model profile: what a model takes (effort or
     reasoning levels, strict tool schemas, tool choice, output limit, streamed tool arguments,
@@ -273,7 +273,8 @@ Done in Python, and in Go through the port (section 4).
     or says in `ush ai` that a model ignores one. Anthropic and Ollama move onto both with no
     change in behaviour; the `provider == "ollama"` checks in the CLI and settings become
     lookups. Acceptance: the existing suites pass unchanged in both; tests for the mapping of each
-    setting per profile.
+    setting per profile. Done 2026-10-30 (DONE): `ush ai` saying that a model ignores a setting
+    comes with the first model that does (2.29.2).
   - [ ] 2.29.2 The Chat Completions adapter, with `openai` and `mistral` (La Plateforme,
     `api.mistral.ai`) and their keys, the first presets (GAPS Q13), and `openai-compatible` with
     an explicit URL (`https`, or loopback `http`). Go: a Chat Completions client on `net/http`

@@ -19,23 +19,24 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
-	"regexp"
 	"strconv"
 	"strings"
 	"syscall"
+
+	"github.com/gregoryyy/ushell/ush/go/internal/providers"
 )
 
 const (
 	DefaultModel = "claude-opus-5-5"
-	OllamaURL    = "http://127.0.0.1:11434"
+	OllamaURL    = providers.OllamaURL
 )
 
 var (
 	Efforts        = []string{"low", "medium", "high", "xhigh", "max"}
-	Providers      = []string{"anthropic", "ollama"}
+	Providers      = providers.Names()          // the provider table
 	Modes          = []string{"propose", "run"} // ARCH: propose mode (default) and agent mode
-	anthropicModel = regexp.MustCompile(`^[a-z0-9.\-]{3,64}$`)
-	ollamaModel    = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._:/\-]{0,127}$`)
+	anthropicModel = providers.AnthropicModel
+	ollamaModel    = providers.OllamaModel
 )
 
 // Error is a configuration problem: ush reports it and exits with status 2.
@@ -180,11 +181,25 @@ func FromMap(data map[string]any, parseRule func(string) ([]string, error)) (Set
 }
 
 // ActiveModel is the model of the selected provider.
-func (s *Settings) ActiveModel() string {
-	if s.Provider == "ollama" {
-		return s.OllamaModel
+func (s *Settings) ActiveModel() string { return s.ModelOf(s.Provider) }
+
+// ModelOf is the model of a provider, from the setting its row names.
+func (s *Settings) ModelOf(provider string) string { return *s.modelField(providers.MustGet(provider)) }
+
+func (s *Settings) modelField(spec providers.Spec) *string {
+	if spec.ModelSetting == "ollama_model" {
+		return &s.OllamaModel
 	}
-	return s.Model
+	return &s.Model
+}
+
+// Endpoint is the URL of a provider: the setting its row names, or the row's own.
+func (s *Settings) Endpoint(provider string) string {
+	spec := providers.MustGet(provider)
+	if spec.URLSetting == "ollama_url" {
+		return s.OllamaURL
+	}
+	return spec.URL
 }
 
 func (s *Settings) SetMode(mode string) error {
@@ -205,17 +220,11 @@ func (s *Settings) SetProvider(provider string) error {
 
 // SetModel sets the model of the active provider.
 func (s *Settings) SetModel(model string) error {
-	if s.Provider == "ollama" {
-		if !ollamaModel.MatchString(model) {
-			return Errorf("%s is not an Ollama model name", pyRepr(model))
-		}
-		s.OllamaModel = model
-		return nil
+	spec := providers.MustGet(s.Provider)
+	if !spec.ModelPattern.MatchString(model) {
+		return Errorf("%s is not an %s model name", pyRepr(model), spec.Label)
 	}
-	if !anthropicModel.MatchString(model) {
-		return Errorf("%s is not an Anthropic model name", pyRepr(model))
-	}
-	s.Model = model
+	*s.modelField(spec) = model
 	return nil
 }
 
@@ -238,11 +247,7 @@ func (s *Settings) SetChecker(value string) error {
 			provider = "anthropic"
 		}
 	}
-	pattern := anthropicModel
-	if provider == "ollama" {
-		pattern = ollamaModel
-	}
-	if !pattern.MatchString(model) {
+	if !providers.MustGet(provider).ModelPattern.MatchString(model) {
 		return Errorf("checker %s is not a model name, e.g. claude-haiku-5-5, qwen3.5:4b, or provider:model", pyRepr(value))
 	}
 	s.Checker = provider + ":" + model

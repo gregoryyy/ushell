@@ -11,16 +11,12 @@ import urllib.request
 from dataclasses import dataclass, field
 from typing import Any, Callable, Optional, Protocol
 
-API_URL = "https://api.anthropic.com"
+from .providers import API_URL, ModelProfile, profile
+
 OLLAMA_KEY = "ollama"  # Ollama ignores the key; the SDK requires one
-MAX_TOKENS = 64000
 # The checker's answer is one line; local thinking models need room to think first.
 CHECK_MAX_TOKENS = 2048
 CHECK_TIMEOUT = 60.0
-# Models that accept server-side refusal fallbacks and between-tool progress notes.
-FALLBACK_MODELS = {"claude-opus-5-5", "claude-opus-5", "claude-sonnet-5-5", "claude-fable-5-1",
-                   "claude-fable-5"}
-UPDATES_MODELS = {"claude-opus-5-5", "claude-sonnet-5-5", "claude-fable-5-1", "claude-fable-5"}
 FALLBACK_BETA = "server-side-fallback-2026-07-01"
 UPDATES_BETA = "thinking-display-updates-2026-08-18"
 
@@ -46,7 +42,11 @@ class Provider(Protocol):
 
 
 class AnthropicProvider:
+    """Anthropic's Messages API through the SDK. What a request carries besides the model,
+    system prompt, tools and messages comes from the model's profile (providers.profile)."""
+
     name = "Anthropic"
+    provider = "anthropic"
 
     def __init__(self, api_key: Optional[str], model: str, effort: str,
                  base_url: Optional[str] = None, max_retries: int = 2, trust_env: bool = True):
@@ -69,24 +69,26 @@ class AnthropicProvider:
         self.client = anthropic.Anthropic(**kwargs)
         self.model = model
         self.effort = effort
+        self.profile: ModelProfile = profile(self.provider, model)
 
     def _params(self, system: str, tools: list[dict], messages: list[dict]) -> dict:
-        betas = []
-        params = {
-            "model": self.model,
-            "max_tokens": MAX_TOKENS,
-            "system": system,
-            "tools": [{**t, "eager_input_streaming": True} for t in tools],
-            "messages": messages,
-            "cache_control": {"type": "ephemeral"},
-            "output_config": {"effort": self.effort},
-        }
-        if self.model in UPDATES_MODELS:
+        p, betas = self.profile, []
+        if not p.strict_tools:
+            tools = [{k: v for k, v in t.items() if k != "strict"} for t in tools]
+        if p.eager_tool_input:
+            tools = [{**t, "eager_input_streaming": True} for t in tools]
+        params: dict = {"model": self.model, "max_tokens": p.output_limit, "system": system,
+                        "tools": tools, "messages": messages}
+        if p.prompt_cache:
+            params["cache_control"] = {"type": "ephemeral"}
+        if p.effort:
+            params["output_config"] = {"effort": self.effort}
+        if p.thinking == "adaptive-updates":
             params["thinking"] = {"type": "adaptive", "display": "updates"}
             betas.append(UPDATES_BETA)
-        else:
-            params["thinking"] = {"type": "adaptive"}
-        if self.model in FALLBACK_MODELS:
+        elif p.thinking:
+            params["thinking"] = {"type": p.thinking}
+        if p.server_fallbacks:
             params["fallbacks"] = "default"
             betas.append(FALLBACK_BETA)
         if betas:
@@ -94,6 +96,33 @@ class AnthropicProvider:
         return params
 
     def turn(self, system, tools, messages, on_text, on_progress) -> Turn:
+        """One reply. For a model that may write tool calls as text (its profile says so), such
+        a text becomes a tool call.
+
+        Small models (llama3.2:3b) write Llama's call format, `{"name": …, "parameters": {…}}`,
+        and Ollama turns it into a call only when the name is one of the tools: with the command
+        as the name (`"ls"`), the call arrives as text. `text_tool_call` reads it, and the agent
+        checks it as any call. Text that may be such a call is held back from the screen until the
+        turn ends.
+        """
+        if not self.profile.text_tool_calls:
+            return self._turn(system, tools, messages, on_text, on_progress)
+        held = HeldText(on_text)
+        turn = self._turn(system, tools, messages, held.write, on_progress)
+        if not any(b.get("type") == "tool_use" for b in turn.content):
+            text = "".join(b.get("text", "") for b in turn.content if b.get("type") == "text")
+            call = text_tool_call(text, tools)
+            if call is not None:
+                name, args = call
+                turn.content = [*(b for b in turn.content if b.get("type") != "text"),
+                                {"type": "tool_use", "id": "toolu_text_" + secrets.token_hex(12),
+                                 "name": name, "input": args}]
+                turn.stop_reason = "tool_use"
+                return turn
+        held.flush()
+        return turn
+
+    def _turn(self, system, tools, messages, on_text, on_progress) -> Turn:
         anthropic = self._anthropic
         params = self._params(system, tools, messages)
         message = None
@@ -168,45 +197,19 @@ class OllamaProvider(AnthropicProvider):
     """A local Ollama through its Anthropic-compatible Messages API (`/v1/messages`).
 
     Ollama needs no key and has none of Anthropic's server features, so requests carry only
-    the model, limits, system prompt, tools, and messages. Proxy variables and redirects are
+    the model, limits, system prompt, tools, and messages (its profile). Proxy variables and
+    redirects are
     not followed: the endpoint is on this machine (config.check_ollama_url) and requests must
     stay there.
     """
 
     name = "Ollama"
+    provider = "ollama"
 
     def __init__(self, model: str, base_url: str, max_retries: int = 2):
         super().__init__(OLLAMA_KEY, model, "", base_url=base_url, max_retries=max_retries,
                          trust_env=False)
         self.base_url = base_url
-
-    def _params(self, system: str, tools: list[dict], messages: list[dict]) -> dict:
-        return {"model": self.model, "max_tokens": MAX_TOKENS, "system": system, "tools": tools,
-                "messages": messages}
-
-    def turn(self, system, tools, messages, on_text, on_progress) -> Turn:
-        """As Anthropic's, but a tool call the model wrote as text becomes a tool call.
-
-        Small models (llama3.2:3b) write Llama's call format, `{"name": …, "parameters": {…}}`,
-        and Ollama turns it into a call only when the name is one of the tools: with the command
-        as the name (`"ls"`), the call arrives as text. `text_tool_call` reads it, and the agent
-        checks it as any call. Text that may be such a call is held back from the screen until the
-        turn ends.
-        """
-        held = HeldText(on_text)
-        turn = super().turn(system, tools, messages, held.write, on_progress)
-        if not any(b.get("type") == "tool_use" for b in turn.content):
-            text = "".join(b.get("text", "") for b in turn.content if b.get("type") == "text")
-            call = text_tool_call(text, tools)
-            if call is not None:
-                name, args = call
-                turn.content = [*(b for b in turn.content if b.get("type") != "text"),
-                                {"type": "tool_use", "id": "toolu_text_" + secrets.token_hex(12),
-                                 "name": name, "input": args}]
-                turn.stop_reason = "tool_use"
-                return turn
-        held.flush()
-        return turn
 
     def _error(self, exc: Any) -> ProviderError:
         a = self._anthropic

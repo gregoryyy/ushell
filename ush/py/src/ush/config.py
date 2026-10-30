@@ -20,14 +20,13 @@ import urllib.parse
 from dataclasses import dataclass, field
 from typing import Callable, Optional
 
+from .providers import ANTHROPIC_MODEL, KEY_ENV, NAMES, OLLAMA_MODEL, OLLAMA_URL
+from .providers import PROVIDERS as TABLE
+
 DEFAULT_MODEL = "claude-opus-5-5"
 EFFORTS = ("low", "medium", "high", "xhigh", "max")
-PROVIDERS = ("anthropic", "ollama")
+PROVIDERS = NAMES               # providers.PROVIDERS: the table
 MODES = ("propose", "run")      # ARCH: propose mode (default) and agent mode
-OLLAMA_URL = "http://127.0.0.1:11434"
-ANTHROPIC_MODEL = re.compile(r"^[a-z0-9.\-]{3,64}$")
-OLLAMA_MODEL = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/\-]{0,127}$")
-KEY_ENV = ("USH_API_KEY", "ANTHROPIC_API_KEY")
 KEYCHAIN_SERVICE = "ush"
 KEYCHAIN_ACCOUNT = "anthropic"
 SECURITY = "/usr/bin/security"
@@ -138,7 +137,10 @@ class Settings:
 
     @property
     def active_model(self) -> str:
-        return self.ollama_model if self.provider == "ollama" else self.model
+        return self.model_of(self.provider)
+
+    def model_of(self, provider: str) -> str:
+        return getattr(self, TABLE[provider].model_setting)
 
     def set_mode(self, mode: str) -> None:
         if mode not in MODES:
@@ -152,14 +154,10 @@ class Settings:
 
     def set_model(self, model: str) -> None:
         """Set the model of the active provider."""
-        if self.provider == "ollama":
-            if not OLLAMA_MODEL.match(model):
-                raise ConfigError(f"{model!r} is not an Ollama model name")
-            self.ollama_model = model
-        else:
-            if not ANTHROPIC_MODEL.match(model):
-                raise ConfigError(f"{model!r} is not an Anthropic model name")
-            self.model = model
+        spec = TABLE[self.provider]
+        if not spec.model_pattern.match(model):
+            raise ConfigError(f"{model!r} is not an {spec.label} model name")
+        setattr(self, spec.model_setting, model)
 
     def set_checker(self, value: str) -> None:
         """Set the checker as `provider:model` (`ollama:qwen3:4b`) or a bare model name, which is
@@ -175,8 +173,7 @@ class Settings:
         provider, _, model = value.partition(":")
         if provider not in PROVIDERS:
             provider, model = ("anthropic" if value.startswith("claude-") else "ollama"), value
-        pattern = OLLAMA_MODEL if provider == "ollama" else ANTHROPIC_MODEL
-        if not pattern.match(model):
+        if not TABLE[provider].model_pattern.match(model):
             raise ConfigError(f"checker {value!r} is not a model name, e.g. claude-haiku-5-5, "
                               "qwen3.5:4b, or provider:model")
         self.checker = f"{provider}:{model}"
