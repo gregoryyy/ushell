@@ -6,8 +6,8 @@ checked, and executed. Both use the user's own AI API key, or a local model.
 
 | Project | What | Status |
 | --- | --- | --- |
-| [ush](ush/README.md) | The `//` shell for zsh on your machine, optionally under `sudo`; one command, two implementations | 0.2.1 released |
-| ↳ [ush/go](ush/go/README.md) | ush in Go: the compiled deliverable, one static binary | Shipped in 0.2.1 (GitHub release, Homebrew) |
+| [ush](ush/README.md) | The `//` shell for zsh on your machine, optionally under `sudo`; one command, two implementations | 0.2.2 released |
+| ↳ [ush/go](ush/go/README.md) | ush in Go: the compiled deliverable, one static binary | Shipped in 0.2.2 (GitHub release, Homebrew) |
 | ↳ [ush/py](ush/py/README.md) | ush in Python: the experimental implementation, where features are tried first | At parity with Go |
 | [wish](wish/README.md) | Browser workspace: files, notebooks, live tools | Design documents; not implemented |
 

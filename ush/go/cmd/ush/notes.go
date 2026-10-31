@@ -33,7 +33,7 @@ type material struct {
 }
 
 // notesCommand: `ush notes [-v] [--last] [INSTRUCTION] [FILE...]`, the model's notes on files,
-// piped input, and with --last the last command the plugin recorded (Ctrl-X n); runs nothing.
+// piped input, and with --last the last command the plugin recorded (Ctrl-N); runs nothing.
 // Words naming existing paths are files, the rest is the instruction. Never as root.
 func notesCommand(args []string, term *ui.Terminal, id config.Identity, s config.Settings, keys *config.KeyStore, o agent.Options) (int, error) {
 	last := false
@@ -58,7 +58,7 @@ func notesCommand(args []string, term *ui.Terminal, id config.Identity, s config
 		}
 		ran := handoff.LastRan(dir, budget)
 		if ran == nil {
-			term.Error("nothing recorded yet: Ctrl-X n on a command line runs it and takes notes on its output")
+			term.Error("nothing recorded yet: Ctrl-N on a command line runs it and takes notes on its output")
 			return 1, nil
 		}
 		shown, _, more := strings.Cut(ran.Command, "\n")

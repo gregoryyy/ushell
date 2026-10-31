@@ -43,7 +43,7 @@ usage:
   ush notes [INSTRUCTION] FILE...
                                notes on files or piped input with the model, e.g.
                                ush notes 'any errors?' app.log (with the plugin:
-                               Ctrl-X n, also on a command's output)
+                               Ctrl-N, also on a command's output)
   ush [OPTIONS]                start a session
   ush ai configure [--file]    set the provider (Anthropic or a local Ollama), API key
                                (keychain on macOS), model, and effort

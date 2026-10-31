@@ -3,9 +3,8 @@
 Where ush goes, in both implementations. The phases build on each other, and each one ends with a gate:
 a tested result that decides whether the next phase starts. When a phase starts, its work becomes
 items in [TODO](TODO.md), and this file links to them. Open questions are in [GAPS](GAPS.md).
-Status: 2026-10-30 06:05; phases 1 and 3 are done, 0.2.1 is released; 0.2.2 is merged and its
-release is next (TODO 5.10). Phase 4 was widened on 2026-10-30: European and local platforms, sh
-and PowerShell.
+Status: 2026-10-30 08:42; phases 1 and 3 are done, 0.2.2 is released (TODO 5.10); 0.3.0 is next
+(5.11). Phase 4 was widened on 2026-10-30: European and local platforms, sh and PowerShell.
 
 | Phase | Goal | TODO | Gate to the next phase |
 | --- | --- | --- | --- |
@@ -37,7 +36,7 @@ the guarantees it lacks, in this order:
 
 Then, for everyone:
 - Extend the read-only command table from real sessions (2.4), each command with negative tests.
-- Explanations kept per command line (2.24); notes on output and files with Ctrl-X n (2.25).
+- Explanations kept per command line (2.24); notes on output and files with Ctrl-N (2.25).
 - Compaction or context editing for long sessions (2.5).
 
 ## 3. Compiled port
@@ -72,6 +71,12 @@ provider adapters, the shells in the plugins and the prompts. In the user's orde
   implementation has a policy and executor, zsh for now (GAPS Q15); not on Windows for now
   (GAPS Q16).
 - **History as context (2.26),** per shell, once the shells exist: filtered, off by default.
+
+**0.3.0** (TODO 5.11, user, 2026-10-30: "for the next version 0.3.0, expand to bash, sh and other
+commonly used shells") takes the first steps of both tracks: the shell interface with bash, fish
+and POSIX sh, and the Chat Completions adapter with OpenAI, Mistral and any OpenAI-compatible URL.
+Because of the new adapter it also needs argument origin (2.23, GAPS Q17). PowerShell, the local
+server presets and the other platforms come after it.
 
 ## 5. Shared paradigm with wish
 

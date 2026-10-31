@@ -95,19 +95,21 @@ hour; `ush --new` starts over.
 
 ## Notes
 
-**Ctrl-X n** asks the model for notes on command output or files: what it is, what stands out
+**Ctrl-N** asks the model for notes on command output or files: what it is, what stands out
 (errors, warnings, failures, odd values), and what to do next. The notes are printed before the
 next prompt, so they stay in your scrollback. A comment at the end of the line is your question:
 
 | On the command line | Notes on |
 | --- | --- |
-| nothing, or only `# why so slow?` | the output of the last command ush recorded (a proposal you ran, or the last Ctrl-X n command) |
+| nothing, or only `# why so slow?` | the output of the last command ush recorded (a proposal you ran, or the last Ctrl-N command) |
 | a command: `make test # why does it fail?` | that command's output: it runs as a proposal would, recorded, then gets notes |
 | files: `app.log nginx.conf why the 502?` | the files the words name; the other words are the question |
 
-For files, the line runs as `ush notes …`, so your history shows what was sent. Ctrl-X n doesn't
+For files, the line runs as `ush notes …`, so your history shows what was sent. Ctrl-N doesn't
 work on `sudo` or `//` lines. `USH_NOTES_KEY` in `~/.zshrc`, before the plugin, sets another key,
-or none when empty; ush binds the key only if it is free.
+or none when empty. ush takes Ctrl-N only where it still has zsh's own meaning (the next
+history line, which Down also gives you), and another key only where it is free; a key you bound
+yourself is left alone.
 
 Without the plugin, or in a script: `ush notes [-v] [QUESTION] FILE…`, or pipe into it:
 `journalctl -n 200 | ush notes "anything unusual?"`. Words that name existing files are files; the
@@ -211,7 +213,7 @@ name, your user name, the working directory, the output of the commands that ran
 in propose mode, of the proposals you ran) and piped input. With a local Ollama model, all of that stays on this machine; with an Ollama
 *cloud* model, Ollama forwards it to ollama.com, and ush says so. A checker gets your requests and
 the proposed commands, never output. `ush explain` (and Down on a proposal) sends the command line
-and your last request, unless that command was explained before. `ush notes` (and Ctrl-X n) sends
+and your last request, unless that command was explained before. `ush notes` (and Ctrl-N) sends
 the files, piped input or recorded output it names when it starts, up to 200 KB in all.
 
 Before sending, ush removes known token formats, private keys, URL credentials, `password=`

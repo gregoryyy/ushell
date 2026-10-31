@@ -37,7 +37,7 @@ usage:
   ush notes [INSTRUCTION] FILE...
                                notes on files or piped input with the model, e.g.
                                ush notes 'any errors?' app.log (with the plugin:
-                               Ctrl-X n, also on a command's output)
+                               Ctrl-N, also on a command's output)
   ush [OPTIONS]                start a session
   ush ai configure [--file]    set the provider (Anthropic or a local Ollama), API key
                                (keychain on macOS), model, and effort
@@ -423,7 +423,7 @@ class _Material:
 def _notes(args: list[str], ui: Terminal, ident: Identity, settings: Settings,
            keys: KeyStore, options: Options) -> int:
     """`ush notes [-v] [--last] [INSTRUCTION] [FILE...]`: the model's notes on files, piped input,
-    and with --last the last command the plugin recorded (Ctrl-X n); runs nothing. Words naming
+    and with --last the last command the plugin recorded (Ctrl-N); runs nothing. Words naming
     existing paths are files, the rest is the instruction. Never as root."""
     last = False
     while args and args[0] in ("--last", "-v", "--verbose"):
@@ -443,7 +443,7 @@ def _notes(args: list[str], ui: Terminal, ident: Identity, settings: Settings,
             raise ConfigError("--last needs the zsh plugin: it records the commands it runs")
         ran = last_ran(handoff, budget)
         if ran is None:
-            ui.error("nothing recorded yet: Ctrl-X n on a command line runs it and takes notes "
+            ui.error("nothing recorded yet: Ctrl-N on a command line runs it and takes notes "
                      "on its output")
             return 1
         shown = ran.command.split("\n")[0]

@@ -1,4 +1,4 @@
-// Package notes: notes on command output and files (TODO 2.25), `ush notes` and Ctrl-X n with
+// Package notes: notes on command output and files (TODO 2.25), `ush notes` and Ctrl-N with
 // the plugin (ushpy notes.py, the same rules).
 //
 // What is sent, all of it redacted: the last command the plugin recorded (--last), input piped to

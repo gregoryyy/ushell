@@ -10,7 +10,7 @@ continues the conversation with it.
   line that ran) and `output` (what it printed, unless the proposal was interactive). ush uses
   the directory only if it is a real directory of the user's, closed to others, and never as
   root. When `//` takes `ran` and `output`, they stay as `last-ran` and `last-output` for notes
-  (`ush notes --last`, Ctrl-X n, TODO 2.25), until the next run replaces them or the shell exits.
+  (`ush notes --last`, Ctrl-N, TODO 2.25), until the next run replaces them or the shell exits.
 - The conversation is saved per shell in the state directory, `sessions/KEY.json`, mode 0600,
   where KEY is the handoff directory's name or, without the plugin, the parent process. It holds
   what was sent to the provider, so redacted command output, and expires after an hour unused.

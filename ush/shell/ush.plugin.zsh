@@ -14,12 +14,12 @@
 # In propose mode, ush's proposal is put on the next command line, and what you then
 # run there is recorded for `//` to continue with (see the hooks at the end).
 #
-# Ctrl-X n takes notes on command output and files with the model (see _ush_notes below).
+# Ctrl-N takes notes on command output and files with the model (see _ush_notes below).
 #
 # Settings (set before sourcing):
 #   USH_BARE_SLASH=0   do not treat a line starting with `//` as `ush //...`
 #   USH_BIN=PATH       ush executable to use (default: `ush` found on PATH)
-#   USH_NOTES_KEY=KEYS the notes key, as bindkey writes it (default: ^Xn; empty: none)
+#   USH_NOTES_KEY=KEYS the notes key, as bindkey writes it (default: ^N; empty: none)
 
 [[ -o interactive ]] || return 0
 (( ${+_ush_plugin_loaded} )) && return 0
@@ -95,7 +95,7 @@ typeset -ga _ush_saved=()   # the key bindings a proposal replaced, as `bindkey 
 typeset -gA _ush_orig=()    # key sequence -> the widget it had
 typeset -gi _ush_explained=0  # an explanation is shown above the proposal
 typeset -g _ush_kept_line= _ush_kept_text=  # the last explanation and the line it explains
-typeset -gi _ush_noting=0     # Ctrl-X n ran the command: notes on it before the next prompt
+typeset -gi _ush_noting=0     # Ctrl-N ran the command: notes on it before the next prompt
 typeset -g _ush_notes_ask=    # and the question for them
 zmodload -F zsh/zselect b:zselect 2>/dev/null
 
@@ -204,7 +204,7 @@ _ush_explain() {
   fi
 }
 
-# Ctrl-X n: notes with the model (`ush notes`, TODO 2.25), printed before the next prompt, so
+# Ctrl-N: notes with the model (`ush notes`, TODO 2.25), printed before the next prompt, so
 # they stay in the scrollback. A comment ending the line is the question: `make # why?`.
 # - On an empty line, or one with only a question: notes on the output of the last command the
 #   plugin recorded.
@@ -302,11 +302,17 @@ then
   zle -N _ush_explain
   zle -N _ush_up
   zle -N _ush_notes
-  if [[ -n ${USH_NOTES_KEY-'^Xn'} ]]; then
-    for _ush_map in emacs viins; do  # only where the key is free: no binding changes
-      [[ $(bindkey -M $_ush_map -- ${USH_NOTES_KEY-'^Xn'}) == *' undefined-key' ]] &&
-        bindkey -M $_ush_map -- ${USH_NOTES_KEY-'^Xn'} _ush_notes
+  # The notes key, in emacs and viins: Ctrl-N where it still has zsh's own meaning (emacs:
+  # down-line-or-history, which the Down arrow also does; viins: it inserts a literal ^N), or
+  # another USH_NOTES_KEY where that is free. A key the user bound is never taken.
+  if [[ -n ${USH_NOTES_KEY-'^N'} ]]; then
+    for _ush_map in emacs viins; do
+      _ush_was=${${(z)"$(bindkey -M $_ush_map -- ${USH_NOTES_KEY-'^N'})"}[-1]}  # the widget
+      if [[ $_ush_was == undefined-key ]] || [[ ${USH_NOTES_KEY-'^N'} == '^N' &&
+            ${_ush_map}:${_ush_was} == (emacs:down-line-or-history|viins:self-insert) ]]; then
+        bindkey -M $_ush_map -- ${USH_NOTES_KEY-'^N'} _ush_notes
+      fi
     done
-    unset _ush_map
+    unset _ush_map _ush_was
   fi
 fi

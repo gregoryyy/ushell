@@ -337,12 +337,12 @@ class ZshProposeTest(TempDirTest):
         found = re.findall(r"NOTES(\[.*?\])\r?\n", output)
         return json.loads(found[-1]) if found else output
 
-    def test_ctrl_x_n_runs_a_command_line_and_takes_notes_on_its_output(self):
+    def test_ctrl_n_runs_a_command_line_and_takes_notes_on_its_output(self):
         # TODO 2.25: the command runs as a proposal would, recorded; the comment is the question.
         out = self.session([
             ("echo noted-$((6*7)) # any errors?", "errors?"),
-            ("\x18n", "NOTES"),
-            ("echo plain\x18n", "NOTES"),
+            ("\x0e", "NOTES"),
+            ("echo plain\x0e", "NOTES"),
             ("\x1b[A", "echo plain"),              # history has the command, without comment
             ("\x15\x1b[A\x1b[A", "echo noted"),
         ])
@@ -353,20 +353,20 @@ class ZshProposeTest(TempDirTest):
         self.assertEqual(self.notes(out[2]), [["--last"], "0\necho plain\n", "plain\n"])
         self.assertNotIn("#", re.sub(r"\x1b\[[0-9;?]*[A-Za-z]|\r", "", out[4]).split("PROMPT> ")[-1])
 
-    def test_ctrl_x_n_runs_a_script_under_home(self):
+    def test_ctrl_n_runs_a_script_under_home(self):
         script = os.path.join(self.tmp, "deploy.sh")
         with open(script, "w") as f:
             f.write("#!/bin/sh\necho deployed-$((6*7))\n")
         os.chmod(script, 0o755)
-        out = self.session([("~/deploy.sh # ok?\x18n", "NOTES")])
+        out = self.session([("~/deploy.sh # ok?\x0e", "NOTES")])
         self.assertIn("deployed-42", out[0])  # it ran, the file wasn't sent
         self.assertEqual(self.notes(out[0])[0], ["--last", "--", "ok?"])
 
-    def test_ctrl_x_n_on_an_empty_line_takes_notes_on_the_last_output(self):
+    def test_ctrl_n_on_an_empty_line_takes_notes_on_the_last_output(self):
         out = self.session([
-            ("\x18n", "NOTES"),
-            ("# why so slow?\x18n", "NOTES"),
-            ("why so slow\x18n", "NOTES"),
+            ("\x0e", "NOTES"),
+            ("# why so slow?\x0e", "NOTES"),
+            ("why so slow\x0e", "NOTES"),
             ("\x1b[A", "ush notes"),               # what was sent is in the history
         ])
         self.assertEqual(self.notes(out[0])[0], ["--last"])
@@ -374,27 +374,27 @@ class ZshProposeTest(TempDirTest):
         self.assertEqual(self.notes(out[2])[0], ["--last", "--", "why so slow"])
         self.assertIn("ush notes --last -- 'why so slow'", out[3])
 
-    def test_ctrl_x_n_sends_the_files_a_line_names(self):
+    def test_ctrl_n_sends_the_files_a_line_names(self):
         for name in ("app.log", "my file.txt"):
             with open(os.path.join(self.tmp, name), "w") as f:
                 f.write("x\n")
         out = self.session([
-            ("~/app.log 'my file.txt' why 502? # and this\x18n", "NOTES"),
+            ("~/app.log 'my file.txt' why 502? # and this\x0e", "NOTES"),
         ])
         self.assertEqual(self.notes(out[0])[0],
                          ["--", f"{self.tmp}/app.log", "my file.txt", "why", "502?", "and this"])
 
-    def test_ctrl_x_n_refuses_sudo_and_ush_lines(self):
+    def test_ctrl_n_refuses_sudo_and_ush_lines(self):
         out = self.session([
-            ("sudo cat /etc/hosts\x18n", "no notes"),
-            ("\x15// list files\x18n", "no notes"),
+            ("sudo cat /etc/hosts\x0e", "no notes"),
+            ("\x15// list files\x0e", "no notes"),
             ("\x15", ""),
         ])
         for o in out[:2]:
             self.assertNotIn("NOTES", o)
             self.assertNotIn("localhost", o)
 
-    def test_the_notes_key_changes_no_binding(self):
+    def test_the_notes_key_takes_only_zshs_own_ctrl_n(self):
         out = self.session([
             ("all='for m in emacs viins vicmd; do bindkey -LM $m; done'\r", "PROMPT> "),
             ("eval $all >| ~/after; zsh -fic $all >| ~/before\r", "PROMPT> "),
@@ -403,23 +403,37 @@ class ZshProposeTest(TempDirTest):
             before = set(f.read().splitlines())
         with open(os.path.join(self.tmp, "after")) as f:
             after = set(f.read().splitlines())
-        self.assertEqual(before - after, set(), out)
         self.assertEqual(len(before), len(set(before)))
         self.assertGreater(len(before), 100)
-        added = after - before
-        self.assertEqual(len(added), 2, added)  # emacs and viins
-        for line in added:
-            self.assertTrue(line.endswith('"^Xn" _ush_notes'), line)
-        out = self.session([("bindkey -M emacs '^Xn'\r", "PROMPT> ")],
-                           before="bindkey -M emacs '^Xn' kill-word")
-        self.assertIn('"^Xn" kill-word', out[0])                   # a binding of the user's
-        out = self.session([("bindkey -M emacs '^Xn'\r", "PROMPT> ")], env={"USH_NOTES_KEY": ""})
-        self.assertIn('"^Xn" undefined-key', out[0])
-        out = self.session([("bindkey -M emacs '^Xq'\r", "PROMPT> ")],
+        # Only Ctrl-N changed, in emacs and viins, from zsh's own meaning to notes. In viins,
+        # zsh lists ^N in a range of self-insert keys, which the binding splits.
+        def changed(line):
+            return '"^N" ' in line or (line.startswith("bindkey -R -M viins") and
+                                       line.endswith(" self-insert"))
+        self.assertTrue(before - after, out)
+        self.assertTrue(all(changed(line) for line in before - after), before - after)
+        self.assertTrue(all(changed(line) or line.endswith('"^N" _ush_notes')
+                            for line in after - before), after - before)
+        self.assertEqual({line for line in after - before if line.endswith("_ush_notes")},
+                         {'bindkey -M emacs "^N" _ush_notes', 'bindkey -M viins "^N" _ush_notes'})
+        keys = "; ".join(f"bindkey -M {m} '{k}'" for m in ("emacs", "viins", "vicmd")
+                         for k in ("^M", "^O", "^P"))
+        out = self.session([(f"{keys}; bindkey -M vicmd '^N'\r", "PROMPT> ")])
+        for expected in ('"^O" accept-line-and-down-history', '"^P" up-line-or-history',
+                         '"^P" self-insert', '"^O" self-insert', '"^N" down-history'):
+            self.assertIn(expected, out[0])
+        out = self.session([("bindkey -M emacs '^N'\r", "PROMPT> ")],
+                           before="bindkey -M emacs '^N' history-substring-search-down")
+        self.assertIn('"^N" history-substring-search-down', out[0])   # a binding of the user's
+        out = self.session([("bindkey -M emacs '^N'\r", "PROMPT> ")], env={"USH_NOTES_KEY": ""})
+        self.assertIn('"^N" down-line-or-history', out[0])
+        out = self.session([("bindkey -M emacs '^Xq'; bindkey -M emacs '^N'\r", "PROMPT> ")],
                            env={"USH_NOTES_KEY": "^Xq"})
         self.assertIn('"^Xq" _ush_notes', out[0])
-        out = self.session([("bindkey -M emacs '^Xg'\r", "PROMPT> ")], env={"USH_NOTES_KEY": "^Xg"})
-        self.assertIn('"^Xg" list-expand', out[0])                 # taken: left as it is
+        self.assertIn('"^N" down-line-or-history', out[0])
+        # Another key only where it is free: Ctrl-F keeps forward-char.
+        out = self.session([("bindkey -M emacs '^F'\r", "PROMPT> ")], env={"USH_NOTES_KEY": "^F"})
+        self.assertIn('"^F" forward-char', out[0])
 
     def test_no_handoff_as_root_or_twice(self):
         with open(PLUGIN) as f:
@@ -581,8 +595,8 @@ class SessionExplainTest(TempDirTest):
 
 @unittest.skipUnless(ZSH, "zsh not installed")
 class ZshNotesTest(TempDirTest):
-    """Ctrl-X n with the real ush, against a local mock of the Messages API (TODO 2.25): a
-    command runs, recorded, and gets notes; Ctrl-X n on the empty line then takes notes on the
+    """Ctrl-N with the real ush, against a local mock of the Messages API (TODO 2.25): a
+    command runs, recorded, and gets notes; Ctrl-N on the empty line then takes notes on the
     same output."""
 
     def test_notes_on_a_command_and_then_on_its_output_again(self):
@@ -609,9 +623,9 @@ class ZshNotesTest(TempDirTest):
                 read(fd, "PROMPT> ")
                 os.write(fd, f"source {PLUGIN}\r".encode())
                 read(fd, "PROMPT> ")
-                os.write(fd, b"echo hello-$((6*7)) # what is it?\x18n")
+                os.write(fd, b"echo hello-$((6*7)) # what is it?\x0e")
                 first = read(fd, "FIRST-NOTE", timeout=30)
-                os.write(fd, b"\x18n")
+                os.write(fd, b"\x0e")
                 second = read(fd, "SECOND-NOTE", timeout=30)
                 os.write(fd, b"exit\r")
             finally:

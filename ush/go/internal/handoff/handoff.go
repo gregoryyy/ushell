@@ -8,7 +8,7 @@
 // line, capture or interactive, then the command); the plugin writes `ran` (exit status, then the
 // command line) and `output`. ush uses the directory only if it is the user's own, closed to
 // others, and never as root. When `//` takes `ran` and `output`, they stay as `last-ran` and
-// `last-output` for notes (`ush notes --last`, Ctrl-X n, TODO 2.25) until the next run replaces
+// `last-output` for notes (`ush notes --last`, Ctrl-N, TODO 2.25) until the next run replaces
 // them or the shell exits. Conversations are saved per shell in the state directory,
 // sessions/KEY.json, mode 0600, and expire after an hour unused. Explanations are kept in
 // explanations.json, mode 0600: the model's redacted answer under the SHA-256 of the command line,

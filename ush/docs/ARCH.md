@@ -122,8 +122,9 @@ propose specific shell commands and prewrite them to be executed by the user"; t
 - **Esc** clears the explanation, or else the proposal.
 - **The installers** offer to add the plugin to `~/.zshrc` (`shell/zshrc.sh`).
 
-**Notes** (TODO 2.25, GAPS Q7): Ctrl-X n, bound for the whole shell, not only on a proposal,
-and only where the key is free. `_ush_notes` splits the line with zsh's own parser
+**Notes** (TODO 2.25, GAPS Q7): Ctrl-N, bound for the whole shell, not only on a proposal,
+in emacs and viins, and only where the key still has zsh's own meaning (emacs:
+down-line-or-history, which Down also does) or is free; a key the user bound is left alone. `_ush_notes` splits the line with zsh's own parser
 (`${(Z+c+)BUFFER}`), so a trailing comment is one word: the question.
 - **A command line** (its first word is something `whence` finds) runs like a proposal: the
   widget sets the captured state and accepts the line. `precmd` writes `ran` as usual, then

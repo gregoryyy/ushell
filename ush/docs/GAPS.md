@@ -94,11 +94,18 @@ Two decisions, from the user's request of 2026-10-29.
    chose to keep keys as they are there (Esc, 2026-10-28).
    - **Proposed:** bind Ctrl-N in emacs mode for notes, as asked; Down keeps history. Make the key
      a setting, `USH_NOTES_KEY` (empty: no binding). In vi mode, leave it unbound.
-   - **Answer** (2026-10-29 01:05, Gregor Heinrich): "then use ctrl-m". Ctrl-M is the byte Enter
+   - **Answer** (2026-10-30 08:17, Gregor Heinrich): "ctrl-x n doesn't seem to work: use a
+     single step key combination instead, like ctrl-f or ctrl-a". Offered Ctrl-N (zsh's next
+     history line, which Down also does), Ctrl-F (forward-char, which Right also does) or Ctrl-A;
+     the answer: "Ctrl-N". No startup file of the user's loaded the plugin, which is the likely
+     reason Ctrl-X n did nothing.
+   - **Resolved:** Ctrl-N, taken in emacs and viins only where it still has zsh's own meaning;
+     a key the user bound is left alone. TODO 2.25.
+   - ~~**Answer** (2026-10-29 01:05, Gregor Heinrich): "then use ctrl-m". Ctrl-M is the byte Enter
      sends (`^M`), so a terminal can't tell them apart. Offered Ctrl-X n (unbound in zsh), Ctrl-N
-     or Alt-N; the answer: "Ctrl-X n".
-   - **Resolved:** Ctrl-X n, which changes no existing binding. `USH_NOTES_KEY` (empty: no
-     binding) stays in TODO 2.25.
+     or Alt-N; the answer: "Ctrl-X n".~~
+   - ~~**Resolved:** Ctrl-X n, which changes no existing binding. `USH_NOTES_KEY` (empty: no
+     binding) stays in TODO 2.25.~~
 2. **Which output.** The plugin records output only for commands ush proposed. Recording every
    command's output would run every command with its output piped (no colours, no pagers).
    - **Proposed:** Ctrl-N on an empty line takes the last recorded output. Ctrl-N on a typed
