@@ -36,7 +36,7 @@ the guarantees it lacks, in this order:
 
 Then, for everyone:
 - Extend the read-only command table from real sessions (2.4), each command with negative tests.
-- Explanations kept per command line (2.24); notes on output and files with Ctrl-X n (2.25).
+- Explanations kept per command line (2.24); notes on output and files with Ctrl-N (2.25).
 - Compaction or context editing for long sessions (2.5).
 
 ## 3. Compiled port

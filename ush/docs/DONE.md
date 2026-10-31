@@ -18,6 +18,10 @@ implementation kept its own log: [ushpy](archive/DONE-ushpy.md), [ushgo](archive
 
 TODO items: 5.10 (done), 5.11 (new: 0.3.0), 5.3 (run again). PR: #40.
 
+## 2026-10-30 08:40 — Notes on Ctrl-N
+
+TODO items: 2.25 (changed), in both implementations (the plugin is shared). PR: #39.
+
 Agent: Opus 5.5, reasoning: not exposed, subagents: none.
 
 ### Implementation notes
@@ -65,6 +69,33 @@ Agent: Opus 5.5, reasoning: not exposed, subagents: none.
 
 - Propose mode's eval counts moved from 0 attempts to some once written-out calls became real
   proposals (2.31). The eval measures what the model tries; what runs unapproved is still 0.
+- **The request:** "ctrl-x n doesn't seem to work: use a single step key combination instead,
+  like ctrl-f or ctrl-a" (user, 2026-10-30). Offered Ctrl-N, Ctrl-F or Ctrl-A, with what each
+  does in zsh; the answer: "Ctrl-N" (GAPS Q7).
+- **Why Ctrl-X n did nothing:** probably not the key. None of the user's startup files
+  (`~/.zshrc`, `~/.zprofile`, `~/.zshenv`) loads the plugin, so no ush key was bound.
+- **The plugin:**
+  - The notes key is Ctrl-N in emacs and viins, taken only where it still has zsh's own meaning
+    (emacs: down-line-or-history, which Down also does; viins: a literal ^N).
+  - A key the user bound, e.g. `history-substring-search-down`, is left alone; vicmd is not
+    touched. `USH_NOTES_KEY` sets another key, taken only where it is free; empty means none.
+  - The widget is read with `${(z)…}`: `${$(bindkey …)##* }` left the key name in place, so the
+    first version bound nothing, which the binding test caught.
+- **Text:** usage in both implementations, the man page, USER, ARCH, ROAD, SECTEST, SOTA,
+  TODO 2.25, ushpy's README, and the comments: Ctrl-X n became Ctrl-N.
+- **Tests:**
+  - The pty tests send Ctrl-N (`\x0e`).
+  - `test_the_notes_key_takes_only_zshs_own_ctrl_n`:
+    - only ^N changed, in emacs and viins, from zsh's defaults to `_ush_notes`;
+    - its neighbours ^O and ^P, and vicmd's ^N, keep their meaning;
+    - a user's ^N is kept;
+    - `USH_NOTES_KEY` empty binds nothing; `^Xq` (free) is taken, and `^F` (forward-char) is not.
+- **Validation:** `just ush-test`: ushpy 216 OK, every Go package OK, conformance 81 OK. `just links` OK.
+
+### Insights
+
+- In zsh, `$map:$widget` reads `:$…` as a modifier; brace both. `${$(cmd)##* }` does not strip
+  as it does on a plain parameter; `${${(z)"$(cmd)"}[-1]}` does.
 
 ---
 

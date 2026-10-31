@@ -1,4 +1,4 @@
-"""Notes on command output and files (TODO 2.25): `ush notes`, and Ctrl-X n with the plugin.
+"""Notes on command output and files (TODO 2.25): `ush notes`, and Ctrl-N with the plugin.
 
 What is sent, all of it redacted: the last command the plugin recorded (`--last`), input piped to
 ush, and files named on the command line. A file is not sent if it is in a secret location (the
