@@ -322,7 +322,7 @@ class CliTest(TempDirTest):
 
     @unittest.skipUnless(HAVE_SDK, "anthropic SDK not installed")
     def test_notes_on_the_last_recorded_command(self):
-        # Ctrl-X n: `ush notes --last`, the run the plugin recorded, left in place.
+        # Ctrl-N: `ush notes --last`, the run the plugin recorded, left in place.
         handoff = os.path.join(self.tmp, "ush.notes1")
         os.mkdir(handoff, 0o700)
         with open(os.path.join(handoff, "ran"), "w") as f:
