@@ -461,10 +461,25 @@ Until 2026-10-29: ushgo TODO 2.1–2.7.
   the merge the gate (5.3) on the merge commit, the tag `v0.2.1`, the GitHub release, and the
   formula from `scripts/formula.sh`, which has the new layout's paths. Done 2026-10-29 on 5c77891,
   with SECTEST F8 documented again (GAPS Q12).
-- [ ] 5.10 0.2.2 (user, 2026-10-29: "deploy to a homebrew tap", for the fix of TODO 2.31): tool calls
+- [x] 5.10 0.2.2 (user, 2026-10-29: "deploy to a homebrew tap", for the fix of TODO 2.31): tool calls
   that local models write as text. Version 0.2.2 in both implementations and the man page; after
   the merge the gate (5.3) on the merge commit, the tag `v0.2.2`, the GitHub release, and the
   formula in the tap. Release notes: [docs/releases/0.2.2.md](../../docs/releases/0.2.2.md).
+  Done 2026-10-29 on deac48b (DONE).
+- [ ] 5.11 0.3.0 (user, 2026-10-30: "for the next version 0.3.0, expand to bash, sh and other commonly
+  used shells"; the agent's proposal, accepted with "write to pr as proposed" and adjusted to the
+  answers to GAPS Q15–Q17). Contents:
+  - **Shells:** the shell interface (2.32), then bash 4 or newer (2.27), fish 3 (2.28) and POSIX
+    sh (2.33, once GAPS Q14 is answered). Proposals, explanations and notes in each shell's
+    syntax; agent mode only in zsh, refused elsewhere with the reason (Q15). macOS's bash 3.2 is
+    refused with a pointer to a newer bash.
+  - **Platforms:** the provider table and model profiles (2.29.1) and the Chat Completions adapter
+    with `openai`, `mistral` and `openai-compatible` (2.29.2).
+  - **Argument origin (2.23),** required before a release ships 2.29.2 (Q17).
+  - **Not in 0.3.0:** PowerShell (2.34), the local server presets (2.29.3), the other platforms
+    (2.29.4, 2.29.5), Windows (Q16).
+  - **The gate (5.3)** adds the plugin pty tests in each shell, the injection eval on one model per
+    new adapter (Q17), and each installer offering its shell's startup file.
 
 ## Old IDs
 
