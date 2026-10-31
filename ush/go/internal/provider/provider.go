@@ -20,25 +20,19 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/gregoryyy/ushell/ush/go/internal/providers"
 )
 
 const (
 	APIURL         = "https://api.anthropic.com"
 	apiVersion     = "2026-10-21"
 	ollamaKey      = "ollama" // Ollama ignores the key
-	MaxTokens      = 64000
+	MaxTokens      = providers.MaxTokens
 	CheckMaxTokens = 2048 // the checker answers one line; local thinking models need room first
 	CheckTimeout   = 60 * time.Second
 	FallbackBeta   = "server-side-fallback-2026-07-01"
 	UpdatesBeta    = "thinking-display-updates-2026-08-18"
-)
-
-// Models that accept server-side refusal fallbacks and between-tool progress notes.
-var (
-	fallbackModels = map[string]bool{"claude-opus-5-5": true, "claude-opus-5": true, "claude-sonnet-5-5": true,
-		"claude-fable-5-1": true, "claude-fable-5": true}
-	updatesModels = map[string]bool{"claude-opus-5-5": true, "claude-sonnet-5-5": true,
-		"claude-fable-5-1": true, "claude-fable-5": true}
 )
 
 // Error is a provider problem, with a message the user can act on.
@@ -65,10 +59,12 @@ type Provider interface {
 	Complete(ctx context.Context, system, text string) (string, error)
 }
 
-// Client is the Anthropic or Ollama provider.
+// Client is the Anthropic or Ollama provider. What a request carries besides the model, system
+// prompt, tools and messages comes from the model's profile (providers.ProfileOf).
 type Client struct {
 	name, model, effort, base, key string
-	ollama                         bool
+	ollama                         bool // Ollama's errors and transport
+	profile                        providers.Profile
 	http                           *http.Client
 	MaxRetries                     int
 }
@@ -85,55 +81,57 @@ func NewAnthropic(key, model, effort, base string) *Client {
 	tr := &http.Transport{Proxy: http.ProxyFromEnvironment, DialContext: dialer().DialContext,
 		TLSHandshakeTimeout: 30 * time.Second, ForceAttemptHTTP2: true}
 	return &Client{name: "Anthropic", model: model, effort: effort, base: strings.TrimRight(base, "/"),
-		key: key, http: &http.Client{Transport: tr, CheckRedirect: noRedirect}, MaxRetries: 2}
+		key: key, profile: providers.ProfileOf("anthropic", model),
+		http: &http.Client{Transport: tr, CheckRedirect: noRedirect}, MaxRetries: 2}
 }
 
 // NewOllama: a local Ollama; no proxy, no redirect, no Anthropic options.
 func NewOllama(model, base string) *Client {
 	tr := &http.Transport{Proxy: nil, DialContext: dialer().DialContext}
 	return &Client{name: "Ollama", model: model, base: strings.TrimRight(base, "/"), key: ollamaKey,
-		ollama: true, http: &http.Client{Transport: tr, CheckRedirect: noRedirect}, MaxRetries: 2}
+		ollama: true, profile: providers.ProfileOf("ollama", model),
+		http: &http.Client{Transport: tr, CheckRedirect: noRedirect}, MaxRetries: 2}
 }
 
 func (c *Client) Name() string  { return c.name }
 func (c *Client) Model() string { return c.model }
 
 func (c *Client) params(system string, tools []Block, messages []Block) (Block, []string) {
-	if c.ollama {
-		return Block{"model": c.model, "max_tokens": MaxTokens, "system": system, "tools": nonNil(tools),
-			"messages": messages}, nil
-	}
-	var betas []string
-	eager := make([]Block, 0, len(tools))
+	p, betas := c.profile, []string(nil)
+	sent := make([]Block, 0, len(tools))
 	for _, t := range tools {
 		copied := Block{}
 		for k, v := range t {
-			copied[k] = v
+			if k != "strict" || p.StrictTools {
+				copied[k] = v
+			}
 		}
-		copied["eager_input_streaming"] = true
-		eager = append(eager, copied)
+		if p.EagerToolInput {
+			copied["eager_input_streaming"] = true
+		}
+		sent = append(sent, copied)
 	}
-	p := Block{"model": c.model, "max_tokens": MaxTokens, "system": system, "tools": eager,
-		"messages": messages, "cache_control": Block{"type": "ephemeral"},
-		"output_config": Block{"effort": c.effort}}
-	if updatesModels[c.model] {
-		p["thinking"] = Block{"type": "adaptive", "display": "updates"}
+	params := Block{"model": c.model, "max_tokens": p.OutputLimit, "system": system, "tools": sent,
+		"messages": messages}
+	if p.PromptCache {
+		params["cache_control"] = Block{"type": "ephemeral"}
+	}
+	if p.Effort {
+		params["output_config"] = Block{"effort": c.effort}
+	}
+	switch p.Thinking {
+	case "adaptive-updates":
+		params["thinking"] = Block{"type": "adaptive", "display": "updates"}
 		betas = append(betas, UpdatesBeta)
-	} else {
-		p["thinking"] = Block{"type": "adaptive"}
+	case "":
+	default:
+		params["thinking"] = Block{"type": p.Thinking}
 	}
-	if fallbackModels[c.model] {
-		p["fallbacks"] = "default"
+	if p.ServerFallbacks {
+		params["fallbacks"] = "default"
 		betas = append(betas, FallbackBeta)
 	}
-	return p, betas
-}
-
-func nonNil(tools []Block) []Block {
-	if tools == nil {
-		return []Block{}
-	}
-	return tools
+	return params, betas
 }
 
 // post sends a request, retrying connection failures and 408/409/429/5xx like the SDK.
@@ -231,10 +229,10 @@ func (c *Client) statusError(resp *http.Response) error {
 }
 
 // Turn streams one reply. Tool input that can't be parsed re-issues the turn, up to three times.
-// From Ollama, a tool call the model wrote as text becomes a tool call (TextToolCall), and text
-// that may be one is held back from the screen until the turn ends.
+// For a model that may write tool calls as text (its profile says so), such a text becomes a tool
+// call (TextToolCall), and text that may be one is held back from the screen until the turn ends.
 func (c *Client) Turn(ctx context.Context, system string, tools []Block, messages []Block, onText, onProgress func(string)) (Turn, error) {
-	if !c.ollama {
+	if !c.profile.TextToolCalls {
 		return c.turn(ctx, system, tools, messages, onText, onProgress)
 	}
 	show := onText

@@ -8,9 +8,12 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 	"sync"
 	"testing"
+
+	"github.com/gregoryyy/ushell/ush/go/internal/providers"
 )
 
 var syntheticKey = "sk-ant-test-" + strings.Repeat("0", 28) + "SYNTHETIC"
@@ -284,5 +287,49 @@ func TestEchoContentDropsTheDeclinedModelsBlocks(t *testing.T) {
 	got := EchoContent(content)
 	if len(got) != 3 || got[0]["type"] != "text" || got[2]["type"] != "tool_use" {
 		t.Error(got)
+	}
+}
+
+// Each profile setting, on and off, as the Messages client sends it (ushpy MappingTest).
+func TestEachProfileSettingMapsOntoTheRequest(t *testing.T) {
+	tool := []Block{{"name": "run_command", "strict": true, "input_schema": Block{"type": "object"}}}
+	params := func(change func(*providers.Profile)) (Block, []string) {
+		c := NewAnthropic(syntheticKey, "claude-opus-5-5", "high", "http://127.0.0.1:9")
+		change(&c.profile)
+		return c.params("sys", tool, []Block{{"role": "user", "content": "x"}})
+	}
+	full, betas := params(func(*providers.Profile) {})
+	sent := full["tools"].([]Block)[0]
+	if full["output_config"].(Block)["effort"] != "high" || full["thinking"].(Block)["display"] != "updates" ||
+		full["fallbacks"] != "default" || len(betas) != 2 || full["cache_control"] == nil ||
+		sent["eager_input_streaming"] != true || sent["strict"] != true || full["max_tokens"] != 64000 {
+		t.Fatal(full, betas)
+	}
+	off := []struct {
+		change func(*providers.Profile)
+		gone   string
+	}{
+		{func(p *providers.Profile) { p.Effort = false }, "output_config"},
+		{func(p *providers.Profile) { p.Thinking = "" }, "thinking"},
+		{func(p *providers.Profile) { p.ServerFallbacks = false }, "fallbacks"},
+		{func(p *providers.Profile) { p.PromptCache = false }, "cache_control"},
+	}
+	for _, c := range off {
+		if p, _ := params(c.change); p[c.gone] != nil {
+			t.Error(c.gone, p)
+		}
+	}
+	if p, _ := params(func(p *providers.Profile) { p.Thinking = "adaptive" }); !reflect.DeepEqual(p["thinking"], Block{"type": "adaptive"}) {
+		t.Error(p["thinking"])
+	}
+	if p, _ := params(func(p *providers.Profile) { p.EagerToolInput, p.StrictTools = false, false }); len(p["tools"].([]Block)[0]) != 2 {
+		t.Error(p["tools"])
+	}
+	if p, _ := params(func(p *providers.Profile) { p.OutputLimit = 2048 }); p["max_tokens"] != 2048 {
+		t.Error(p["max_tokens"])
+	}
+	bare, betas := NewOllama("llama3.2:3b", "http://127.0.0.1:9").params("sys", tool, nil)
+	if len(bare) != 5 || betas != nil || !reflect.DeepEqual(bare["tools"], tool) {
+		t.Error(bare, betas)
 	}
 }

@@ -12,6 +12,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/gregoryyy/ushell/ush/go/internal/providers"
 )
 
 const (
@@ -23,7 +25,7 @@ const (
 var Security = "/usr/bin/security"
 
 var (
-	keyEnv     = []string{"USH_API_KEY", "ANTHROPIC_API_KEY"}
+	keyEnv     = providers.KeyEnv
 	keyPattern = regexp.MustCompile(`^[A-Za-z0-9_\-]{20,300}$`)
 )
 

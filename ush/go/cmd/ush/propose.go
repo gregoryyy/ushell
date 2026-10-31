@@ -10,6 +10,7 @@ import (
 	"github.com/gregoryyy/ushell/ush/go/internal/handoff"
 	"github.com/gregoryyy/ushell/ush/go/internal/history"
 	"github.com/gregoryyy/ushell/ush/go/internal/provider"
+	"github.com/gregoryyy/ushell/ush/go/internal/providers"
 	"github.com/gregoryyy/ushell/ush/go/internal/ui"
 )
 
@@ -120,25 +121,41 @@ func banner(term *ui.Terminal, id config.Identity, settings config.Settings, opt
 	}
 }
 
+// destination: where a provider sends what ush gives it, or "" if it stays on this machine.
+func destination(s config.Settings, name, model string) string {
+	spec := providers.MustGet(name)
+	if spec.ListsModels {
+		if remote := provider.OllamaRemoteHost(s.Endpoint(name), model); remote != "" {
+			return remote + " via " + spec.Label
+		}
+		return ""
+	}
+	if spec.Loopback {
+		return ""
+	}
+	return spec.Label
+}
+
 // disclosure: where requests and command output go, as shown before every session.
 func disclosure(s config.Settings) string {
-	if s.Provider != "ollama" {
-		return "requests and command output go to Anthropic, secrets redacted"
+	spec := providers.MustGet(s.Provider)
+	where := destination(s, s.Provider, s.ActiveModel())
+	if where == "" {
+		return "local " + spec.Label + " (" + s.Endpoint(s.Provider) + "): requests and command output stay on this machine"
 	}
-	if remote := provider.OllamaRemoteHost(s.OllamaURL, s.OllamaModel); remote != "" {
-		return "cloud model: requests and command output go to " + remote + " via Ollama, secrets redacted"
+	cloud := ""
+	if spec.Loopback {
+		cloud = "cloud model: "
 	}
-	return "local Ollama (" + s.OllamaURL + "): requests and command output stay on this machine"
+	return cloud + "requests and command output go to " + where + ", secrets redacted"
 }
 
 // checkerDisclosure: where the checker sends requests and proposals (never command output).
 func checkerDisclosure(s config.Settings) string {
 	model := s.CheckerModel()
 	where := "stay on this machine"
-	if s.CheckerProvider() == "anthropic" {
-		where = "go to Anthropic"
-	} else if remote := provider.OllamaRemoteHost(s.OllamaURL, model); remote != "" {
-		where = "go to " + remote + " via Ollama"
+	if place := destination(s, s.CheckerProvider(), model); place != "" {
+		where = "go to " + place
 	}
 	return "checker " + model + ": your requests and the proposed commands " + where +
 		", secrets redacted; command output is not sent to it"

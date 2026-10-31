@@ -14,7 +14,6 @@ import (
 	"github.com/gregoryyy/ushell/ush/go/internal/execute"
 	"github.com/gregoryyy/ushell/ush/go/internal/handoff"
 	"github.com/gregoryyy/ushell/ush/go/internal/notes"
-	"github.com/gregoryyy/ushell/ush/go/internal/provider"
 	"github.com/gregoryyy/ushell/ush/go/internal/redact"
 	"github.com/gregoryyy/ushell/ush/go/internal/ui"
 )
@@ -130,12 +129,9 @@ func notesCommand(args []string, term *ui.Terminal, id config.Identity, s config
 		}
 		return many
 	}
-	where := verb("goes", "go") + " to Anthropic"
-	if s.Provider == "ollama" {
-		where = verb("stays", "stay") + " on this machine"
-		if remote := provider.OllamaRemoteHost(s.OllamaURL, s.OllamaModel); remote != "" {
-			where = verb("goes", "go") + " to " + remote + " via Ollama"
-		}
+	where := verb("stays", "stay") + " on this machine"
+	if place := destination(s, s.Provider, s.ActiveModel()); place != "" {
+		where = verb("goes", "go") + " to " + place
 	}
 	term.Info(fmt.Sprintf("ush · %s · notes, runs nothing · %s %s, secrets redacted", s.ActiveModel(), what, where))
 	if o.Verbose {

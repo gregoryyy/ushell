@@ -19,6 +19,7 @@ import (
 	"github.com/gregoryyy/ushell/ush/go/internal/history"
 	"github.com/gregoryyy/ushell/ush/go/internal/policy"
 	"github.com/gregoryyy/ushell/ush/go/internal/provider"
+	"github.com/gregoryyy/ushell/ush/go/internal/providers"
 	"github.com/gregoryyy/ushell/ush/go/internal/redact"
 	"github.com/gregoryyy/ushell/ush/go/internal/ui"
 )
@@ -65,18 +66,22 @@ func aiCommand(args []string, term *ui.Terminal, id config.Identity, settings co
 		}
 		ask(term, fmt.Sprintf("mode: propose (you run the commands) or run (ush runs them) [%s]: ", s.Mode), s.SetMode)
 		ask(term, fmt.Sprintf("provider %s [%s]: ", strings.Join(config.Providers, "/"), s.Provider), s.SetProvider)
-		if s.Provider == "ollama" {
-			ask(term, fmt.Sprintf("Ollama URL [%s]: ", s.OllamaURL), func(v string) error {
+		spec := providers.MustGet(s.Provider)
+		if spec.URLSetting != "" {
+			ask(term, fmt.Sprintf("%s URL [%s]: ", spec.Label, s.Endpoint(spec.Name)), func(v string) error {
 				u, err := config.CheckOllamaURL(v)
 				if err == nil {
 					s.OllamaURL = u
 				}
 				return err
 			})
-			if pulled := ollamaModels(s.OllamaURL); len(pulled) > 0 {
+		}
+		if spec.ListsModels {
+			if pulled := ollamaModels(s.Endpoint(spec.Name)); len(pulled) > 0 {
 				term.Info("pulled models: " + strings.Join(pulled, ", "))
 			}
-		} else {
+		}
+		if spec.KeyStore {
 			if key := strings.TrimSpace(term.Secret("API key (hidden; Enter keeps the current key): ")); key != "" {
 				where, err := keys.Store(key, !contains(args, "--file"))
 				if err != nil {
@@ -86,7 +91,7 @@ func aiCommand(args []string, term *ui.Terminal, id config.Identity, settings co
 			}
 		}
 		ask(term, fmt.Sprintf("model [%s]: ", s.ActiveModel()), s.SetModel)
-		if s.Provider == "anthropic" {
+		if providers.ProfileOf(s.Provider, s.ActiveModel()).Effort {
 			ask(term, fmt.Sprintf("effort %s [%s]: ", strings.Join(config.Efforts, "/"), s.Effort), func(v string) error {
 				if !contains(config.Efforts, v) {
 					return config.Errorf("effort must be one of %s", strings.Join(config.Efforts, ", "))
@@ -103,8 +108,8 @@ func aiCommand(args []string, term *ui.Terminal, id config.Identity, settings co
 			if err := s.SetChecker(v); err != nil {
 				return err
 			}
-			if s.CheckerProvider() == "ollama" {
-				pulled := ollamaModels(s.OllamaURL)
+			if providers.MustGet(s.CheckerProvider()).ListsModels {
+				pulled := ollamaModels(s.Endpoint(s.CheckerProvider()))
 				if len(pulled) > 0 && !contains(pulled, s.CheckerModel()) && !contains(pulled, s.CheckerModel()+":latest") {
 					return config.Errorf("Ollama has no model %s; pulled: %s", pyRepr(s.CheckerModel()), strings.Join(pulled, ", "))
 				}
@@ -122,14 +127,19 @@ func aiCommand(args []string, term *ui.Terminal, id config.Identity, settings co
 		return 0, nil
 	case "status":
 		out := term.Out
-		if settings.Provider == "ollama" {
-			model := settings.OllamaModel
-			if model == "" {
-				model = "not configured"
-			}
-			fmt.Fprintf(out, "provider:  Ollama (%s)\nmodel:     %s\ndata:      %s\nkey:       not needed\n",
-				settings.OllamaURL, model, disclosure(settings))
-		} else {
+		spec := providers.MustGet(settings.Provider)
+		model := settings.ActiveModel()
+		if model == "" {
+			model = "not configured"
+		}
+		if providers.ProfileOf(spec.Name, settings.ActiveModel()).Effort {
+			model += " (effort " + settings.Effort + ")"
+		}
+		fmt.Fprintf(out, "provider:  %s (%s)\nmodel:     %s\n", spec.Label, settings.Endpoint(spec.Name), model)
+		if spec.Loopback {
+			fmt.Fprintf(out, "data:      %s\n", disclosure(settings))
+		}
+		if spec.KeyStore {
 			key, source, err := keys.Resolve()
 			if err != nil {
 				return 2, err
@@ -138,8 +148,9 @@ func aiCommand(args []string, term *ui.Terminal, id config.Identity, settings co
 			if key != "" {
 				keyText = config.Mask(key) + " from " + source
 			}
-			fmt.Fprintf(out, "provider:  Anthropic (%s)\nmodel:     %s (effort %s)\nkey:       %s\n",
-				provider.APIURL, settings.Model, settings.Effort, keyText)
+			fmt.Fprintf(out, "key:       %s\n", keyText)
+		} else {
+			fmt.Fprintln(out, "key:       not needed")
 		}
 		mode := "run: ush runs commands (agent)"
 		if settings.Mode == "propose" {
@@ -451,12 +462,9 @@ func explainCommand(args []string, term *ui.Terminal, id config.Identity, s conf
 	kept := handoff.NewExplanations(id.StateDir())
 	answer := kept.Get(command)
 	if o.Verbose {
-		where := "goes to Anthropic"
-		if s.Provider == "ollama" {
-			where = "stays on this machine"
-			if remote := provider.OllamaRemoteHost(s.OllamaURL, s.OllamaModel); remote != "" {
-				where = "goes to " + remote + " via Ollama"
-			}
+		where := "stays on this machine"
+		if place := destination(s, s.Provider, s.ActiveModel()); place != "" {
+			where = "goes to " + place
 		}
 		if answer != "" {
 			term.Info("ush · explained before, runs nothing · nothing sent")

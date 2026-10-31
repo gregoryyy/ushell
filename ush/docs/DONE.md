@@ -14,6 +14,10 @@ implementation kept its own log: [ushpy](archive/DONE-ushpy.md), [ushgo](archive
 
 ---
 
+## 2026-10-30 09:30 — The provider table and model profiles
+
+TODO items: 2.29.1, in both implementations. PR: #41.
+
 ## 2026-10-30 08:45 — Release 0.2.2, and 0.3.0 planned
 
 TODO items: 5.10 (done), 5.11 (new: 0.3.0), 5.3 (run again). PR: #40.
@@ -26,6 +30,56 @@ Agent: Opus 5.5, reasoning: not exposed, subagents: none.
 
 ### Implementation notes
 
+- **The request:** "add options to allow other model providers, like ../kibitz" (user,
+  2026-10-30). With GAPS Q13 ("first openai, mistral model settings (consider internal
+  abstraction?)"), 2.29.1 comes first: an internal abstraction with no change in behaviour. The
+  adapter with OpenAI and Mistral (2.29.2) follows on it.
+- **ushpy `providers.py`, ushgo `internal/providers`:**
+  - **The table**, one row per provider, with Anthropic and Ollama as its rows:
+    - name, label, API, default endpoint and the setting that overrides it;
+    - whether it must be on this machine;
+    - the key variables and whether it needs a stored key;
+    - the model pattern and the setting that holds the model;
+    - whether it can list its models, and a hint when no model is set.
+  - **A model profile:** effort, thinking (adaptive, with progress notes or without), server-side
+    fallbacks, strict tool schemas, eager tool input, the prompt cache, the output limit, and
+    whether the model may write tool calls as text.
+- **What reads them:**
+  - Settings: `active_model`/`ActiveModel` and the new `model_of`/`ModelOf` and `Endpoint`;
+    `set_model` and the checker's model check use the row's pattern.
+  - The CLI:
+    - the factory picks the adapter by the row;
+    - `secrets` asks for a key where a used row needs one;
+    - the disclosure, explain's and notes' "where", the checker's disclosure and `ush ai
+      status` come from `destination` and the row;
+    - `ush ai configure` asks for the URL, the models and the key where the row says so, and
+      for the effort where the profile takes one.
+  - The Messages adapter builds each request from the profile (Anthropic's and Ollama's), and
+    reads tool calls written as text where the profile says so; before, that was Ollama's class.
+  - Ollama keeps its own errors and transport in the adapter.
+  - No `provider == "ollama"` or `"anthropic"` check is left in the CLI or settings of either
+    implementation.
+- **Tests:**
+  - ushpy `test_providers`: the table's rows and their settings; Anthropic's and Ollama's rows;
+    settings through the table; the profile of every listed Anthropic model and of Ollama; each
+    profile setting on and off as the request carries it; Ollama's bare request.
+  - ushgo: `TestTheTable`, `TestProfiles`, `TestEachProfileSettingMapsOntoTheRequest`.
+  - The existing suites pass unchanged.
+- **Validation:** `just ush-test`: ushpy 223 tests OK, every ushgo package ok (with the new `internal/providers`), conformance 81 tests OK, on macOS 26.2 arm64, Python 3.11.12. `just links` OK.
+
+### Deviations
+
+- **No `ush ai` note for a setting a model ignores yet:** Ollama's models are simply not asked for
+  an effort, as before. The note comes with the first model that takes a setting only partly
+  (2.29.2).
+- **The work was rebuilt:** an earlier branch had the Chat Completions adapter and nine presets
+  without the table. After the answers to GAPS Q13 and Q17 (merged in #38), it is split: this
+  item first, then 2.29.2 with OpenAI, Mistral and `openai-compatible` only.
+
+### Insights
+
+- Ollama's adapter differs from Anthropic's in what it sends (the profile) and in its errors and
+  transport (the adapter); only the first is per model, so only that went into the profile.
 - **The user's request:** "deploy to a homebrew tap", for the fix of TODO 2.31 (#36). The user
   merged the version change (#37).
 - **Gate on deac48b**, the merge of #37, as 0.2.2:

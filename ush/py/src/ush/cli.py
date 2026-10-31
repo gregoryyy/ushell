@@ -21,6 +21,8 @@ from .history import History, Step
 from .policy import classify
 from .provider import (API_URL, AnthropicProvider, OllamaProvider, Provider, ProviderError,
                        Turn, local_opener, ollama_remote_host)
+from .providers import PROVIDERS as TABLE
+from .providers import profile
 from .redact import redact
 from .ui import Terminal, visible
 
@@ -87,7 +89,7 @@ class LazyProvider:
     def __init__(self, factory):
         self._factory = factory
         self._provider: Optional[Provider] = None
-        self.name = "Ollama" if factory.settings.provider == "ollama" else "Anthropic"
+        self.name = TABLE[factory.settings.provider].label
 
     @property
     def model(self) -> str:
@@ -105,17 +107,18 @@ class ProviderFactory:
         self.model = settings.active_model
         self.key: Optional[str] = None
 
-    @property
-    def ollama(self) -> bool:
-        return self.settings.provider == "ollama"
-
     def secrets(self) -> tuple[str, ...]:
         """Check that the provider and the checker can be used and return the secrets to
         redact. Fails before any command runs."""
-        if self.ollama and not self.settings.ollama_model:
-            raise ConfigError("no Ollama model; run `ush ai configure` or set USH_MODEL "
-                              "(see `ollama list`)")
-        if not self.ollama or self.settings.checker_provider == "anthropic":
+        used = [self.settings.provider]
+        spec = TABLE[self.settings.provider]
+        if not self.settings.active_model:
+            hint = f" ({spec.model_hint})" if spec.model_hint else ""
+            raise ConfigError(f"no {spec.label} model; run `ush ai configure` or set USH_MODEL"
+                              f"{hint}")
+        if self.settings.checker_provider:
+            used.append(self.settings.checker_provider)
+        if any(TABLE[p].key_store for p in used):
             return (self.resolve_key(),)
         return ()
 
@@ -129,27 +132,38 @@ class ProviderFactory:
             self.key = key
         return self.key
 
-    def __call__(self) -> Provider:
-        if self.ollama:
-            return OllamaProvider(self.settings.ollama_model, self.settings.ollama_url)
+    def create(self, provider: str, model: str, effort: str = "") -> Provider:
+        spec = TABLE[provider]
+        if spec.loopback:
+            return OllamaProvider(model, getattr(self.settings, spec.url_setting))
         # As root, ignore environment overrides of the endpoint (sudo -E).
         base_url = API_URL if self.ident.is_root else os.environ.get("USH_BASE_URL") or None
-        return AnthropicProvider(self.resolve_key(), self.settings.model, self.settings.effort,
-                                 base_url=base_url)
+        return AnthropicProvider(self.resolve_key(), model, effort, base_url=base_url)
+
+    def __call__(self) -> Provider:
+        return self.create(self.settings.provider, self.settings.active_model,
+                           self.settings.effort)
 
     def checker(self) -> Optional[Checker]:
         """The checker model, if one is configured; its client is created on first use."""
         provider, model = self.settings.checker_provider, self.settings.checker_model
         if not provider:
             return None
+        return Checker(lambda: self.create(provider, model), model)
 
-        def create() -> AnthropicProvider:
-            if provider == "ollama":
-                return OllamaProvider(model, self.settings.ollama_url)
-            base_url = API_URL if self.ident.is_root else os.environ.get("USH_BASE_URL") or None
-            return AnthropicProvider(self.resolve_key(), model, "", base_url=base_url)
 
-        return Checker(create, model)
+def endpoint(settings: Settings, provider: str) -> str:
+    spec = TABLE[provider]
+    return getattr(settings, spec.url_setting) if spec.url_setting else spec.url
+
+
+def destination(settings: Settings, provider: str, model: str) -> Optional[str]:
+    """Where a provider sends what ush gives it, or None if it stays on this machine."""
+    spec = TABLE[provider]
+    if spec.lists_models:
+        remote = ollama_remote_host(endpoint(settings, provider), model)
+        return f"{remote} via {spec.label}" if remote else None
+    return None if spec.loopback else spec.label
 
 
 def main(argv: Optional[list[str]] = None) -> int:
@@ -358,10 +372,8 @@ def _explain(args: list[str], ui: Terminal, ident: Identity, settings: Settings,
     kept = Explanations(ident.state_dir())
     answer = kept.get(command)
     if options.verbose:
-        where = "goes to Anthropic"
-        if settings.provider == "ollama":
-            remote = ollama_remote_host(settings.ollama_url, settings.ollama_model)
-            where = f"goes to {remote} via Ollama" if remote else "stays on this machine"
+        place = destination(settings, settings.provider, settings.active_model)
+        where = f"goes to {place}" if place else "stays on this machine"
         if answer is not None:
             ui.info("ush · explained before, runs nothing · nothing sent")
         else:
@@ -473,11 +485,9 @@ def _notes(args: list[str], ui: Terminal, ident: Identity, settings: Settings,
     names = [m.name for m in material]
     what = names[0] if len(names) == 1 else ", ".join(names[:-1]) + " and " + names[-1]
     one = len(names) == 1
-    where = ("goes" if one else "go") + " to Anthropic"
-    if settings.provider == "ollama":
-        remote = ollama_remote_host(settings.ollama_url, settings.ollama_model)
-        where = (("goes" if one else "go") + f" to {remote} via Ollama" if remote else
-                 ("stays" if one else "stay") + " on this machine")
+    place = destination(settings, settings.provider, settings.active_model)
+    where = (("goes" if one else "go") + f" to {place}" if place else
+             ("stays" if one else "stay") + " on this machine")
     ui.info(f"ush · {settings.active_model} · notes, runs nothing · {what} {where}, "
             "secrets redacted")
     if options.verbose:
@@ -552,23 +562,20 @@ def _banner(ui: Terminal, ident: Identity, settings: Settings, options: Options)
 
 def disclosure(settings: Settings) -> str:
     """Where requests and command output go, as shown before every session."""
-    if settings.provider != "ollama":
-        return "requests and command output go to Anthropic, secrets redacted"
-    remote = ollama_remote_host(settings.ollama_url, settings.ollama_model)
-    if remote:
-        return (f"cloud model: requests and command output go to {remote} via Ollama, "
-                "secrets redacted")
-    return f"local Ollama ({settings.ollama_url}): requests and command output stay on this machine"
+    spec = TABLE[settings.provider]
+    where = destination(settings, settings.provider, settings.active_model)
+    if where is None:
+        return (f"local {spec.label} ({endpoint(settings, settings.provider)}): requests and "
+                "command output stay on this machine")
+    cloud = "cloud model: " if spec.loopback else ""
+    return f"{cloud}requests and command output go to {where}, secrets redacted"
 
 
 def checker_disclosure(settings: Settings) -> str:
     """Where the checker sends your requests and the proposed commands (never command output)."""
     model = settings.checker_model
-    if settings.checker_provider == "anthropic":
-        where = "go to Anthropic"
-    else:
-        remote = ollama_remote_host(settings.ollama_url, model)
-        where = f"go to {remote} via Ollama" if remote else "stay on this machine"
+    place = destination(settings, settings.checker_provider, model)
+    where = f"go to {place}" if place else "stay on this machine"
     return (f"checker {model}: your requests and the proposed commands {where}, secrets "
             "redacted; command output is not sent to it")
 
@@ -641,21 +648,23 @@ def _ai(args: list[str], ui: Terminal, ident: Identity, settings: Settings,
         _ask(ui, f"mode: propose (you run the commands) or run (ush runs them) "
                  f"[{settings.mode}]: ", settings.set_mode)
         _ask(ui, f"provider {'/'.join(PROVIDERS)} [{settings.provider}]: ", settings.set_provider)
-        if settings.provider == "ollama":
+        spec = TABLE[settings.provider]
+        if spec.url_setting:
             def set_url(url: str) -> None:
-                settings.ollama_url = check_ollama_url(url)
-            _ask(ui, f"Ollama URL [{settings.ollama_url}]: ", set_url)
-            pulled = _ollama_models(settings.ollama_url)
+                setattr(settings, spec.url_setting, check_ollama_url(url))
+            _ask(ui, f"{spec.label} URL [{endpoint(settings, spec.name)}]: ", set_url)
+        if spec.lists_models:
+            pulled = _ollama_models(endpoint(settings, spec.name))
             if pulled:
                 ui.info("pulled models: " + ", ".join(pulled))
-        else:
+        if spec.key_store:
             prefer_keychain = "--file" not in args
             key = getpass.getpass("API key (hidden; Enter keeps the current key): ").strip()
             if key:
                 where = keys.store(key, prefer_keychain=prefer_keychain)
                 ui.info(f"key stored in {where}")
         _ask(ui, f"model [{settings.active_model}]: ", settings.set_model)
-        if settings.provider == "anthropic":
+        if profile(settings.provider, settings.active_model).effort:
             def set_effort(effort: str) -> None:
                 if effort not in EFFORTS:
                     raise ConfigError(f"effort must be one of {', '.join(EFFORTS)}")
@@ -663,8 +672,8 @@ def _ai(args: list[str], ui: Terminal, ident: Identity, settings: Settings,
             _ask(ui, f"effort {'/'.join(EFFORTS)} [{settings.effort}]: ", set_effort)
         def set_checker(value: str) -> None:
             settings.set_checker(value)
-            if settings.checker_provider == "ollama":
-                pulled = _ollama_models(settings.ollama_url)
+            if TABLE[settings.checker_provider].lists_models:
+                pulled = _ollama_models(endpoint(settings, settings.checker_provider))
                 if pulled and settings.checker_model not in pulled and \
                         f"{settings.checker_model}:latest" not in pulled:
                     raise ConfigError(f"Ollama has no model {settings.checker_model!r}; "
@@ -675,16 +684,19 @@ def _ai(args: list[str], ui: Terminal, ident: Identity, settings: Settings,
         ui.info(f"settings saved to {save_settings(ident, settings)}")
         return 0
     if action == "status":
-        if settings.provider == "ollama":
-            print(f"provider:  Ollama ({settings.ollama_url})")
-            print(f"model:     {settings.ollama_model or 'not configured'}")
+        spec = TABLE[settings.provider]
+        model = settings.active_model or "not configured"
+        if profile(spec.name, settings.active_model).effort:
+            model += f" (effort {settings.effort})"
+        print(f"provider:  {spec.label} ({endpoint(settings, spec.name)})")
+        print(f"model:     {model}")
+        if spec.loopback:
             print(f"data:      {disclosure(settings)}")
-            print("key:       not needed")
-        else:
+        if spec.key_store:
             key, source = keys.resolve()
-            print(f"provider:  Anthropic ({API_URL})")
-            print(f"model:     {settings.model} (effort {settings.effort})")
             print(f"key:       {mask(key) + ' from ' + source if key else 'not configured'}")
+        else:
+            print("key:       not needed")
         print("mode:      " + ("propose: ush proposes commands, you run them" if
                                 settings.mode == "propose" else "run: ush runs commands (agent)"))
         print(f"checker:   {checker_disclosure(settings) if settings.checker else 'off'}")

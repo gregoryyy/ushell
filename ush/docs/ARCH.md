@@ -45,6 +45,7 @@ zsh ── ush.plugin.zsh ── quotes `ush //…`, `sudo ush //…`, `// …` 
      │   └─ ui.py ─────── terminal status/approval (via /dev/tty when stdin is a pipe)
      ├─ provider.py ── Anthropic SDK adapter (streaming, eager tool input, fallbacks);
      │                 Ollama through the same SDK and its Anthropic-compatible API
+     ├─ providers.py ─ the provider table and model profiles (TODO 2.29.1)
      ├─ config.py ──── identity under sudo, settings, key storage (keychain / 0600 file)
      └─ history.py ─── append-only JSONL history for `history` and `replay`
 ```
@@ -255,7 +256,13 @@ can only add friction (always ask, or never run, even when approved) is safe and
   provider table holds each platform's host, keys and network rules; a model profile holds what
   a model takes (effort or reasoning, strict tool schemas, output limits, tool calls written as
   text). Settings stay neutral and each adapter maps them, so adding OpenAI, Mistral and the
-  platforms after them adds rows rather than `provider == …` branches in the CLI.
+  platforms after them adds rows rather than `provider == …` branches in the CLI. Built
+  2026-10-30 (`providers.py`, Go `internal/providers`): a row has the name, label, API, default
+  endpoint and the setting that overrides it, whether it must be on this machine, the key
+  variables and whether it needs a key, the model pattern and setting, and whether it can list
+  its models. The CLI and settings read rows; the Messages adapter builds each request from the
+  model's profile, and reads tool calls written as text only where the profile says a model
+  writes them. Ollama keeps its own error messages and transport in the adapter.
 - **Shells behind one interface** (TODO 2.32, 2026-10-30, GAPS Q15). Each shell supplies its
   syntax for the prompts, a parse check, the plugin's capabilities and, optionally, agent mode (a
   policy tokenizer and an executor). Proposals are in the syntax of the shell ush runs in, or of
@@ -315,6 +322,7 @@ internal/execute ── zsh -f -o pipefail, process groups, timeouts, bounded ou
 internal/redact ─── secret redaction                                               (redact.py)
 internal/ui ─────── status lines, approval prompt via /dev/tty                     (ui.py)
 internal/provider ─ Anthropic (official SDK), Ollama through the same API          (provider.py)
+internal/providers  the provider table and model profiles                       (providers.py)
 internal/config ─── identity under sudo, settings, keychain / 0600 key file        (config.py)
 internal/history ── append-only JSONL history and replay                           (history.py)
 ```
