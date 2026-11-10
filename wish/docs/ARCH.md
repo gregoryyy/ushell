@@ -23,6 +23,7 @@ it depends on no Lakeshore component (decision by the user, 2026-11-10).
 | 2026-11-10 | Crawling works with the user's own access only; the robots policy is configurable per site profile (GAPS Q7) | The user decides per site; the default honours robots rules for unauthenticated crawls and shows them for logged-in ones, and every run records the setting |
 | 2026-11-10 | The AI provider is configurable per site profile, Ollama locally included; masking and synonymization are configurable; local models of 13B–30B are the design target (GAPS Q9) | Private site content can stay on the machine; model tasks are sized so that such models handle them |
 | 2026-11-10 | Evidence and trends are researched on additional sites; messages are integrated outside wish (GAPS Q10) | wish stays a site tool; a claim or topic comes in as an argument or on stdin |
+| 2026-11-10 | wish is the "web intelligent shell", developed as a separate project in its own repository (GAPS Q13, TODO 0.11) | The user's decision. wish shares only ideas and the `//` request contract with ush; its stack (TypeScript, Playwright), release cycle and dependencies differ |
 
 ## Components
 

@@ -5,7 +5,8 @@ the next work starts. The milestones that implement a phase are in [TODO](TODO.m
 in [DONE](DONE.md), the architecture in [ARCH](ARCH.md), and open questions in [GAPS](GAPS.md).
 Decisions: 2026-10-14 (lean browser workspace), 2026-11-10 (websites as the space to work on,
 [IDEA](IDEA.md); the phase order below, host, crawl policy, store and AI configuration decided
-at 10:38, GAPS Q5–Q11). Status: plan; nothing is implemented.
+at 10:38, GAPS Q5–Q11; a separate project and repository, Q13). Status: plan; nothing is
+implemented.
 
 | Phase | Goal | TODO | Gate to the next phase |
 | --- | --- | --- | --- |
@@ -108,7 +109,7 @@ architecture and security profile in their later sections.
 
 ## Implementation order and process
 
-Phase 1: TODO 10.1–10.2 (host decision, fixture sites), then 2.1 (shell spike, now in Node),
+First the move to wish's own repository (TODO 0.11, GAPS Q13), then phase 1: TODO 10.1–10.2 (host decision, fixture sites), then 2.1 (shell spike, now in Node),
 10.3–10.7, 11.1–11.2, 3.1–3.2, 6, and 9.6. Phase 2 and 3 items are selected one at a time.
 Milestone numbers are stable task IDs, not phase numbers.
 

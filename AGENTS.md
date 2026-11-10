@@ -10,9 +10,10 @@ It holds projects that share the `//` command paradigm:
   Python in [ush/py/](ush/py/) ("ushpy"), the experimental one where features are tried
   first, and Go in [ush/go/](ush/go/) ("ushgo"), the compiled deliverable. Both share one
   document set in [ush/docs/](ush/docs/).
-- **wish** ([wish/](wish/)), the site workspace shell: websites as the space to
+- **wish** ([wish/](wish/)), the web intelligent shell: websites as the space to
   work on, captured with Playwright, on top of the browser-workspace substrate. It is
-  open source and uses no Lakeshore component. It is still a design project; commands described in `wish/docs/` are proposed behavior until
+  open source and uses no Lakeshore component, and moves to its own repository
+  (wish TODO 0.11). It is still a design project; commands described in `wish/docs/` are proposed behavior until
   implemented and tested.
 
 The workflow, the document set (TODO, DONE, ARCH, ROAD, SEC, GAPS in each project's
