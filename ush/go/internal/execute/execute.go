@@ -272,6 +272,52 @@ func RunCommand(ctx context.Context, command string, o Options) (Result, error) 
 	return Run(ctx, append(FindShell(), command), o)
 }
 
+// RunSessionCommand runs a line of the `ush>` session and follows its `cd`, as the user's own
+// shell would (ushpy run_session_command, TODO 2.42). An EXIT trap, prefixed on the command's
+// first line so line numbers stay, writes the shell's final $PWD into a private file; ush then
+// changes to that directory. Where the trap can't run (the command replaces it, execs, or is
+// killed), ush stays where it is. Variables, `cd -` (zsh ignores an inherited OLDPWD) and other
+// shell state still don't carry over between lines.
+func RunSessionCommand(ctx context.Context, command string, o Options) (Result, error) {
+	workdir, err := os.MkdirTemp("", "ush-") // mode 0700
+	if err != nil {
+		return Result{}, err
+	}
+	defer os.RemoveAll(workdir)
+	path := filepath.Join(workdir, "cwd")
+	trap := "trap " + shellQuote(`printf %s "$PWD" > `+shellQuote(path)) + " EXIT; "
+	r, err := Run(ctx, append(FindShell(), trap+command), o)
+	if err != nil {
+		return r, err
+	}
+	if final, err := os.ReadFile(path); err == nil && len(final) > 0 {
+		ChangeDirectory(string(final))
+	}
+	return r, nil
+}
+
+// ChangeDirectory changes ush's working directory to path (a shell's logical $PWD) and sets PWD
+// to it, so the next command starts there with the same logical path. False if nothing changed.
+func ChangeDirectory(path string) bool {
+	before, err := os.Stat(".")
+	if err != nil {
+		return false
+	}
+	if err := os.Chdir(path); err != nil {
+		return false
+	}
+	if after, err := os.Stat("."); err == nil && os.SameFile(before, after) {
+		return false
+	}
+	os.Setenv("PWD", path)
+	return true
+}
+
+// shellQuote quotes s as one word for zsh and sh.
+func shellQuote(s string) string {
+	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
+}
+
 // RunScript writes source to a private temporary file and runs it with its interpreter.
 func RunScript(ctx context.Context, language, source string, o Options) (Result, error) {
 	workdir, err := os.MkdirTemp("", "ush-") // mode 0700

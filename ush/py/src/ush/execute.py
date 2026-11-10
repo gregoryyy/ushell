@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import shlex
 import shutil
 import signal
 import subprocess
@@ -154,6 +155,46 @@ def _stop(proc: subprocess.Popen, interactive: bool) -> None:
 
 def run_command(command: str, **kwargs) -> Result:
     return run([*find_shell(), command], **kwargs)
+
+
+def run_session_command(command: str, **kwargs) -> Result:
+    """Run a line of the `ush>` session and follow its `cd`, as the user's own shell would.
+
+    An EXIT trap, prefixed on the command's first line so line numbers stay, writes the
+    shell's final $PWD into a private file; ush then changes to that directory. Where the
+    trap can't run (the command replaces it, `exec`s, or is killed), ush stays where it is.
+    Variables, `cd -` (zsh ignores an inherited OLDPWD) and other shell state still don't
+    carry over between lines (TODO 2.42).
+    """
+    workdir = tempfile.mkdtemp(prefix="ush-")  # mode 0700
+    try:
+        path = os.path.join(workdir, "cwd")
+        trap = "trap " + shlex.quote('printf %s "$PWD" > ' + shlex.quote(path)) + " EXIT; "
+        result = run([*find_shell(), trap + command], **kwargs)
+        try:
+            with open(path, "rb") as f:
+                final = f.read()
+        except OSError:
+            final = b""
+        if final:
+            change_directory(final)
+        return result
+    finally:
+        shutil.rmtree(workdir, ignore_errors=True)
+
+
+def change_directory(path: bytes) -> bool:
+    """Change ush's working directory to `path` (a shell's logical $PWD) and set PWD to it, so
+    the next command starts there with the same logical path. False if nothing changed."""
+    old = os.getcwd()
+    try:
+        os.chdir(path)
+    except OSError:
+        return False
+    if os.getcwd() == old:
+        return False
+    os.environ["PWD"] = os.fsdecode(path)
+    return True
 
 
 def run_script(language: str, source: str, **kwargs) -> Result:

@@ -222,3 +222,48 @@ func TestThreeTurnsOfRefusedCallsStopTheRequest(t *testing.T) {
 		t.Error(entry.Outcome)
 	}
 }
+
+// A session line runs like a line in the user's shell: `cd` moves the session (TODO 2.42).
+func TestCdInASessionLinePersists(t *testing.T) {
+	dir, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	sub := filepath.Join(dir, "sub")
+	if err := os.Mkdir(sub, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	t.Chdir(dir)
+	t.Setenv("PWD", dir)
+	a, _, out, errOut, _ := newAgent(t, nil, Options{})
+	ctx := context.Background()
+	cwd := func() string { d, _ := os.Getwd(); return d }
+
+	a.RunExplicit(ctx, "cd sub")
+	if cwd() != sub || os.Getenv("PWD") != sub {
+		t.Fatal(cwd(), os.Getenv("PWD"))
+	}
+	a.RunExplicit(ctx, "pwd")
+	if !strings.Contains(out.String(), sub) {
+		t.Error(out.String())
+	}
+	a.RunExplicit(ctx, "cd ..")
+	if cwd() != dir {
+		t.Error(cwd())
+	}
+	a.RunExplicit(ctx, "cd sub; exit 4") // the status stays the command's
+	if cwd() != sub || !strings.Contains(errOut.String(), "exit 4") {
+		t.Error(cwd(), errOut.String())
+	}
+	a.RunExplicit(ctx, "cd /nonexistent-ush-dir") // a failed cd stays
+	if cwd() != sub {
+		t.Error(cwd())
+	}
+	a.RunExplicit(ctx, "cd ..; trap - EXIT") // no report: ush stays where it was
+	if cwd() != sub {
+		t.Error(cwd())
+	}
+	if last := a.pendingSteps[len(a.pendingSteps)-1]; last.Command != "cd ..; trap - EXIT" {
+		t.Error(last.Command) // recorded as typed, without the trap
+	}
+}

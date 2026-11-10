@@ -208,7 +208,8 @@ class Agent:
         self.pending.append({"type": "text", "text": f"{label}\n{self._clean(text)}"})
 
     def run_explicit(self, command: str) -> None:
-        """Run a command the user typed in the session; its output becomes context."""
+        """Run a command the user typed in the session; its output becomes context. A `cd` in
+        it moves the session, as in the user's shell."""
         out = self.ui.out
 
         def echo(chunk: bytes) -> None:
@@ -216,9 +217,9 @@ class Agent:
             out.flush()
 
         try:
-            result = execute.run_command(command, timeout=24 * 3600,
-                                         limit=self.settings.output_limit, interactive=True,
-                                         echo=echo)
+            result = execute.run_session_command(command, timeout=24 * 3600,
+                                                 limit=self.settings.output_limit,
+                                                 interactive=True, echo=echo)
         except execute.Cancelled:
             self.ui.warn("interrupted")
             return

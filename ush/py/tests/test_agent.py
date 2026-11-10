@@ -1,6 +1,7 @@
 import json
 import os
 import unittest
+from unittest import mock
 
 from helpers import (SYNTHETIC_KEY, TempDirTest, fake_identity, last_tool_results,
                      results_text, script_use, text, tool_use)
@@ -223,6 +224,34 @@ class AgentTest(TempDirTest):
         first_request = json.dumps(provider.requests[0])
         self.assertIn("hello-from-user", first_request)
         self.assertEqual(history.find("last").steps[0].decision, "explicit")
+
+    def test_cd_in_a_session_line_persists(self):
+        # A session line runs like a line in the user's shell: `cd` moves the session (TODO 2.42).
+        sub = os.path.join(self.tmp, "sub")
+        os.mkdir(sub)
+        start = os.getcwd()
+        self.addCleanup(os.chdir, start)
+        environ = mock.patch.dict(os.environ)  # restores PWD
+        environ.start()
+        self.addCleanup(environ.stop)
+        os.chdir(self.tmp)
+        os.environ["PWD"] = self.tmp
+        agent, _, ui, _ = self.make_agent([])
+        agent.run_explicit("cd sub")
+        self.assertEqual(os.getcwd(), sub)
+        self.assertEqual(os.environ["PWD"], sub)
+        agent.run_explicit("pwd")
+        self.assertIn(sub, ui.out.getvalue())
+        agent.run_explicit("cd ..")
+        self.assertEqual(os.getcwd(), self.tmp)
+        agent.run_explicit("cd sub; exit 4")  # the status stays the command's
+        self.assertEqual(os.getcwd(), sub)
+        self.assertIn("exit 4", ui.err.getvalue())
+        agent.run_explicit("cd /nonexistent-ush-dir")  # a failed cd stays
+        self.assertEqual(os.getcwd(), sub)
+        agent.run_explicit("cd ..; trap - EXIT")  # no report: ush stays where it was
+        self.assertEqual(os.getcwd(), sub)
+        self.assertEqual(agent.pending_steps[-1].command, "cd ..; trap - EXIT")  # as typed
 
     def test_tool_schemas_are_strict(self):
         for tool in TOOLS:

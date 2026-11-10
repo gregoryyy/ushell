@@ -141,7 +141,10 @@ process. The next `ush //` tells the model that ush can't know what ran.
 
 **In a session** (`ush`), the proposal is pre-filled at the `ush>` prompt by zsh's `vared`,
 with the same keys. Python's readline can't pre-fill with libedit, macOS's default. A line
-the user runs there answers it, with output.
+the user runs there answers it, with output. Each session line runs in its own `zsh -c`; an EXIT
+trap prefixed on its first line reports the shell's final `$PWD`, and ush changes there, so `cd`
+moves the session as in the user's shell (TODO 2.42). Variables and `cd -` don't carry over
+between lines.
 
 **As root**, there is no handoff: the plugin creates none, and ush ignores `USH_HANDOFF`. The
 proposal is printed, for the user to run as root.
