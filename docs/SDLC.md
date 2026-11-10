@@ -1,8 +1,9 @@
 # Development process
 
 How work moves from an idea to merged, documented, tested code in this repository. It applies to
-people and coding agents alike, and to every project in it: [ush](../ush/README.md), in two
-implementations, and [wish](../wish/README.md). [AGENTS.md](../AGENTS.md) holds the
+people and coding agents alike: [ush](../ush/README.md), in two implementations. wish, the
+other project that lived here, has its own repository and its own copy of this process since
+2026-11-10 ([gregoryyy/wish](https://github.com/gregoryyy/wish)). [AGENTS.md](../AGENTS.md) holds the
 rules that override everything else (human merges, security, release gate); this document describes
 the documents and the workflow. The regime follows `../propeller/docs/SDLC.md`. Status:
 2026-10-29 02:01.
@@ -36,9 +37,8 @@ it needs; this file is the shared default for all of them.
 | `docs/GAPS.md` | Questions only the user can answer, and assumptions to check |
 | `docs/DONE.md` | Progress log, newest first |
 
-Projects may add more: wish has `IDEA.md` and `SOTA.md`, ush has `SECTEST.md` (its security test
-plan). Task and question numbers belong to one project, so references across projects name it:
-"ush TODO 2.9", "wish GAPS Q2".
+Projects may add more: ush has `SECTEST.md` (its security test plan). Task and question numbers belong to one project, so references across projects name it:
+"ush TODO 2.9"; "wish …" in earlier records refers to the wish repository.
 
 ## Work items
 

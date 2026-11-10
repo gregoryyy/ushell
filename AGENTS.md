@@ -2,7 +2,7 @@
 
 These instructions apply to human and AI contributors throughout this repository, whatever
 the agent ([CLAUDE.md](CLAUDE.md) only points here).
-It holds projects that share the `//` command paradigm:
+It holds **ush**, a project built on the `//` command paradigm:
 
 - **ush**, the local command-line shell extension for zsh. It runs real commands on
   the user's machine, possibly as root. One command, two implementations with
@@ -10,18 +10,18 @@ It holds projects that share the `//` command paradigm:
   Python in [ush/py/](ush/py/) ("ushpy"), the experimental one where features are tried
   first, and Go in [ush/go/](ush/go/) ("ushgo"), the compiled deliverable. Both share one
   document set in [ush/docs/](ush/docs/).
-- **wish** ([wish/](wish/)), the web intelligent shell: websites as the space to
-  work on, captured with Playwright, on top of the browser-workspace substrate. It is
-  open source and uses no Lakeshore component, and moves to its own repository
-  (wish TODO 0.11). It is still a design project; commands described in `wish/docs/` are proposed behavior until
-  implemented and tested.
+
+Its sibling **wish**, the web intelligent shell, moved to its own repository,
+[gregoryyy/wish](https://github.com/gregoryyy/wish) (private for now), on 2026-11-10 (wish TODO 0.11, GAPS Q13); its rules
+are in its own AGENTS.md. The two share the `//` request contract ([ROAD](docs/ROAD.md)
+step 5), not code.
 
 The workflow, the document set (TODO, DONE, ARCH, ROAD, SEC, GAPS in each project's
 `docs/`), and the DONE entry format are defined in [docs/SDLC.md](docs/SDLC.md). The
-rules below take precedence over it. The repository's roadmap across projects is
-[docs/ROAD.md](docs/ROAD.md). Each project has independent `x.x` IDs; refer to them
-as "ush TODO 1.3", "ush TODO 4.1" or "wish GAPS Q2" where the project is not
-obvious. Earlier records cite "ushpy TODO …" and "ushgo TODO …" from before the two
+rules below take precedence over it. The repository's roadmap is
+[docs/ROAD.md](docs/ROAD.md). IDs are `x.x` per project; refer to them as "ush TODO 1.3"
+or "ush TODO 4.1". Earlier records cite "wish TODO …" and "wish GAPS …": those IDs now
+live in the wish repository. Earlier records cite "ushpy TODO …" and "ushgo TODO …" from before the two
 document sets were merged on 2026-10-29; [ush TODO](ush/docs/TODO.md#old-ids) maps them.
 
 ## Start each task
@@ -29,10 +29,7 @@ document sets were merged on 2026-10-29; [ush TODO](ush/docs/TODO.md#old-ids) ma
 1. Read the project's TODO, DONE, GAPS, and the relevant design documents.
    ush: [TODO](ush/docs/TODO.md), [DONE](ush/docs/DONE.md), [GAPS](ush/docs/GAPS.md),
    [ARCH](ush/docs/ARCH.md), [SEC](ush/docs/SEC.md), [SECTEST](ush/docs/SECTEST.md),
-   and [ROAD](ush/docs/ROAD.md). wish: [TODO](wish/docs/TODO.md),
-   [DONE](wish/docs/DONE.md), [GAPS](wish/docs/GAPS.md), [IDEA](wish/docs/IDEA.md),
-   [ARCH](wish/docs/ARCH.md), [SEC](wish/docs/SEC.md), and [SOTA](wish/docs/SOTA.md);
-   [ROAD](wish/docs/ROAD.md) defines the active phase 1 scope and conditional phase 2.
+   and [ROAD](ush/docs/ROAD.md).
 2. Check the branch, working-tree changes, and applicable repository instructions.
    Preserve unrelated work. If on `main`, create/switch to a feature branch before
    editing; carry existing changes only when their ownership and scope are clear.
@@ -90,13 +87,6 @@ document sets were merged on 2026-10-29; [ush TODO](ush/docs/TODO.md#old-ids) ma
 
 - Implement the smallest complete milestone. Prefer existing kernels, notebooks,
   SQL engines, and automation adapters where SOTA establishes a suitable foundation.
-- wish: start with the lean phase 1 plan in [wish ROAD](wish/docs/ROAD.md): one site,
-  evaluate just-bash, compose through files and byte/text pipes, and add a few explicit
-  tool commands. Tests use local fixture sites and never contact a real site. Defer typed pipelines,
-  public resource handles, and general placement abstractions until a demonstrated
-  workflow justifies them. Phase 2 is selected work, not an automatic scope expansion.
-- wish: keep the TypeScript core independent of providers and runtimes. Use explicit
-  contracts, validated inputs, typed results, and actionable failures.
 - ush: one command, two implementations with equivalent functionality. A feature
   lands in ushpy (Python, experimental) first or in both at once; its TODO item says
   where it is built and stays open until ushgo (Go), the deliverable, has it too
@@ -151,12 +141,7 @@ and results. Earlier passing checks do not satisfy a new release gate.
    ([SMOKE](ush/docs/SMOKE.md)) on the built artifact.
 2. Run applicable adversarial security tests. For ush: command-policy bypasses,
    prompt injection through command output, secret redaction, credential file and
-   key handling under sudo, and history contents. For wish: path traversal and cross-workspace
-   access; forged/replayed bridge messages and revoked grants; malicious HTML/SVG
-   and notebook outputs; credential leakage and prompt injection; unapproved AI
-   disclosure; runtime egress channels; resource exhaustion and cancellation; and for
-   site capture, navigation side effects, session leakage, injection through page
-   content, off-origin navigation and crawl budgets ([wish SEC](wish/docs/SEC.md) W1–W10).
+   key handling under sudo, and history contents.
 3. For server-enabled releases, also test cross-tenant authorization, CSRF and
    WebSocket authentication where applicable, SSRF/redirect controls, upload bounds,
    kernel isolation, lease expiry, and reconnect/mutation receipts. Record omitted

@@ -3,7 +3,7 @@
 How ush is built, in both implementations: the Python one in [ush/py](../py/), described in the
 sections up to the decisions, and the Go one in [ush/go](../go/), which reproduces it
 ([The Go implementation](#the-go-implementation)). Security model: [SEC.md](SEC.md). Shared
-paradigm: [wish IDEA.md](../../wish/docs/IDEA.md). Status: 2026-10-29 02:01; both implementations
+paradigm: [wish IDEA.md](https://github.com/gregoryyy/ushell/blob/079f504/wish/docs/IDEA.md) (wish has its own repository since 2026-11-10). Status: 2026-10-29 02:01; both implementations
 at parity, 0.2.0-rc1 released.
 
 ## Relationship to wish

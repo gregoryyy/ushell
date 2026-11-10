@@ -9,7 +9,7 @@ checked, and executed. Both use the user's own AI API key, or a local model.
 | [ush](ush/README.md) | The `//` shell for zsh on your machine, optionally under `sudo`; one command, two implementations | 0.2.2 released |
 | ↳ [ush/go](ush/go/README.md) | ush in Go: the compiled deliverable, one static binary | Shipped in 0.2.2 (GitHub release, Homebrew) |
 | ↳ [ush/py](ush/py/README.md) | ush in Python: the experimental implementation, where features are tried first | At parity with Go |
-| [wish](wish/README.md) | Web intelligent shell: a shell over websites, content-driven crawling, a semantic overlay with evidence | Design documents; moving to its own repository |
+| [wish](https://github.com/gregoryyy/wish) | Web intelligent shell: a shell over websites, content-driven crawling, a semantic overlay with evidence | Moved to its own repository (private for now) |
 
 What comes next, across the projects, is in the roadmap: [docs/ROAD.md](docs/ROAD.md); what exists
 next to them, and what sets them apart, in [docs/SOTA.md](docs/SOTA.md).
@@ -56,15 +56,10 @@ just ush-test                    # both implementations, and ushpy's black-box t
 
 ## wish
 
-wish is the web intelligent shell. Its working space is a website: the current page's semantic
-structure is the current directory, other pages and the link graph have namespaces of their own,
-and an agent crawls by content, recording why it followed each link. Captures, made with
-Playwright, become a semantic overlay (references, optionally data) that can be browsed across
-sites and questioned, with every answer explained down to its evidence. `//` requests become
-shell programs, as in ush. It is a design project; nothing runs yet. The browser-workspace concept
-of 2026-10-14 (files, notebook, `//`) stays as its substrate. wish is moving to a project and repository of its own (decided 2026-11-10, wish GAPS Q13, TODO 0.11); until then its documents live here. See
-[wish/README.md](wish/README.md), the product idea in [IDEA](wish/docs/IDEA.md), and the phases in
-[ROAD](wish/docs/ROAD.md).
+wish, the web intelligent shell, moved to its own repository, [gregoryyy/wish](https://github.com/gregoryyy/wish), on 2026-11-10,
+with the history of its documents (wish TODO 0.11, GAPS Q13). The repository is private for now.
+Its documents as they were here are at [ushell 079f504](https://github.com/gregoryyy/ushell/tree/079f504/wish).
+ush and wish share the `//` request contract ([ROAD](docs/ROAD.md) step 5), not code.
 
 ## How the work is organised
 
@@ -85,7 +80,6 @@ ush/go/                   ush in Go, the deliverable: README, cmd/ush/, internal
 ush/py/                   ush in Python, experimental: README, src/, tests/, scripts/
 ush/shell/                the zsh plugin and the installers' ~/.zshrc step, shared by both
 ush/conform/              policy.json, the verdicts both implementations must give
-wish/                     site workspace: README, docs/
 tools/                    the Markdown link checker, PDF build scripts (pdf/), local CI (ci/)
 .github/                  CI workflow (ci.yml), PR template
 ```
@@ -118,14 +112,14 @@ installation; elsewhere they look for a Chrome/Chromium executable on `PATH`.
 Set `CHROME_BIN` to select a different browser executable.
 
 ```sh
-just pdf wish/docs/IDEA.md  # write wish/docs/IDEA.md.pdf
-just pdfs                 # build README.md and all Markdown documents in docs/, ush/py/, ush/go/, and wish/
-just pdfs wish/docs       # build only wish/docs/
+just pdf ush/docs/ARCH.md   # write ush/docs/ARCH.md.pdf
+just pdfs                 # build README.md and all Markdown documents in docs/ and ush/
+just pdfs ush/docs        # build only ush/docs/
 just pdfs 'path with spaces'
 ```
 
 Explicit paths are relative to the directory where the command is called:
-`cd wish/docs` followed by `just pdf ARCH.md` or `just pdfs .` works. With no paths,
+`cd ush/docs` followed by `just pdf ARCH.md` or `just pdfs .` works. With no paths,
 `just pdfs` always uses the repository defaults. Bulk conversion includes tracked
 and untracked files that Git does not ignore, and skips `AGENTS.md` and `CLAUDE.md`.
 
