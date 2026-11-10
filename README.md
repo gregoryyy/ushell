@@ -9,7 +9,7 @@ checked, and executed. Both use the user's own AI API key, or a local model.
 | [ush](ush/README.md) | The `//` shell for zsh on your machine, optionally under `sudo`; one command, two implementations | 0.2.2 released |
 | ↳ [ush/go](ush/go/README.md) | ush in Go: the compiled deliverable, one static binary | Shipped in 0.2.2 (GitHub release, Homebrew) |
 | ↳ [ush/py](ush/py/README.md) | ush in Python: the experimental implementation, where features are tried first | At parity with Go |
-| [wish](wish/README.md) | Browser workspace: files, notebooks, live tools | Design documents; not implemented |
+| [wish](wish/README.md) | Site workspace: a shell over websites, content-driven crawling, a semantic overlay with evidence | Design documents; not implemented |
 
 What comes next, across the projects, is in the roadmap: [docs/ROAD.md](docs/ROAD.md); what exists
 next to them, and what sets them apart, in [docs/SOTA.md](docs/SOTA.md).
@@ -56,10 +56,13 @@ just ush-test                    # both implementations, and ushpy's black-box t
 
 ## wish
 
-wish is the web interactive shell: a browser workspace for files, datasets, notebooks, and live
-tools, with `//` requests translated into shell programs that run within the workspace's grants.
-It is a design project; nothing runs yet. Phase 1 is a lean browser shell around files, byte/text
-pipes, JSON/CSV, and one Python notebook, starting from an evaluation of just-bash. See
+wish is the web interactive shell. Its working space is a website: the current page's semantic
+structure is the current directory, other pages and the link graph have namespaces of their own,
+and an agent crawls by content, recording why it followed each link. Captures, made with
+Playwright, become a semantic overlay (references, optionally data) that can be browsed across
+sites and questioned, with every answer explained down to its evidence. `//` requests become
+shell programs, as in ush. It is a design project; nothing runs yet. The browser-workspace concept
+of 2026-10-14 (files, notebook, `//`) stays as its substrate. See
 [wish/README.md](wish/README.md), the product idea in [IDEA](wish/docs/IDEA.md), and the phases in
 [ROAD](wish/docs/ROAD.md).
 
@@ -82,7 +85,7 @@ ush/go/                   ush in Go, the deliverable: README, cmd/ush/, internal
 ush/py/                   ush in Python, experimental: README, src/, tests/, scripts/
 ush/shell/                the zsh plugin and the installers' ~/.zshrc step, shared by both
 ush/conform/              policy.json, the verdicts both implementations must give
-wish/                     browser workspace: README, docs/
+wish/                     site workspace: README, docs/
 tools/                    the Markdown link checker, PDF build scripts (pdf/), local CI (ci/)
 .github/                  CI workflow (ci.yml), PR template
 ```

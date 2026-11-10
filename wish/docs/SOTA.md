@@ -21,6 +21,11 @@ Browser-side computation, AI-generated commands, and bring-your-own-key access a
 not individually new.
 [ROAD.md](ROAD.md) separates the starting scope from later ideas.
 
+For the site workspace (2026-11-10), **Playwright is the capture framework** and the closest
+precedents are LLM crawlers (Crawl4AI, Firecrawl), browser agents (Browser Use, Stagehand,
+Playwright MCP), archivers (Browsertrix, ArchiveBox) and template extraction into a web graph
+(Diffbot); see [Crawling, capture, and semantic extraction](#crawling-capture-and-semantic-extraction).
+
 ## Method and interpretation
 
 This review uses maintainer documentation, official repositories, and first-party
@@ -322,6 +327,46 @@ into a desktop filesystem so ordinary scripts can operate on it. Tridactyl expos
 browser functionality through a command mode and ex commands. Their resource and
 deployment models differ from a browser-contained notebook workspace.
 [TabFS](https://omar.website/tabfs/) and [Tridactyl](https://github.com/tridactyl/tridactyl).
+
+## Crawling, capture, and semantic extraction
+
+Addendum 2026-11-10, for the site workspace ([IDEA](IDEA.md)). Sources are maintainer
+documentation and repositories as remembered and spot-checked on that date; licenses marked
+"recheck" and every license must be confirmed against the pinned version in TODO 10.1.
+
+| Tool | What it does | Where it stops for wish | License | Use in wish |
+| --- | --- | --- | --- | --- |
+| [Playwright](https://playwright.dev/) | Browser automation for Chromium, Firefox, WebKit; persistent contexts keep logins; `ariaSnapshot()` gives the accessibility tree as YAML; network events; HAR recording | A library, not a crawler: no frontier, policy, overlay or explanation | Apache-2.0 | **Capture framework** (user's choice) |
+| [Playwright MCP](https://github.com/microsoft/playwright-mcp) | Lets an agent drive a browser through accessibility snapshots | Interactive agent control, not crawling with recorded decisions and policy; actions are unrestricted by design | Apache-2.0 | Precedent for snapshots as the model's view of a page |
+| [Crawlee](https://crawlee.dev/) | Crawling framework over Playwright/Puppeteer/HTTP: request queues, sessions, retries, autoscaling, storage | Frontier is URL-based; no semantic link decisions, page namespaces or overlay | Apache-2.0 | Candidate for queue, retry and rate handling under wish's own policy (TODO 11.1 decides) |
+| [Scrapy](https://scrapy.org/) | Mature Python crawling framework | Static HTTP by default; Python, not the host's language | BSD-3-Clause | Reference for crawl policy and middleware design |
+| [Crawl4AI](https://github.com/unclecode/crawl4ai) | LLM-oriented crawler: Markdown output, extraction strategies, adaptive crawling | Output is text/Markdown and extracted JSON; no shell, link graph namespace, references-only mode or decision ledger | Apache-2.0 with an added attribution clause (recheck) | Comparison baseline for 11.3/11.4 |
+| [Firecrawl](https://github.com/mendableai/firecrawl) | Crawl/scrape API producing LLM-ready Markdown and structured extraction | Hosted-first service; AGPL core | AGPL-3.0 (core), SDKs MIT | Baseline only; not a dependency (copyleft, service) |
+| [Browser Use](https://github.com/browser-use/browser-use), [Stagehand](https://github.com/browserbase/stagehand) | Model-driven browser agents: act, extract, observe | Task agents; actions aren't constrained to read-only navigation; no capture store | MIT | Precedent for `observe`/`extract` separation; no dependency planned |
+| [Skyvern](https://github.com/Skyvern-AI/skyvern) | Vision-and-DOM browser agent for workflows | Same as above, plus copyleft | AGPL-3.0 (recheck) | Not used |
+| [Browsertrix](https://github.com/webrecorder/browsertrix-crawler) | High-fidelity browser crawling into WARC/WACZ | Archiving, not semantics | AGPL-3.0 | Reference for mirror fidelity; not a dependency |
+| [warcio](https://github.com/webrecorder/warcio) / [warcio.js](https://github.com/webrecorder/warcio.js) | Read and write WARC | A library | Apache-2.0 | Candidate WARC writer (TODO 11.2) |
+| [ArchiveBox](https://github.com/ArchiveBox/ArchiveBox) | Self-hosted archiving of URLs in several formats | Per-URL archiving, no crawl semantics | MIT | Precedent for personal archives |
+| GNU Wget, HTTrack, [pywb](https://github.com/webrecorder/pywb) | Mirroring (Wget `--mirror --warc-file`), site copiers, replay | No rendering (Wget, HTTrack); GPL | GPL-3.0 | Optional external tools only, never linked |
+| Apache Nutch, Heritrix | Large-scale crawlers | Built for the web at scale, not a person's site workspace | Apache-2.0 | Reference only |
+| [Diffbot](https://www.diffbot.com/) | Page-type classification, automatic extraction, a web knowledge graph | Commercial, hosted | Proprietary | The closest precedent for template-based extraction into a graph; comparison only |
+| [extruct](https://github.com/scrapinghub/extruct) and JSON-LD parsers | Embedded metadata (JSON-LD, microdata, RDFa) | Only what sites declare | BSD-3-Clause | Rules for typed entities (11.4); a TypeScript equivalent may be needed |
+| [W3C Web Annotation](https://www.w3.org/TR/annotation-model/) | Selectors (CSS, XPath, text quote, text position) for anchoring | A data model, not software | W3C standard | Anchor format of the overlay |
+| [GraphRAG](https://github.com/microsoft/graphrag), [LightRAG](https://github.com/HKUDS/LightRAG) | Retrieval over a graph extracted from text | Extracts from chunks without page structure or capture provenance; explanations stop at the chunk | MIT | Baselines for structured retrieval (13.1) |
+| [TabFS](https://omar.website/tabfs/) | Browser tabs as files | Live tabs only; no capture, no site/link structure | GPL-3.0 | Precedent for the filesystem view |
+
+**Prior art for the ideas, not only the tools:** focused crawling (Chakrabarti et al., 1999) ranks
+links by topical relevance; wrapper induction (Kushmerick, 1997; RoadRunner, 2001) learns
+extractors per template; the Web Annotation model anchors statements in pages; provenance-aware
+knowledge graphs record where statements come from. wish's combination is the claim: a shell
+over a site's page, URL and link structures, model-ranked but policy-decided crawling with a
+decision ledger, references-only capture of logged-in sites, and answers explained down to
+anchor, crawl path and coverage, all open source and on the user's machine.
+
+**License consequences.** wish is MIT. Permissive components (Playwright, Crawlee, warcio,
+just-bash) can be dependencies. AGPL and GPL projects (Firecrawl, Browsertrix, Skyvern, Wget,
+HTTrack, pywb, TabFS) stay baselines or optional external tools invoked as separate programs,
+never linked or bundled. No Lakeshore component is used ([IDEA](IDEA.md#open-source-and-lakeshore-as-one-consumer)).
 
 ## Differentiation of wish
 

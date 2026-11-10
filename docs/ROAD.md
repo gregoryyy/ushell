@@ -14,7 +14,7 @@ starts. Status: 2026-10-30 05:16.
 | 1. First ush release (done) | The `//` shell for zsh, safe to hand to others | ush TODO 2.9–2.11, 5.3, 5.5 | Release gate: no open High finding, suites on macOS and Linux, smoke test on the artifact |
 | 2. ush in Go (done) | The same `ush` as a static Go binary, the deliverable | ush TODO 4.1–4.12, 5.1–5.7 | ushgo passes ushpy's black-box tests and the smoke test; releases then ship it |
 | 3. ush for daily use | Propose mode; fewer approvals for harmless commands, enforced read-only, long sessions | ush TODO 2.4–2.6, 2.17, 2.23–2.25 | Weeks of daily use without a policy bypass; approvals per request falling |
-| 4. wish phase 1 | A lean browser workspace: files, pipes, one notebook, `//` | wish TODO 1–4, 6, 9.1–9.4 | wish ROAD phase 1 acceptance; release gate |
+| 4. wish phase 1 | One site: page, site and link namespaces, a reference overlay and a mirror from a bounded crawl, `//` (decided 2026-11-10, wish GAPS Q5) | wish TODO 10, 11.1–11.2, 2, 3.1–3.2, 6, 9.6 | wish ROAD phase 1 acceptance; release gate |
 | 5. One `//` paradigm | The same request contract and policy semantics in ush and wish | ush TODO 2.7 | wish has a shell (wish TODO 2.1, 6.2) |
 
 Steps 1 and 2 are done: the port was finished on 2026-10-28, and the first release was 0.2.0-rc1
@@ -81,8 +81,12 @@ release ships the Go binary.
 
 ## 4. wish phase 1
 
-wish's lean browser workspace (wish ROAD phase 1), after the just-bash spike (wish TODO 2.1). Open
-for the user: when to start, which browsers, which providers (wish GAPS Q1–Q3).
+wish's site workspace (wish ROAD phase 1, since 2026-11-10): a local program that captures one
+site with Playwright and offers it as a filesystem; a program of its own beside ush. Decided on
+2026-11-10: it replaces the earlier CSV/notebook phase 1, runs as a local program, and has a
+configurable robots policy, AI provider (Ollama included), masking and synonymization (wish GAPS
+Q5–Q11). Open for the user: when to start and which providers phase 1 offers (wish GAPS Q1, Q3).
+wish stays open source and uses no Lakeshore component.
 
 ## 5. One `//` paradigm
 
