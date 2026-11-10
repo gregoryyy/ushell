@@ -502,6 +502,10 @@ here.
   policy corpus moves to `tests/conform/`. Acceptance: history kept by `git mv`; the Go module
   path is `github.com/gregoryyy/ushell/src/go`; both suites, the conformance run, `just links`
   and the PDFs pass; installed paths (`~/.local/share/ush`, `~/.config/ush`) unchanged.
+- [x] 6.2 CI's ushgo job on Ubuntu installs zsh (2026-11-10): `TestPipefailAndNoRcFiles` failed on
+  `ubuntu-latest` in every GitHub Actions run, because the runner has no zsh and the executor fell
+  back to `sh`. Acceptance: the job installs zsh like the ushpy and conformance jobs; the test
+  unchanged; the fallback documented in ARCH.
 
 ## Old IDs
 
