@@ -14,6 +14,54 @@ implementation kept its own log: [ushpy](archive/DONE-ushpy.md), [ushgo](archive
 
 ---
 
+## 2026-11-10 11:03 — Bug: `cd` in the session didn't move
+
+TODO items: 2.42 (new, done), in both implementations. PR: not yet opened (branch
+`fix/ush-2.42-session-cd`).
+
+Agent: Opus 5.5, reasoning: not exposed, subagents: none.
+
+### Implementation notes
+
+- **The report:** "cd does not move away from the initial directory" (user, 2026-11-10). In the
+  `ush>` session, `Agent.run_explicit` (ushpy) and `Agent.RunExplicit` (ushgo) ran each line, typed
+  or an accepted proposal, with `zsh -f -o pipefail -c`, so `cd` ended with that shell. The
+  session never moved, although ARCH and the propose-mode prompt treat a session line like a line
+  in the user's shell, and `_proposal_results` already reports a changed working directory.
+- **The fix:** `execute.run_session_command` and `execute.RunSessionCommand` prefix the command's
+  first line with `trap 'printf %s "$PWD" > FILE' EXIT; `, `FILE` in a private temporary directory
+  (mode 0700), then `change_directory`/`ChangeDirectory` changes ush there and sets `PWD` to the
+  shell's logical path. The exit status survives the trap (checked for `exit 5`, `&& false`, and
+  under pipefail), error messages keep line 1, and history records the command as typed. Where the
+  trap can't run (the command replaces it, `exec`s, or is killed), no file is written and ush stays
+  where it was. Agent-mode tool commands use `run_command` as before.
+- **Tests:** `test_agent.AgentTest.test_cd_in_a_session_line_persists` and
+  `TestCdInASessionLinePersists` (`cd sub`, `pwd`, `cd ..`, `cd sub; exit 4`, a failed `cd`,
+  `cd ..; trap - EXIT`); `test_zsh_plugin.SessionTest.test_cd_moves_the_session`, a pty test of the
+  real session, which failed before the fix (it printed the initial directory) and passes after.
+- **Validation** (macOS, zsh 5.9, worktree of `origin/main` 7125725 plus this change):
+  `ush/py/scripts/test.sh`: 225 tests, 1 failure, `test_execute.ExecuteTest.test_interrupt_cancels_and_kills`,
+  which also fails without this change under the venv's Python 3.15.2 and passes under 3.12 and
+  3.9 (not caused by this fix; see Insights). `just ushgo-test`: all packages ok. `just
+  ushgo-conform`: 82 tests OK, including the new pty test against the Go binary.
+- Docs: TODO 2.42, ARCH (in a session), the man page (`ush` session).
+
+### Deviations
+
+- ID 2.42, not 2.35: the unmerged branch `docs/ush-interaction-followups` already uses 2.35–2.41.
+- `cd -` across lines isn't supported: zsh 5.9 ignores an inherited or assigned `OLDPWD` for
+  `cd -`, and the workaround (two `cd`s in the prefix) wasn't worth its risk.
+
+### Insights
+
+- `test_interrupt_cancels_and_kills` fails under Python 3.15 on unchanged code: the marker file is
+  created, so `_thread.interrupt_main` no longer interrupts `proc.wait` in time there. It needs its
+  own item before Python 3.15 is a supported version.
+- Whether agent-mode `cd` should also move the session is a separate decision: an auto-approved
+  `cd` would then change where later approved commands run.
+
+---
+
 ## 2026-10-30 09:30 — The provider table and model profiles
 
 TODO items: 2.29.1, in both implementations. PR: #41.

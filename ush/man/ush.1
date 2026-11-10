@@ -89,6 +89,10 @@ A session, with zsh's line editing and history:
 asks, any other line runs as a command whose output becomes context, and
 .B exit
 or Ctrl\-D ends it.
+.B cd
+in a line moves the session; variables and
+.B "cd \-"
+don't carry over to the next line.
 .TP
 .IB command " | ush //" request
 Piped input becomes context for the request, up to 200 KB.

@@ -112,9 +112,10 @@ func (a *Agent) AddContext(label, text string) {
 	a.pending = append(a.pending, block{"type": "text", "text": label + "\n" + a.clean(text)})
 }
 
-// RunExplicit runs a command the user typed in a session; its output becomes context.
+// RunExplicit runs a command the user typed in a session; its output becomes context. A `cd` in
+// it moves the session, as in the user's shell.
 func (a *Agent) RunExplicit(ctx context.Context, command string) {
-	r, err := execute.RunCommand(ctx, command, execute.Options{Timeout: 24 * time.Hour,
+	r, err := execute.RunSessionCommand(ctx, command, execute.Options{Timeout: 24 * time.Hour,
 		Limit: a.Settings.OutputLimit, Interactive: true, Echo: func(b []byte) { a.UI.Out.Write(b) }})
 	if errors.Is(err, execute.ErrCancelled) {
 		a.UI.Warn("interrupted")

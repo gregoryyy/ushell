@@ -6,7 +6,7 @@ where features are tried first, and Go in [ush/go](../go/), the deliverable. Wha
 [ROAD](ROAD.md), open questions in [GAPS](GAPS.md), progress in [DONE](DONE.md). The process is
 [SDLC](../../docs/SDLC.md); the rules in [AGENTS.md](../../AGENTS.md) take precedence. IDs are ush's
 own, independent of wish's. Until 2026-10-29 each implementation had its own TODO; their old IDs
-map to these as listed in [Old IDs](#old-ids). Status: 2026-10-30 06:05.
+map to these as listed in [Old IDs](#old-ids). Status: 2026-11-10 11:03.
 
 Status: `[ ]` open, `[x]` done. An item of section 2 also says where it is built: *py ✓ go ✓* in
 both, *py ✓ go –* in Python so far, *py – go –* in neither. Tags:
@@ -356,6 +356,15 @@ Done in Python, and in Go through the port (section 4).
   syntax, propose mode only (GAPS Q15). Not on Windows (GAPS Q16: "not now").
   Acceptance: the plugin's pty tests ported to pwsh 7 on macOS and Linux; the installer offers
   the profile; the Go archive carries the module.
+- [x] 2.42 *py ✓ go ✓* Bug (user, 2026-11-10): "cd does not move away from the initial
+  directory". In the `ush>` session every line, typed or an accepted proposal, ran in a fresh
+  `zsh -c`, so `cd` was lost when it ended. A session line now reports its final `$PWD` through
+  an EXIT trap and ush changes there (and sets `PWD`); the status, output and line numbers of the
+  command are unchanged. Variables and `cd -` still don't carry over between lines. Agent-mode
+  steps (`run_command`) are unchanged: each runs in the session's current directory. (2.35–2.41
+  are taken on the branch `docs/ush-interaction-followups`.) Acceptance: unit tests in both
+  implementations (`cd`, `cd ..`, a failed `cd`, `exit 4`, a replaced trap); a pty test of the
+  real session that runs in ushpy and, through the conformance suite, against ushgo.
 
 ## 3. Release
 

@@ -535,6 +535,36 @@ class SessionTest(TempDirTest):
         self.assertIn("first-42", again)
         self.assertEqual(os.waitstatus_to_exitcode(status), 0, end)
 
+    def test_cd_moves_the_session(self):
+        # Before TODO 2.42 every line ran in a fresh shell, so `cd` never left the start.
+        src = SRC
+        sub = os.path.join(self.tmp, "moved-here")
+        os.mkdir(sub)
+        pid, fd = pty.fork()
+        if pid == 0:
+            os.environ.update({"PYTHONPATH": src, "HOME": self.tmp, "NO_COLOR": "1",
+                               "TERM": "xterm-256color", "PWD": self.tmp,
+                               "XDG_CONFIG_HOME": os.path.join(self.tmp, "config"),
+                               "XDG_STATE_HOME": os.path.join(self.tmp, "state"),
+                               "USH_BASE_URL": "http://127.0.0.1:9"})
+            os.chdir(self.tmp)
+            argv = ush_argv()
+            os.execv(argv[0], argv)
+        try:
+            read = ZshPluginTest._read
+            read(fd, "ush> ")
+            os.write(fd, b"cd moved-here\r")
+            read(fd, "ush> ")
+            os.write(fd, b"echo at=$PWD\r")
+            moved = read(fd, "ush> ")
+            os.write(fd, b"\x04")
+            end = read(fd, "")
+        finally:
+            os.close(fd)
+            _, status = os.waitpid(pid, 0)
+        self.assertIn(f"at={sub}", moved)
+        self.assertEqual(os.waitstatus_to_exitcode(status), 0, end)
+
 
 @unittest.skipUnless(ZSH, "zsh not installed")
 class SessionExplainTest(TempDirTest):
