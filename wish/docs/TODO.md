@@ -6,7 +6,9 @@ Plan for wish, the browser workspace shell: the product is in [IDEA](IDEA.md), t
 implement; open questions are in [GAPS](GAPS.md), and progress is logged in [DONE](DONE.md). The
 process is [SDLC](../../docs/SDLC.md); the rules in [AGENTS.md](../../AGENTS.md) take precedence.
 Implement the next requested, ready milestone; a planning task does not authorize executing the
-entire backlog. Status: 2026-10-27 14:52.
+entire backlog. Status: 2026-11-10 09:50; the site workspace (groups 10–14, 9.6–9.7) was added
+on that date, and the groups 1–9 of 2026-10-14 are now the workspace substrate
+([WORKSPACE](WORKSPACE.md)).
 
 Status: `[ ]` open, `[x]` done. Tags:
 - *(decision)*: a choice to make and record in DONE before the dependent work starts.
@@ -52,12 +54,136 @@ against every release candidate.
   moved to [AGENTS.md](../../AGENTS.md) with a one-line `CLAUDE.md` pointing to it; the
   repository roadmap in [docs/ROAD.md](../../docs/ROAD.md). Acceptance: history kept by `git mv`;
   links, both suites, and the local CI pass; runtime paths (`~/.config/ush`) unchanged.
+- [x] 0.10 Re-centre wish on websites as the space to work on: page, site and link namespaces,
+  agentic crawling, a references-or-data overlay, structured retrieval with explanations,
+  evidence and trends; Playwright for capture; open source without Lakeshore components. Acceptance: IDEA,
+  ROAD, ARCH, SEC, SOTA, TODO and GAPS agree; the earlier concept is kept in WORKSPACE; IDs and
+  status of groups 1–9 unchanged; links and PDFs build.
 
-## Phase 1: a lean browser workspace
 
-The first release proves CSV import → shell transformation → Python notebook/plot
+## Site workspace
+
+Websites as the space to work on ([IDEA](IDEA.md), decided 2026-11-10; phase order in
+[ROAD](ROAD.md), GAPS Q5). Phase 1 is 10, 11.1–11.2 and 9.6 together with the substrate's
+2, 3.1–3.2 and 6; phases 2 and 3 select from 11.3–14 one item at a time. Every test runs against
+local fixture sites and a mock AI provider; no test contacts a real site or a paid provider. No
+item takes a dependency on a Lakeshore component.
+
+### 10. Host, fixtures, capture, and namespaces
+
+- [ ] 10.1 *(decision)* Record the host (local Node.js process in TypeScript, program `wish`;
+  GAPS Q6, Q11), the
+  pinned Playwright version and browsers, the dependency/license inventory (recheck the SOTA
+  table), the workspace layout, and the overlay store (JSON Lines plus SQLite, GAPS Q8). Acceptance: DONE entry with the
+  versions, licenses and reasons; a hello-world capture runs from `just`.
+- [ ] 10.2 Fixture-site server for tests: login, templates, pagination, an infinite calendar,
+  logout/delete links and state-changing GET endpoints that record hits, cross-site links,
+  injected instructions, two "days" of changed content. Acceptance: served locally by a `just`
+  recipe; every later site test uses it; hit counters are readable by tests.
+- [ ] 10.3 Site profiles and login: `site open URL [--login]`, `site profiles`, `site forget`.
+  Headed login in a persistent context under the state directory (mode 0700). Acceptance: login
+  on the fixture works; synthetic cookies never appear in the workspace, captures, logs, history
+  or AI requests; `site forget` removes the profile; a missing or expired session is reported.
+- [ ] 10.4 Capture engine: per-page snapshot (URLs, status, time, browser, accessibility tree
+  joined with DOM facts, links with roles, digests) in `--refs` mode, append-only.
+  Acceptance: snapshots of the fixture pages match golden files; a recapture of an unchanged page
+  has equal digests; redirects, errors and timeouts are recorded, not dropped.
+- [ ] 10.5 Page namespace as a read-only virtual filesystem in the shell: `ls`, `cat`, `cat -l`,
+  `find`, `grep` over semantic nodes; stable paths; moved/missing nodes on recapture.
+  Acceptance: path grammar documented; repeated names indexed; writes fail; a changed fixture
+  page reports moved and missing nodes; output escapes control characters.
+- [ ] 10.6 Site and link namespaces: `/site/<host>/<path>`, `@links` with role, text, target and
+  state; `links --to` backlinks; `/cap/<run>`. Live versus captured is shown. Entering an
+  uncaptured page in a live session is a policy-checked navigation. Acceptance: denied
+  navigations (W1 deny list, off-origin) fail with the rule that refused them; offline browsing of
+  captures loads nothing.
+
+- [ ] 10.7 AI configuration per site profile: provider (remote with the user's key, or Ollama on
+  loopback), model, disclosure grant for remote providers, and a privacy step before every model
+  call with configurable data masking (patterns, field types) and synonymization (consistent
+  stand-ins, mapping kept locally and reversed in the response). Acceptance: with a mock remote
+  provider, no masked or synonymized original reaches the request; answers show the originals;
+  the mapping never appears in requests, exports or logs; a remote call without a grant is
+  refused; a local-model profile in the 13B–30B range runs the phase 1 `//` fixture tasks, and
+  its results are recorded (GAPS Q9).
+
+### 11. Crawling and capture policies
+
+- [ ] 11.1 Deterministic bounded crawl: scope, depth, page/time budgets, rate, concurrency,
+  canonicalisation and digest deduplication, a configurable robots policy (honour, show only,
+  per site profile; default honour unauthenticated, show logged in; GAPS Q7), the
+  navigation-safety policy, cancellation, and a decision record per link. Acceptance: on the
+  fixtures no state-changing endpoint is hit, the calendar trap stops at the budget, logged-in
+  crawls stay on the declared origins, each robots setting behaves as configured and is
+  recorded in the run, the run reports its stop reason and unreached frontier.
+  Decide whether Crawlee's queue is used under wish's policy.
+- [ ] 11.2 Mirror mode: WARC 1.1 of every response plus a browsable tree generated from it;
+  headers with credentials redacted. Logged-in mirrors need an explicit flag. Acceptance: the
+  fixture site mirrors completely; replay in a sandboxed context without profile or network shows
+  the pages; no synthetic secret in the WARC; record fidelity of the chosen recording approach.
+- [ ] 11.3 Agentic link decisions: link features in the frontier; a model ranks candidate IDs
+  against the goal and labels relations; the policy admits; records with model and prompt
+  version. Acceptance: on a fixture goal, equal recall with fewer fetches than 11.1's breadth
+  first, with a remote mock and with a 13B–30B local model; injected instructions change no
+  policy outcome; the model can't add URLs; without a usable provider the crawl falls back to
+  rules.
+- [ ] 11.4 Templates and extraction: structural clustering, model-proposed schemas checked on a
+  second exemplar, deterministic application, rules for headings/tables/lists/breadcrumbs and
+  JSON-LD/microdata. Acceptance: precision/recall on labelled fixture pages; model calls grow with
+  the number of templates, not pages; failed checks fall back and are recorded.
+- [ ] 11.5 Data capture (`--data`): selected passages, tables and values with anchors.
+  Acceptance: re-extraction from the capture equals the live result on unchanged pages; `--refs`
+  runs contain no attribute values or passages (tested).
+
+### 12. Semantic overlay across sites
+
+- [ ] 12.1 Overlay format `wish-overlay/1`: statements, entities, anchors with Web Annotation
+  selectors, methods, runs, supersession; JSON Schemas in the repository; SQLite index rebuilt
+  from the files. Acceptance: schema validation in tests; dropping the index and rebuilding gives
+  identical query results.
+- [ ] 12.2 `/sem` namespace and cross-site browsing over captures; proposed `same_as` identity
+  links with evidence, never silent merges. Acceptance: an entity on two fixture sites shows each
+  occurrence with its source; rejecting a `same_as` separates them again.
+- [ ] 12.3 Recapture and diff: changed, added and removed statements between snapshots of the
+  same pages. Acceptance: the fixture's second "day" yields exactly its scripted changes.
+
+### 13. Structured retrieval, explanation, and evidence
+
+- [ ] 13.1 `ask`: graph-guided selection of statements and passages with heading paths;
+  answers cite item IDs, citations are checked. Acceptance: on a fixture question set, compared
+  with plain chunk retrieval (and GraphRAG or LightRAG as baselines), answer correctness and
+  citation accuracy are recorded; unsupported questions abstain.
+- [ ] 13.2 `explain`: statement → anchors and capture → extraction method and checks → crawl path
+  → coverage. Acceptance: every answer item resolves on all four levels; coverage matches the run
+  log; disagreements are shown with both sides.
+- [ ] 13.3 Evidence research: `evidence CLAIM` (argument or stdin) matches claims and entities to
+  the overlay as supporting, contradicting or unknown, then researches additional sites chosen
+  from a configured source list and off-site links, admitted only by allowlist or confirmation
+  (GAPS Q12), with unauthenticated agentic crawls. Messages are not read by wish (GAPS Q10).
+  Acceptance: a labelled claim set against several fixture sites; injected instructions in the
+  claim text or on pages have no effect; unlisted, private-network and loopback sites are never
+  fetched; the report lists the coverage.
+- [ ] 13.4 `trend TOPIC`: changes over time between captures and the spread across sites, with
+  statements traced to one origin counted once; recaptures proposed, never automatic.
+  Acceptance: scripted changes over three fixture "days" on two sites are reported with
+  citations; a copied statement isn't counted as independent.
+
+### 14. Export and interoperability
+
+- [ ] 14.1 Document and version the export (captures, WARC, `wish-overlay/1`, decision records),
+  with JSON Schemas and an example workspace. Acceptance: an importer written only from the
+  documentation (a small script in the tests) reads the example; profiles, keys and the index are
+  never in an export. No consumer-specific code; Lakeshore or any other consumer imports on its
+  own side.
+
+## Workspace substrate: phase 1 of 2026-10-14
+
+The roadmap of 2026-10-14 proved CSV import → shell transformation → Python notebook/plot
 → save/reload, plus equivalent `//` commands and replay. Compose through files,
 byte/text pipes, and JSON/CSV. Evaluate just-bash before writing shell machinery.
+Since 2026-11-10, groups 2, 3.1–3.2 and 6 are also site-workspace phase 1 work, run in the
+local host rather than a browser worker (ARCH, GAPS Q6); the rest is used where a site
+workflow needs it ([ROAD](ROAD.md#relationship-to-the-workspace-substrate)).
 
 ### 1. Development foundation
 
@@ -152,7 +278,7 @@ byte/text pipes, and JSON/CSV. Evaluate just-bash before writing shell machinery
   limitations, and release notes. Acceptance: a human reviews/merges through GitHub
   and authorizes publication; AI never merges or releases.
 
-## Phase 2: selected extensions
+## Workspace substrate: phase 2 of 2026-10-14, selected extensions
 
 These tasks require a demonstrated workload and explicit scope selection. An
 unselected extension does not block a release that excludes it. Extend existing
@@ -218,3 +344,9 @@ commands/file adapters before adding a general execution platform.
   phase 2 capability. Acceptance: file sharing, placement, authorization, conflicts,
   cancellation, and relevant reconnect/device cases pass; only tested profiles are
   included in a human-reviewed release PR.
+- [ ] 9.6 Automate the site workspace's phase 1 acceptance ([ROAD](ROAD.md#phase-1-one-site))
+  and add the site-capture security tests W1–W10 ([SEC](SEC.md#site-capture-and-crawling)) to
+  the recurring release gate. Acceptance: all run against every release candidate on the fixture
+  sites; supported browsers and OSes recorded; nothing contacts a real site.
+- [ ] 9.7 Extend 9.6 for each selected phase 2 or 3 capability (11.3–14). Acceptance: its
+  behavioural and W-series tests pass; only tested capabilities are in a human-reviewed release.

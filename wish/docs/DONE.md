@@ -14,6 +14,104 @@ Implementation completion doesn't imply a merged PR or a release; corrections an
 
 ---
 
+## 2026-11-10 10:40 — The user's answers to wish GAPS Q5–Q11 carried into the design
+
+TODO items: 0.10 (follow-up), new 10.7; 11.1, 11.3, 13.3, 13.4 re-scoped. PR: not yet opened
+(branch `docs/wish-site-workspace`).
+
+Agent: Opus 5.5, reasoning: not exposed, subagents: none.
+
+### Implementation notes
+
+- Answers recorded in [GAPS](GAPS.md) with `**Resolved:**` lines: Q5 yes (site workspace is phase 1),
+  Q6 yes (local program; A1 corrected to hold for the substrate only), Q7 yes plus a configurable
+  robots policy, Q8 yes (JSON Lines plus SQLite), Q9 configurable provider, masking and
+  synonymization with Ollama and 13B–30B local models, Q10 evidence and trends from additional
+  sites with messages integrated outside wish, Q11 separate program `wish`.
+- Carried into: [IDEA](IDEA.md) (U4 rewritten as research on additional sites, `evidence` and
+  `trend` taking text as argument or stdin; AI configuration; separate program), [ROAD](ROAD.md)
+  (decisions instead of "pending", phase 1 AI configuration and tests, phase 3 rewritten),
+  [ARCH](ARCH.md) (four decision rows, robots policy in the crawl loop, sections "Evidence and
+  trends from additional sites" and "AI" rewritten), [SEC](SEC.md) (W5 masking, synonymization
+  and local provider, W7 configurable robots policy, W10 research of additional sites instead of
+  messages), [TODO](TODO.md) (new 10.7; 11.1, 11.3, 13.3, 13.4 re-scoped), wish README and the
+  repository [ROAD](../../docs/ROAD.md) step 4.
+- New question Q12 (how additional sites are chosen), with a proposal; it blocks TODO 13.3.
+- Validation after these edits: `just links` exited 0; the heading-slug check found no broken
+  anchors; `just pdfs wish` rebuilt the 9 changed documents (SOTA unchanged, skipped). PDFs not
+  inspected visually.
+
+### Deviations
+
+- Two readings of the answers are recorded as interpretations in GAPS Q9 for the user to
+  correct: "synonymization" as consistent stand-ins for names and identifiers, reversed locally;
+  remote providers keep the per-site disclosure grant, while a local provider on loopback needs
+  none.
+
+### Insights
+
+- With messages outside the tool, U4 becomes the same agentic crawl as U1 with a claim as its goal;
+  the new risk is scope expansion to arbitrary or local-network sites, hence the allowlist and the
+  private-address refusal in W10.
+
+---
+
+## 2026-11-10 09:57 — wish re-centred on websites as the space to work on
+
+TODO items: 0.10. PR: not yet opened (branch `docs/wish-site-workspace`).
+
+Agent: Opus 5.5, reasoning: not exposed, subagents: none.
+
+### Implementation notes
+
+- The user's adjustment of the idea, documented as a design proposal: a site (its pages, their
+  semantic structure and its links) is wish's working space; the current page's semantic tree is
+  the current directory, while pages (`/site`), hyperlinks (`@links`), the overlay (`/sem`) and
+  capture runs (`/cap`) have namespaces of their own; agentic crawling by content (model ranks
+  link IDs, deterministic policy decides, every decision recorded); template-based extraction from
+  the logical structure; capture as references (`--refs`), data (`--data`) or mirror (`--mirror`,
+  WARC); structured retrieval over the overlay with four levels of explanation (what, how read,
+  how reached, what wasn't seen); incoming messages matched to evidence, and trends. Use cases
+  U1–U4 as given by the user.
+- Playwright is the capture framework (the user's choice). The proposed host is a local
+  TypeScript/Node.js process with a headed browser for login (GAPS Q6).
+- **Open source without Lakeshore** (the user, 2026-11-10): wish uses no Lakeshore code, schemas,
+  services or models. Lakeshore, like any consumer, imports wish's own open export format
+  (`wish-overlay/1`, WARC, decision records) on its side. The shared ideas (evidence per statement,
+  models propose and tools decide, disagreements shown) are re-implemented in wish.
+- Documents: new [IDEA](IDEA.md); the previous IDEA moved by `git mv` to [WORKSPACE](WORKSPACE.md)
+  with a status note and otherwise unchanged; [ROAD](ROAD.md) rewritten (phase 1 one site, phase 2
+  content-driven, phase 3 evidence and export, substrate track); [ARCH](ARCH.md) gains the site
+  architecture and a decision table on top, with the 2026-10-14 architecture kept below with
+  headings demoted one level; [SEC](SEC.md) gains "Site capture and crawling" with threats W1–W10;
+  [SOTA](SOTA.md) gains "Crawling, capture, and semantic extraction" with licenses;
+  [TODO](TODO.md) gains 0.10 and groups 10–14 plus 9.6–9.7, with IDs and status of groups 1–9
+  unchanged; [GAPS](GAPS.md) gains Q5–Q11 and A4–A5. Outside wish: the wish lines of the root
+  README, [repository ROAD](../../docs/ROAD.md) step 4, and [AGENTS.md](../../AGENTS.md) (wish
+  description, phase 1 rule with fixture-site tests, release security tests W1–W10).
+- Validation: `just links` exited 0; a heading-slug script found no broken anchors among the
+  `#` links of wish's documents, AGENTS.md, README.md and docs/ROAD.md; `just pdfs wish` wrote
+  every PDF. The PDFs weren't inspected visually (no PDF renderer installed in this session).
+- License facts in the new SOTA table come from memory, with Crawl4AI (Apache-2.0 plus an
+  attribution clause) and Browsertrix Crawler (AGPL-3.0) checked by web search; all are to be
+  rechecked for pinned versions in TODO 10.1.
+
+### Deviations
+
+- The phase order (site workspace as phase 1 instead of the CSV/notebook workflow) is a proposal
+  pending GAPS Q5; the documents mark it so. The host choice (Q6) and the crawling policy (Q7) are
+  likewise proposals.
+
+### Insights
+
+- The site workspace moves wish from the browser into a local process, which brings it closer to
+  ush (GAPS Q11) and makes assumption A1 a statement about the substrate only.
+- The hard safety problem isn't parsing pages but navigating a logged-in site without side
+  effects: read-only navigation, a deny list and fixture endpoints that count hits are phase 1
+  work, not hardening for later.
+
+---
+
 ## 2026-10-28 10:58 — The stack lands on the default branch
 
 TODO items: 0.8, 0.9 (merge outcome). PR: [#12](https://github.com/gregoryyy/ushell/pull/12),

@@ -1,23 +1,27 @@
 # wish
 
-wish is the web interactive shell: a browser workspace for files, datasets,
-notebooks, live tools, and local or explicitly attached server resources.
-This directory currently contains its design documents; runtime commands are not
-implemented yet.
+wish is the web interactive shell. Its working space is a **website**: the current page's
+semantic structure is the current directory, the site's pages are a directory tree, and the
+hyperlink graph has a namespace of its own. An agent crawls by content, deciding which links lead
+to the information it is after and recording why. What it captures with Playwright becomes a
+semantic overlay (references to where things are, optionally the data itself) that you can
+browse across sites, question with structured retrieval, and use to research evidence and trends
+for a claim on additional sites, with every answer explained down to its evidence, the path that reached it, and what wasn't seen.
 
-Phase 1 starts with a lean browser shell: ordinary files, byte/text pipes, JSON/CSV,
-a Python notebook, and `//` commands using the user's key. just-bash is the first
-shell candidate to evaluate. Phase 2 adds tools and remote resources where useful;
-typed pipelines and public resource handles remain deferred.
+This directory contains design documents; nothing is implemented. wish is open source (MIT) and
+built on open components only.
 
-- [IDEA.md](docs/IDEA.md): product definition and command examples.
-- [ROAD.md](docs/ROAD.md): lean phase 1 and optional phase 2 ideas.
-- [ARCH.md](docs/ARCH.md): technical architecture.
-- [SEC.md](docs/SEC.md): security profile and browser obstacles.
+- [IDEA.md](docs/IDEA.md): the idea, use cases and command examples.
+- [ROAD.md](docs/ROAD.md): phase 1 (one site), phase 2 (content-driven crawling, overlay), phase 3
+  (evidence, trends, export).
+- [ARCH.md](docs/ARCH.md): technical architecture and decisions.
+- [SEC.md](docs/SEC.md): security profile: navigation side effects, sessions, injection, disclosure.
 - [SOTA.md](docs/SOTA.md): research and comparisons with existing tools.
+- [WORKSPACE.md](docs/WORKSPACE.md): the browser-workspace concept of 2026-10-14, now the substrate
+  (shell, files, notebook, `//`).
 - [TODO.md](docs/TODO.md): numbered implementation milestones and acceptance criteria.
 - [GAPS.md](docs/GAPS.md): questions for the user and assumptions to check.
 - [DONE.md](docs/DONE.md): progress log, newest first.
 
-The local command-line counterpart, [ush](../ush/py/README.md), applies the same `//`
-paradigm to a zsh session on the user's own machine.
+The local command-line counterpart, [ush](../ush/py/README.md), applies the same `//` paradigm to a
+zsh session on the user's own machine.

@@ -10,8 +10,9 @@ It holds projects that share the `//` command paradigm:
   Python in [ush/py/](ush/py/) ("ushpy"), the experimental one where features are tried
   first, and Go in [ush/go/](ush/go/) ("ushgo"), the compiled deliverable. Both share one
   document set in [ush/docs/](ush/docs/).
-- **wish** ([wish/](wish/)), the browser workspace shell. It is still a design
-  project; commands described in `wish/docs/` are proposed behavior until
+- **wish** ([wish/](wish/)), the site workspace shell: websites as the space to
+  work on, captured with Playwright, on top of the browser-workspace substrate. It is
+  open source and uses no Lakeshore component. It is still a design project; commands described in `wish/docs/` are proposed behavior until
   implemented and tested.
 
 The workflow, the document set (TODO, DONE, ARCH, ROAD, SEC, GAPS in each project's
@@ -88,8 +89,9 @@ document sets were merged on 2026-10-29; [ush TODO](ush/docs/TODO.md#old-ids) ma
 
 - Implement the smallest complete milestone. Prefer existing kernels, notebooks,
   SQL engines, and automation adapters where SOTA establishes a suitable foundation.
-- wish: start with the lean phase 1 plan: evaluate just-bash, compose through files
-  and byte/text pipes, and add a few explicit tool commands. Defer typed pipelines,
+- wish: start with the lean phase 1 plan in [wish ROAD](wish/docs/ROAD.md): one site,
+  evaluate just-bash, compose through files and byte/text pipes, and add a few explicit
+  tool commands. Tests use local fixture sites and never contact a real site. Defer typed pipelines,
   public resource handles, and general placement abstractions until a demonstrated
   workflow justifies them. Phase 2 is selected work, not an automatic scope expansion.
 - wish: keep the TypeScript core independent of providers and runtimes. Use explicit
@@ -151,7 +153,9 @@ and results. Earlier passing checks do not satisfy a new release gate.
    key handling under sudo, and history contents. For wish: path traversal and cross-workspace
    access; forged/replayed bridge messages and revoked grants; malicious HTML/SVG
    and notebook outputs; credential leakage and prompt injection; unapproved AI
-   disclosure; runtime egress channels; resource exhaustion and cancellation.
+   disclosure; runtime egress channels; resource exhaustion and cancellation; and for
+   site capture, navigation side effects, session leakage, injection through page
+   content, off-origin navigation and crawl budgets ([wish SEC](wish/docs/SEC.md) W1–W10).
 3. For server-enabled releases, also test cross-tenant authorization, CSRF and
    WebSocket authentication where applicable, SSRF/redirect controls, upload bounds,
    kernel isolation, lease expiry, and reconnect/mutation receipts. Record omitted

