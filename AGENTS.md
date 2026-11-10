@@ -2,34 +2,34 @@
 
 These instructions apply to human and AI contributors throughout this repository, whatever
 the agent ([CLAUDE.md](CLAUDE.md) only points here).
-It holds **ush**, a project built on the `//` command paradigm:
-
-- **ush**, the local command-line shell extension for zsh. It runs real commands on
-  the user's machine, possibly as root. One command, two implementations with
-  equivalent functionality ([SDLC](docs/SDLC.md#ush-one-command-two-implementations)):
-  Python in [ush/py/](ush/py/) ("ushpy"), the experimental one where features are tried
-  first, and Go in [ush/go/](ush/go/) ("ushgo"), the compiled deliverable. Both share one
-  document set in [ush/docs/](ush/docs/).
+It holds **ush**, the local command-line shell extension for zsh built on the `//` command
+paradigm. It runs real commands on the user's machine, possibly as root. One command, two
+implementations with equivalent functionality
+([SDLC](docs/SDLC.md#ush-one-command-two-implementations)): Python in [src/py/](src/py/)
+("ushpy"), the experimental one where features are tried first, and Go in [src/go/](src/go/)
+("ushgo"), the compiled deliverable. Both share the zsh plugin in [src/shell/](src/shell/), the
+manual page in [src/man/](src/man/), the policy corpus in [tests/conform/](tests/conform/), and
+one document set in [docs/](docs/).
 
 Its sibling **wish**, the web intelligent shell, moved to its own repository,
 [gregoryyy/wish](https://github.com/gregoryyy/wish) (private for now), on 2026-11-10 (wish TODO 0.11, GAPS Q13); its rules
 are in its own AGENTS.md. The two share the `//` request contract ([ROAD](docs/ROAD.md)
 step 5), not code.
 
-The workflow, the document set (TODO, DONE, ARCH, ROAD, SEC, GAPS in each project's
-`docs/`), and the DONE entry format are defined in [docs/SDLC.md](docs/SDLC.md). The
-rules below take precedence over it. The repository's roadmap is
-[docs/ROAD.md](docs/ROAD.md). IDs are `x.x` per project; refer to them as "ush TODO 1.3"
-or "ush TODO 4.1". Earlier records cite "wish TODO …" and "wish GAPS …": those IDs now
-live in the wish repository. Earlier records cite "ushpy TODO …" and "ushgo TODO …" from before the two
-document sets were merged on 2026-10-29; [ush TODO](ush/docs/TODO.md#old-ids) maps them.
+The workflow, the document set (TODO, DONE, ARCH, ROAD, SEC, GAPS in `docs/`), and the DONE
+entry format are defined in [docs/SDLC.md](docs/SDLC.md). The rules below take precedence over
+it. The roadmap is [docs/ROAD.md](docs/ROAD.md). IDs are stable `x.x` numbers, cited as
+"TODO 1.3" or "ush TODO 1.3". Earlier records cite "wish TODO …" and "wish GAPS …": those IDs
+now live in the wish repository. Until 2026-11-10 the sources were in `ush/` and the documents
+in `ush/docs/`. Earlier records cite "ushpy TODO …" and "ushgo TODO …" from before the two
+document sets were merged on 2026-10-29; [ush TODO](docs/TODO.md#old-ids) maps them.
 
 ## Start each task
 
-1. Read the project's TODO, DONE, GAPS, and the relevant design documents.
-   ush: [TODO](ush/docs/TODO.md), [DONE](ush/docs/DONE.md), [GAPS](ush/docs/GAPS.md),
-   [ARCH](ush/docs/ARCH.md), [SEC](ush/docs/SEC.md), [SECTEST](ush/docs/SECTEST.md),
-   and [ROAD](ush/docs/ROAD.md).
+1. Read TODO, DONE, GAPS, and the relevant design documents:
+   [TODO](docs/TODO.md), [DONE](docs/DONE.md), [GAPS](docs/GAPS.md),
+   [ARCH](docs/ARCH.md), [SEC](docs/SEC.md), [SECTEST](docs/SECTEST.md),
+   and [ROAD](docs/ROAD.md).
 2. Check the branch, working-tree changes, and applicable repository instructions.
    Preserve unrelated work. If on `main`, create/switch to a feature branch before
    editing; carry existing changes only when their ownership and scope are clear.
@@ -78,7 +78,7 @@ document sets were merged on 2026-10-29; [ush TODO](ush/docs/TODO.md#old-ids) ma
   implementation notes with exact validation commands/results, deviations, insights.
 - Never rewrite earlier DONE entries. Add corrections, follow-up findings, and
   merge/release outcomes as new entries on top.
-- Questions only the user can answer go into the project's GAPS with a proposal;
+- Questions only the user can answer go into GAPS with a proposal;
   never act on a blocking question's proposed answer without the user's reply.
 - Update TODO, DONE, and GAPS in the same feature branch/PR as the implementation.
   Implementation completion is distinct from human merge and release approval.
@@ -138,7 +138,7 @@ and results. Earlier passing checks do not satisfy a new release gate.
    the suite of the shipped implementation (ushgo) and the conformance suite on every
    supported OS (and Python version for ushpy),
    including root/sudo resolution and the zsh integration, plus the user smoke test
-   ([SMOKE](ush/docs/SMOKE.md)) on the built artifact.
+   ([SMOKE](docs/SMOKE.md)) on the built artifact.
 2. Run applicable adversarial security tests. For ush: command-policy bypasses,
    prompt injection through command output, secret redaction, credential file and
    key handling under sudo, and history contents.

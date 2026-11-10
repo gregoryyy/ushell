@@ -1,9 +1,9 @@
 # Development process
 
 How work moves from an idea to merged, documented, tested code in this repository. It applies to
-people and coding agents alike: [ush](../ush/README.md), in two implementations. wish, the
-other project that lived here, has its own repository and its own copy of this process since
-2026-11-10 ([gregoryyy/wish](https://github.com/gregoryyy/wish)). [AGENTS.md](../AGENTS.md) holds the
+people and coding agents alike, and to [ush](../README.md) in both its implementations. wish,
+which lived here until 2026-11-10, has its own repository and its own copy of this process
+([gregoryyy/wish](https://github.com/gregoryyy/wish)). [AGENTS.md](../AGENTS.md) holds the
 rules that override everything else (human merges, security, release gate); this document describes
 the documents and the workflow. The regime follows `../propeller/docs/SDLC.md`. Status:
 2026-10-29 02:01.
@@ -24,8 +24,7 @@ flowchart LR
 
 ## Documents
 
-Each project keeps the same set of documents in its `docs/` folder. A project creates only the ones
-it needs; this file is the shared default for all of them.
+The documents are in `docs/`, shared by both implementations.
 
 | Document | What it holds |
 | --- | --- |
@@ -37,8 +36,11 @@ it needs; this file is the shared default for all of them.
 | `docs/GAPS.md` | Questions only the user can answer, and assumptions to check |
 | `docs/DONE.md` | Progress log, newest first |
 
-Projects may add more: ush has `SECTEST.md` (its security test plan). Task and question numbers belong to one project, so references across projects name it:
-"ush TODO 2.9"; "wish …" in earlier records refers to the wish repository.
+ush adds `USER.md` and `ADMIN.md` (the guides), `SECTEST.md` (the security test plan and
+findings), `SMOKE.md` (the user smoke test), `SOTA.md` (what exists next to ush), `releases/` and
+`archive/` (the DONE logs of the two implementations before 2026-10-29). Task and question numbers
+are cited as "TODO 2.9" or "ush TODO 2.9"; "wish …" in earlier records refers to the wish
+repository.
 
 ## Work items
 
@@ -97,8 +99,8 @@ DONE file, below a marker.
 
 - `main` changes only through pull requests, which a human reviews and merges. **AI never merges**,
   never approves its own PRs and never enables auto-merge ([AGENTS.md](../AGENTS.md)).
-- Branches are named `feat/…`, `fix/…`, `chore/…` or `docs/…`, with the project and TODO item where
-  it helps: `feat/ush-2.9-terminal-escapes`. One TODO item per branch where practical.
+- Branches are named `feat/…`, `fix/…`, `chore/…` or `docs/…`, with the TODO item where it helps:
+  `feat/ush-2.9-terminal-escapes`. One TODO item per branch where practical.
 - **Stacked PRs** are fine when work depends on an unmerged PR: base the new PR on the earlier
   branch and say so in its description. Merge from the bottom of the stack up and delete each
   branch when its PR is merged, so GitHub retargets the next PR to `main`.
@@ -108,7 +110,7 @@ DONE file, below a marker.
   final paragraph as `Refs:` so Git reads both as trailers.
 - **PR descriptions** follow [the PR template](../.github/pull_request_template.md): the problem and
   the resulting behaviour, the TODO items, tests and their results, deviations, security impact
-  against the project's SEC, remaining limitations, and the base branch of a stacked PR.
+  against SEC, remaining limitations, and the base branch of a stacked PR.
 
 ## CI
 
@@ -128,15 +130,15 @@ A TODO item is done when, in the same PR:
 3. **CI passes:** `just ci --post` on the PR's head commit, while Actions is unavailable.
 4. **Docs are current:** README, ARCH, SEC, ROAD and GAPS as affected; `just links` passes and
    `just pdfs` builds.
-5. **Security impact** is stated against the project's SEC, even if it's "none". Changes to grants,
+5. **Security impact** is stated against SEC, even if it's "none". Changes to grants,
    storage, isolation, egress, credentials or authorization come with a threat-model update and
    negative tests.
 6. **TODO.md** has the item ticked and **DONE.md** has an entry on top.
 
 ## TODO mode
 
-When the user sends "TODO mode: …", the agent works through the remaining milestones of the named
-project in TODO order:
+When the user sends "TODO mode: …", the agent works through the remaining milestones in TODO
+order:
 
 1. **Pick the next actionable item.** Items only the user can do (manual checks, answers) stay open
    and are listed in the PR; they don't block the rest.
@@ -160,10 +162,10 @@ project in TODO order:
 ## ush: one command, two implementations
 
 `ush` is one command with two implementations that must behave the same (decided 2026-10-28,
-[ush GAPS](../ush/docs/GAPS.md) Q10). They share one document set, [ush/docs/](../ush/docs/), since
-2026-10-29:
+[GAPS](GAPS.md) Q10). They share one document set, [docs/](./), since 2026-10-29 (in `ush/docs/`
+until 2026-11-10):
 
-| | Python, [ush/py/](../ush/py/README.md) | Go, [ush/go/](../ush/go/README.md) |
+| | Python, [src/py/](../src/py/README.md) | Go, [src/go/](../src/go/README.md) |
 | --- | --- | --- |
 | Role | Experimental: features are designed and tried here first | The compiled deliverable: what users install |
 | Tests | `just ushpy-test` (unittest; fake providers, mock API, pty) | `just ushgo-test` (gofmt, vet, `go test`) |
@@ -180,14 +182,14 @@ project in TODO order:
 4. **Port it to Go**, in the same PR or a later one, with the Python tests ported or run as
    conformance tests against the Go binary (ush TODO 4.10); then the item is *py ✓ go ✓* and
    ticked. A difference in behaviour is a bug in one of the two unless ARCH records it.
-5. **Smoke-test both** as a user, with the same script ([SMOKE](../ush/docs/SMOKE.md)):
-   `ush/py/scripts/smoke.sh --bin <either ush>`.
+5. **Smoke-test both** as a user, with the same script ([SMOKE](SMOKE.md)):
+   `src/py/scripts/smoke.sh --bin <either ush>`.
 
 **Shared contract:** settings (`~/.config/ush/config.json`), key store, history format, exit
 statuses, environment variables (`USH_*`) and the zsh plugin are the same for both; a change to any
 of them is made in both, or in Python with the item left open for Go.
 
-**Security-relevant code first in both:** fixes for findings in [SECTEST](../ush/docs/SECTEST.md)
+**Security-relevant code first in both:** fixes for findings in [SECTEST](SECTEST.md)
 go into both implementations before the next release.
 
 **Releases:** a ush release ships the Go binary (ush TODO 5.2); the release gate in

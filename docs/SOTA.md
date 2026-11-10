@@ -1,13 +1,11 @@
 # State of the art
 
-What exists next to this repository's two projects, and what sets them apart: **ush**, the `//`
-shell for zsh, and **wish**, the browser workspace shell. Status: 2026-10-29 01:29.
+What exists next to **ush**, the `//` shell for zsh, and what sets it apart. Status: 2026-10-29
+01:29; the summary of wish was removed on 2026-11-10, when wish moved to its own repository (its
+summary as it was is at [ushell 079f504](https://github.com/gregoryyy/ushell/blob/079f504/docs/SOTA.md)).
 
-- **ush:** this file. Sources were checked on 2026-10-29: maintainer documentation,
-  repositories and papers. License, latest release and activity come from the GitHub API on that
-  day.
-- **wish:** a summary of [wish/docs/SOTA.md](https://github.com/gregoryyy/ushell/blob/079f504/wish/docs/SOTA.md), researched 2026-10-13/14 and
-  not rechecked here. wish has its own repository since 2026-11-10 (README).
+Sources were checked on 2026-10-29: maintainer documentation, repositories and papers. License,
+latest release and activity come from the GitHub API on that day.
 
 Products change quickly; recheck a fact before relying on it in a decision. "Unverified" means no
 primary source confirmed it. The comparisons describe documented behaviour, not measured quality.
@@ -125,44 +123,3 @@ Apache-2.0); the Python original continues as a community fork (AGPL-3.0).
 **Unverified:** Warp's explain feature, autonomy levels and local models; local models in Gemini
 CLI, Atuin AI, Claude Code and Codex CLI; aichat's current menu; the NLC2CMD metric; an end-of-support date for Amazon
 Q.
-
-## wish
-
-Summary of [wish/docs/SOTA.md](https://github.com/gregoryyy/ushell/blob/079f504/wish/docs/SOTA.md) (as of ushell 079f504), which has the full comparison, maturity and
-licence review.
-
-- **Closest precedents:**
-  - WebVM, for a browser shell with AI command execution.
-  - JupyterLite and marimo, for browser Python notebooks.
-  - Puter, for browser applications with user-owned cloud resources.
-  - Browser Use, Stagehand and agent-browser, for natural-language browser control.
-  - WebMCP (experimental), for pages that expose structured tools.
-- **First candidates to reuse:** just-bash (Apache-2.0, beta) as the shell library; Pyodide
-  (MPL-2.0) with one notebook UI for Python; DuckDB-Wasm, SQLite Wasm or PGlite when a workload
-  needs them.
-- **Licence boundaries that shape the design:**
-  - WebVM's CheerpX engine has custom terms.
-  - The Wasmer SDK is Modified MIT.
-  - The Puter platform is AGPL-3.0.
-  - WebContainers has commercial runtime terms.
-
-### Differentiators
-
-These are design intentions, not demonstrated advantages: wish is not built yet.
-
-1. **One connected workflow.** A shell edit, a Python cell, a query and a live tool work on the
-   same workspace files, with versions and conflict checks. That holds in place of separate
-   tools with copies of the data.
-2. **`//` programs that stay useful.** A request produces a displayed, validated program for the
-   same executor as typed commands. It can be inspected, edited and rerun without another model
-   call, under the same grants whether a person or a model wrote it. This is the trait wish
-   shares with ush: the model proposes, the user decides and keeps the result.
-3. **Explicit placement and authority.** Storage, compute and the AI provider are separate,
-   visible choices. Permission to read a file stays separate from permission to disclose it to a
-   provider.
-4. **Lean first.** Phase 1 is just-bash, Pyodide and one notebook UI over checked files. It
-   adds no new shell dialect or type system, and reuses runtimes rather than rebuilding them.
-
-What would show the distinction: import a CSV, change it from the shell, plot it in a notebook,
-save and reload, and replay an AI-generated program. All of it should run with little glue and
-under enforced grants.
