@@ -6,8 +6,8 @@ shell for zsh, and **wish**, the browser workspace shell. Status: 2026-10-29 01:
 - **ush:** this file. Sources were checked on 2026-10-29: maintainer documentation,
   repositories and papers. License, latest release and activity come from the GitHub API on that
   day.
-- **wish:** a summary of [wish/docs/SOTA.md](../wish/docs/SOTA.md), researched 2026-10-13/14 and
-  not rechecked here.
+- **wish:** a summary of [wish/docs/SOTA.md](https://github.com/gregoryyy/ushell/blob/079f504/wish/docs/SOTA.md), researched 2026-10-13/14 and
+  not rechecked here. wish has its own repository since 2026-11-10 (README).
 
 Products change quickly; recheck a fact before relying on it in a decision. "Unverified" means no
 primary source confirmed it. The comparisons describe documented behaviour, not measured quality.
@@ -128,7 +128,7 @@ Q.
 
 ## wish
 
-Summary of [wish/docs/SOTA.md](../wish/docs/SOTA.md), which has the full comparison, maturity and
+Summary of [wish/docs/SOTA.md](https://github.com/gregoryyy/ushell/blob/079f504/wish/docs/SOTA.md) (as of ushell 079f504), which has the full comparison, maturity and
 licence review.
 
 - **Closest precedents:**

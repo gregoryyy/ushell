@@ -662,7 +662,7 @@ Agent: Opus 5.5, reasoning: not exposed, subagents: none.
 
 ## 2026-10-27 14:52 — Documents moved to the shared regime
 
-TODO items: none of ush's; the change is wish TODO 0.8 ([wish DONE](../../../wish/docs/DONE.md)).
+TODO items: none of ush's; the change is wish TODO 0.8 ([wish DONE](https://github.com/gregoryyy/ushell/blob/079f504/wish/docs/DONE.md)).
 PR: [#4](https://github.com/gregoryyy/ushell/pull/4).
 
 Agent: Opus 5.5, reasoning: not exposed, subagents: none.
