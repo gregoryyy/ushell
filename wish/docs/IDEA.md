@@ -1,6 +1,6 @@
 # wish: a shell for working on websites
 
-wish is the web interactive shell. Its working space is a **website**: the pages of one site,
+wish is the **web intelligent shell**. Its working space is a **website**: the pages of one site,
 the structure inside each page, and the links between them. You move through a site the way you
 move through a filesystem. You capture what it means, follow its links by content rather than
 by URL pattern, and keep a semantic overlay, with evidence, that you can browse and question
@@ -10,7 +10,9 @@ Status: idea and design, 2026-11-10 (decisions on GAPS Q5–Q11 at 10:38); nothi
 re-centres the browser-workspace concept of 2026-10-14, which stays as wish's substrate
 (shell, files, `//`, history, notebook) in [WORKSPACE](WORKSPACE.md). The phases are in
 [ROAD](ROAD.md), the architecture in [ARCH](ARCH.md), security in [SEC](SEC.md), prior art in
-[SOTA](SOTA.md), and the decisions and open questions in [GAPS](GAPS.md).
+[SOTA](SOTA.md), and the decisions and open questions in [GAPS](GAPS.md). The name changed from
+"web interactive shell" to "web intelligent shell" on 2026-11-10, when wish was also decided to
+become a separate project with its own repository (GAPS Q13).
 
 ## The idea in one paragraph
 

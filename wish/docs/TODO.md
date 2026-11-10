@@ -59,6 +59,13 @@ against every release candidate.
   evidence and trends; Playwright for capture; open source without Lakeshore components. Acceptance: IDEA,
   ROAD, ARCH, SEC, SOTA, TODO and GAPS agree; the earlier concept is kept in WORKSPACE; IDs and
   status of groups 1–9 unchanged; links and PDFs build.
+- [ ] 0.11 Move wish to a project and repository of its own, as the "web intelligent shell"
+  (decided 2026-11-10; details in GAPS Q13). Acceptance: the new repository holds `wish/`'s
+  history (README, `docs/`, images), a LICENSE (MIT), its own AGENTS.md, SDLC, CI and document
+  tooling adapted from this repository, with stable TODO/GAPS IDs and DONE entries kept; links
+  and PDFs build there; this repository then keeps only a pointer (root README, repository ROAD,
+  AGENTS.md) and its `wish/` directory is removed in a reviewed PR. The `//` request contract
+  shared with ush (repository ROAD step 5) is documented in both.
 
 
 ## Site workspace

@@ -3,7 +3,7 @@
 Open questions and explicit assumptions for wish. **Questions** are for the user to answer.
 **Assumptions** are what the documents currently take for granted because they seemed clear enough
 not to ask; check them and correct any that are wrong. The rules for this file are in
-[SDLC](../../docs/SDLC.md#work-items). Status: 2026-11-10 10:38.
+[SDLC](../../docs/SDLC.md#work-items). Status: 2026-11-10 11:38.
 
 - Answers carry date, time and author: `**Answer** (2026-10-27 15:10, Gregor Heinrich): …`. Short
   answers are fine. A changed answer goes on top; earlier ones stay below it, struck through.
@@ -136,6 +136,25 @@ Following Q10, wish researches a claim or topic on sites beyond those already ca
   configured allowlist or the user confirms it. Research crawls run without a site profile
   (unauthenticated), under each site's robots policy. A search-engine adapter is a later,
   configurable option, not phase 3 scope.
+
+### Q13. How does wish move to its own repository? — blocking for TODO 0.11
+
+Decided by the user on 2026-11-10: wish, the "web intelligent shell", is developed as a separate
+project and repository. Open are the details.
+
+- **Proposed:**
+  - **Repository:** `gregoryyy/wish`, public, MIT, created by the user (or by the agent after the
+    user's go-ahead).
+  - **History:** `git subtree split --prefix=wish` of the default branch after #43 is merged, so
+    the documents keep their history; the result becomes the new repository's root (`README.md`,
+    `docs/`).
+  - **Carried along, adapted:** AGENTS.md (wish rules only), SDLC, the PR template, the link
+    checker, the PDF tooling and the local CI; ush-specific rules stay here.
+  - **Here afterwards:** a pointer in the root README, repository ROAD and AGENTS.md; `wish/`
+    removed in its own PR. ush keeps "wish GAPS/TODO" references in earlier DONE entries
+    unchanged; they then refer to the new repository.
+  - **Shared:** the `//` request contract (repository ROAD step 5) is specified in ush and
+    referenced from wish.
 
 ## Assumptions
 

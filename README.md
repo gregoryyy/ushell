@@ -9,7 +9,7 @@ checked, and executed. Both use the user's own AI API key, or a local model.
 | [ush](ush/README.md) | The `//` shell for zsh on your machine, optionally under `sudo`; one command, two implementations | 0.2.2 released |
 | ↳ [ush/go](ush/go/README.md) | ush in Go: the compiled deliverable, one static binary | Shipped in 0.2.2 (GitHub release, Homebrew) |
 | ↳ [ush/py](ush/py/README.md) | ush in Python: the experimental implementation, where features are tried first | At parity with Go |
-| [wish](wish/README.md) | Site workspace: a shell over websites, content-driven crawling, a semantic overlay with evidence | Design documents; not implemented |
+| [wish](wish/README.md) | Web intelligent shell: a shell over websites, content-driven crawling, a semantic overlay with evidence | Design documents; moving to its own repository |
 
 What comes next, across the projects, is in the roadmap: [docs/ROAD.md](docs/ROAD.md); what exists
 next to them, and what sets them apart, in [docs/SOTA.md](docs/SOTA.md).
@@ -56,13 +56,13 @@ just ush-test                    # both implementations, and ushpy's black-box t
 
 ## wish
 
-wish is the web interactive shell. Its working space is a website: the current page's semantic
+wish is the web intelligent shell. Its working space is a website: the current page's semantic
 structure is the current directory, other pages and the link graph have namespaces of their own,
 and an agent crawls by content, recording why it followed each link. Captures, made with
 Playwright, become a semantic overlay (references, optionally data) that can be browsed across
 sites and questioned, with every answer explained down to its evidence. `//` requests become
 shell programs, as in ush. It is a design project; nothing runs yet. The browser-workspace concept
-of 2026-10-14 (files, notebook, `//`) stays as its substrate. See
+of 2026-10-14 (files, notebook, `//`) stays as its substrate. wish is moving to a project and repository of its own (decided 2026-11-10, wish GAPS Q13, TODO 0.11); until then its documents live here. See
 [wish/README.md](wish/README.md), the product idea in [IDEA](wish/docs/IDEA.md), and the phases in
 [ROAD](wish/docs/ROAD.md).
 
