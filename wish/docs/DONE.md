@@ -14,6 +14,35 @@ Implementation completion doesn't imply a merged PR or a release; corrections an
 
 ---
 
+## 2026-11-10 11:38 — The web intelligent shell, as a project of its own
+
+TODO items: 0.11 (new, open). PR: [#43](https://github.com/gregoryyy/ushell/pull/43).
+
+Agent: Opus 5.5, reasoning: not exposed, subagents: none.
+
+### Implementation notes
+
+- The user's decision: "clearer wish concept -> web intelligent shell: will be developed as a
+  separate project and repo." Recorded as the name in [README](../README.md) and [IDEA](IDEA.md)
+  (formerly "web interactive shell"; [WORKSPACE](WORKSPACE.md) keeps the old wording as the
+  record it is), a decision row in [ARCH](ARCH.md#decisions), the first step in
+  [ROAD](ROAD.md#implementation-order-and-process), TODO 0.11 for the move, and GAPS Q13 with a
+  proposal for the repository, its history (`git subtree split`), what is carried along, and what
+  stays here. Outside wish: root README, AGENTS.md, repository [ROAD](../../docs/ROAD.md) step 4.
+- No repository was created and nothing was moved: that needs the user's answer to Q13.
+- Validation: `just links` passed; the heading-slug anchor check found no broken anchors.
+
+### Deviations
+
+- None.
+
+### Insights
+
+- The move is easiest after #43 is merged: one subtree split of the default branch carries all
+  wish documents with history, and this repository's later PR only removes `wish/`.
+
+---
+
 ## 2026-11-10 10:40 — The user's answers to wish GAPS Q5–Q11 carried into the design
 
 TODO items: 0.10 (follow-up), new 10.7; 11.1, 11.3, 13.3, 13.4 re-scoped. PR: not yet opened

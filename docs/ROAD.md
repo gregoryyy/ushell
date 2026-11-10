@@ -86,7 +86,9 @@ site with Playwright and offers it as a filesystem; a program of its own beside 
 2026-11-10: it replaces the earlier CSV/notebook phase 1, runs as a local program, and has a
 configurable robots policy, AI provider (Ollama included), masking and synonymization (wish GAPS
 Q5–Q11). Open for the user: when to start and which providers phase 1 offers (wish GAPS Q1, Q3).
-wish stays open source and uses no Lakeshore component.
+wish stays open source and uses no Lakeshore component. It becomes a separate project with its
+own repository, as the "web intelligent shell" (decided 2026-11-10, wish GAPS Q13, wish TODO
+0.11); after the move, this step and step 5 refer to that repository.
 
 ## 5. One `//` paradigm
 

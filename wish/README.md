@@ -1,6 +1,6 @@
 # wish
 
-wish is the web interactive shell. Its working space is a **website**: the current page's
+wish is the **web intelligent shell**. Its working space is a **website**: the current page's
 semantic structure is the current directory, the site's pages are a directory tree, and the
 hyperlink graph has a namespace of its own. An agent crawls by content, deciding which links lead
 to the information it is after and recording why. What it captures with Playwright becomes a
@@ -9,7 +9,9 @@ browse across sites, question with structured retrieval, and use to research evi
 for a claim on additional sites, with every answer explained down to its evidence, the path that reached it, and what wasn't seen.
 
 This directory contains design documents; nothing is implemented. wish is open source (MIT) and
-built on open components only.
+built on open components only. It will be developed as a separate project in its own repository
+(decided 2026-11-10; [GAPS](docs/GAPS.md) Q13, [TODO](docs/TODO.md) 0.11); until the move, its
+documents live here.
 
 - [IDEA.md](docs/IDEA.md): the idea, use cases and command examples.
 - [ROAD.md](docs/ROAD.md): phase 1 (one site), phase 2 (content-driven crawling, overlay), phase 3
