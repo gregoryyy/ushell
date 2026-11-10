@@ -1,26 +1,24 @@
 # Roadmap
 
-The repository's roadmap across its projects: what comes next, in which order, and what gates each
-step. Each project keeps its own phases and items ([ush ROAD](../ush/docs/ROAD.md); wish, since
-2026-11-10 in its own repository [gregoryyy/wish](https://github.com/gregoryyy/wish), private for now); this file orders them and
-holds the items that belong to no single project. Work becomes items in a project's TODO when it
-starts. Status: 2026-10-30 05:16.
+Where ush goes, in both implementations. The phases build on each other, and each one ends with a
+gate: a tested result that decides whether the next phase starts. When a phase starts, its work
+becomes items in [TODO](TODO.md), and this file links to them. Open questions are in
+[GAPS](GAPS.md). Status: 2026-11-10; phases 1 and 3 are done, 0.2.2 is released (TODO 5.10), 0.3.0 is
+next (5.11). Phase 4 was widened on 2026-10-30: European and local platforms, sh and PowerShell.
+This file merges, on 2026-11-10, the repository roadmap (`docs/ROAD.md`) and ush's own
+(`ush/docs/ROAD.md`), when wish had moved to its own repository and ush's documents moved to `docs/`.
 
-## Overview
-
-| Step | What | Where | Gate |
+| Phase | Goal | TODO | Gate to the next phase |
 | --- | --- | --- | --- |
-| 0. Repository (done but CI) | Land the open stack; one default branch; CI; licence | Below | All PRs on the default branch; licence chosen |
-| 1. First ush release (done) | The `//` shell for zsh, safe to hand to others | ush TODO 2.9–2.11, 5.3, 5.5 | Release gate: no open High finding, suites on macOS and Linux, smoke test on the artifact |
-| 2. ush in Go (done) | The same `ush` as a static Go binary, the deliverable | ush TODO 4.1–4.12, 5.1–5.7 | ushgo passes ushpy's black-box tests and the smoke test; releases then ship it |
-| 3. ush for daily use | Propose mode; fewer approvals for harmless commands, enforced read-only, long sessions | ush TODO 2.4–2.6, 2.17, 2.23–2.25 | Weeks of daily use without a policy bypass; approvals per request falling |
-| 4. wish phase 1 | One site: page, site and link namespaces, a reference overlay and a mirror from a bounded crawl, `//` (decided 2026-11-10, wish GAPS Q5); in the wish repository | wish TODO 10, 11.1–11.2, 2, 3.1–3.2, 6, 9.6 | wish ROAD phase 1 acceptance; release gate |
-| 5. One `//` paradigm | The same request contract and policy semantics in ush and wish | ush TODO 2.7 | wish has a shell (wish TODO 2.1, 6.2) |
+| 0. Repository (done but CI) | One default branch, CI, licence | Below | All PRs on the default branch; CI runs; licence chosen |
+| 1. First release (done) | The local `//` shell, safe to hand to others | 1, 2.9–2.11 (done); 5.3, 5.5 | The release gate in [AGENTS.md](../AGENTS.md) and [SECTEST](SECTEST.md): no open High finding, the suite on macOS and Linux, model-in-the-loop results recorded; licence and distribution decided (GAPS Q1, Q2) |
+| 2. Daily use | Fewer approvals for harmless commands, enforced read-only in agent mode, long sessions | 2.6, 2.23, 2.4, 2.5, 2.24, 2.25 | A few weeks of daily use without a policy bypass; approvals per request measured and falling; F8's scenario at 0 in 20 |
+| 3. Compiled port (done) | The same `ush` as a single static Go binary, the deliverable | 0, 4 (done); 5 | The Go binary passes ush's black-box tests and the smoke test; releases then ship it |
+| 4. Platforms, shells, context | More model platforms (OpenAI, Mistral, European, local servers); bash, sh, fish, PowerShell; requests that see recent history | 2.29, 2.23, 2.32, 2.27, 2.33, 2.28, 2.34, 2.26, 2.30 | No release of the new platforms before 2.23 (GAPS Q17); each platform's mock tests and one free live run, with the injection eval; the plugin's pty tests pass in each shell; history filtered as SEC requires |
+| 5. Shared paradigm with wish | One `//` contract and policy semantics for ush and wish | 2.7 | wish's shell integration exists (in the wish repository) |
 
-Steps 1 and 2 are done: the port was finished on 2026-10-28, and the first release was 0.2.0-rc1
-of the Go binaries on 2026-10-29. Each ush feature now lands in Python first or in both at once,
-and its TODO item stays open until Go has it ([SDLC](SDLC.md#ush-one-command-two-implementations)).
-Step 4 starts when the user decides (wish GAPS Q1).
+Each ush feature lands in Python first or in both at once, and its TODO item stays open until Go has
+it ([SDLC](SDLC.md#ush-one-command-two-implementations)).
 
 ## 0. Repository
 
@@ -31,83 +29,110 @@ Step 4 starts when the user decides (wish GAPS Q1).
 - **One default branch named `main`:** done 2026-10-29, as [AGENTS.md](../AGENTS.md) and SDLC
   assume.
 - **CI on GitHub again,** when Actions starts jobs for the account; until then `just ci --post`,
-  which leaves the Linux matrix entries unchecked. A ush release needs one recorded Linux run
-  either way.
-- **Licence:** MIT, decided 2026-10-28 (ush GAPS Q1); wish's licence question is wish GAPS Q4.
+  which leaves the Linux matrix entries unchecked. A release needs one recorded Linux run either
+  way.
+- **Licence:** MIT, decided 2026-10-28 (GAPS Q1).
+- **One project:** wish moved to its own repository on 2026-11-10
+  ([gregoryyy/wish](https://github.com/gregoryyy/wish), private for now); ush's sources moved from
+  `ush/` to `src/`, its documents to `docs/` and the policy corpus to `tests/conform/`.
 
-## 1. ush 0.1
+## 1. First release
 
-In order: fix F1, terminal escape sequences in the approval prompt (ush TODO 2.9); close F2, DNS
-exfiltration by auto-approved lookups (2.10); fill the security test gaps (2.11). Then the paid smoke
-test and manual checks by the user (2.1.2), the keychain under sudo (2.2), distribution (ush GAPS
-Q2), a man page (2.14), and the release gate (3.1).
+Fix the display-integrity finding F1 (TODO 2.9) and the DNS exfiltration finding F2 (2.10), fill
+the security test gaps (2.11), then run the release gate. The live smoke test against the paid
+API (2.1) and the keychain check under sudo (2.2) are manual steps for the user.
 
-Done: the fixes landed on 2026-10-28; the first release was 0.2.0-rc1 of the Go binaries
-(ush TODO 5.5), with SECTEST F8 documented (ush GAPS Q12). The paid smoke test, the keychain
-check and the man page remain open.
+Done: the findings were fixed on 2026-10-28, and the first release was 0.2.0-rc1 of the Go binaries
+on 2026-10-29 (TODO 5.5), with SECTEST F8 open and documented (GAPS Q12), then 0.2.0 from the
+same commit, published as a GitHub release (5.8); the Homebrew tap's repository is the user's to
+push (5.7). Version 0.1 of the Python implementation was never released (3.1).
 
-## 2. ush in Go
+## 2. Daily use
 
-Ported on 2026-10-28, in dependency order: policy, redaction, execution, configuration, history,
-provider, agent, terminal, command line, conformance (ush TODO 4.1–4.12); ushpy's black-box tests
-pass against the Go binary. Release builds for macOS and Linux on
-arm64 and amd64 (ush TODO 5.1; the deterministic build exists, distribution on macOS is ush
-GAPS Q11), the man page (5.4), then the release gate on the binaries (5.3). Since 0.2.0-rc1, a ush
-release ships the Go binary.
-
-## 3. ush for daily use
-
+Done in both implementations:
 - Propose mode as the default: ush proposes, the user runs from their command line, `//`
-  continues with what ran; agent mode behind `--run`. Done in both (ush TODO 2.17, 4.12); the
-  manual checks are open. With it, Esc removes a proposal and Down, or
-  `ush explain`, explains it (ush TODO 2.18, 2.19).
-- A user allowlist of commands that run without approval, on top of the built-in read-only table:
-  done in both (ush TODO 2.15, 4.11). No blacklist mode; deny rules that only
-  add friction may follow (ush GAPS Q5).
-- A broader built-in command table from real sessions (ush TODO 2.4), each command with negative
-  tests.
-- ush stays small and focused on a manual workflow; no larger agent (ush GAPS Q8). For agent
-  mode, first an OS sandbox for what it runs without asking (ush TODO 2.6): no writes, no
-  network; `sandbox-exec` on macOS, bubblewrap or Landlock on Linux. Then argument origin (2.23):
-  a command whose arguments come only from earlier output asks first.
-- More model platforms (ush TODO 2.29, 2.30), first OpenAI, Mistral, other European platforms
-  and local OpenAI-compatible servers beyond Ollama, through one adapter; then Hugging Face,
-  Gemini, Groq, OpenRouter, Together, DeepSeek and Azure; then AWS Bedrock and Google Vertex AI.
-- The user's shell in the core (ush TODO 2.32), then bash (2.27), POSIX sh (2.33), fish (2.28)
-  and PowerShell 7 on macOS and Linux (2.34); history as context (2.26), filtered and off by
-  default.
+  continues with what ran; agent mode behind `--run` (TODO 2.17, 4.12; the manual checks are
+  open). Esc removes a proposal; Down, or `ush explain`, explains it (2.18, 2.19).
+- A user allowlist of commands that run without approval, on top of the built-in read-only table
+  (2.15, 4.11). No blacklist mode; deny rules that only add friction may follow (GAPS Q5).
+
+ush stays small and focused on a manual workflow: no larger agent (GAPS Q8). Agent mode gets
+the guarantees it lacks, in this order:
+1. An OS sandbox for what agent mode runs without asking (2.6), so "read-only" is enforced, not
+   only inferred: no writes, no network; `sandbox-exec` on macOS, bubblewrap or Landlock on Linux.
+2. Argument origin (2.23): a command whose arguments come only from earlier output asks first.
+
+Then, for everyone:
+- Extend the read-only command table from real sessions (2.4), each command with negative tests.
+- Explanations kept per command line (2.24); notes on output and files with Ctrl-N (2.25).
 - Compaction or context editing for long sessions (2.5).
-- Whether the checker model is on by default (ush GAPS Q4).
+- Whether the checker model is on by default (GAPS Q4).
 
-## 4. wish phase 1
+## 3. Compiled port
 
-wish's site workspace (wish ROAD phase 1, since 2026-11-10): a local program that captures one
-site with Playwright and offers it as a filesystem; a program of its own beside ush. Decided on
-2026-11-10: it replaces the earlier CSV/notebook phase 1, runs as a local program, and has a
-configurable robots policy, AI provider (Ollama included), masking and synonymization (wish GAPS
-Q5–Q11). Open for the user: when to start and which providers phase 1 offers (wish GAPS Q1, Q3).
-wish stays open source and uses no Lakeshore component. It becomes a separate project with its
-own repository, as the "web intelligent shell" (decided 2026-11-10, wish GAPS Q13, wish TODO
-0.11). Moved on 2026-11-10 to [gregoryyy/wish](https://github.com/gregoryyy/wish) (private for now): its TODO, GAPS and ROAD are there,
-and this step only tracks its order relative to ush.
+The same `ush` in Go, [src/go](../src/go/README.md): one static binary, no interpreter or
+installed packages for root to trust, and no two-second SDK start. Python is the experimental
+implementation, where features are tried first; Go is the deliverable, and both must behave the same
+(decided 2026-10-28, [SDLC](SDLC.md#ush-one-command-two-implementations)). Rust was
+considered: stronger guarantees for the command parser, but no official Anthropic SDK and more
+effort for the process and terminal work (GAPS Q9).
 
-## 5. One `//` paradigm
+Done 2026-10-28: every module ported in dependency order (policy, redaction, execution,
+configuration, history, provider, agent, terminal, command line, conformance; TODO 4.1–4.12), the
+policy corpus and ushpy's black-box tests passing against the Go binary on macOS and Linux. Release
+builds for macOS and Linux on arm64 and amd64 (5.1; distribution on macOS is GAPS Q11). Releases
+ship the Go binary (TODO 5): 0.2.0 is out (5.8) as a GitHub release (5.6), then 0.2.1 with the man
+page (5.9), both in the Homebrew tap (5.7). Every new feature now lands in both implementations
+(TODO, section 2).
 
-What counts as a request, what history records, what replay does, and how the policy decides, the
-same in ush and wish (ush TODO 2.7).
+## 4. Platforms, shells, context
+
+Two tracks that touch different code and can run side by side: the platforms live in the
+provider adapters, the shells in the plugins and the prompts. In the user's order of need
+(2026-10-30):
+
+- **Platforms (2.29),** one PR each: the provider table and model profiles (2.29.1); the Chat
+  Completions adapter with OpenAI, Mistral and any OpenAI-compatible URL (2.29.2); the local
+  servers beyond Ollama (llama.cpp, LM Studio, vLLM, LocalAI, Jan, llamafile, MLX), under
+  Ollama's loopback rules (2.29.3); other European platforms such as Scaleway, OVHcloud, IONOS,
+  STACKIT and Nebius (2.29.4); then Hugging Face, Gemini, Groq, OpenRouter, Together, DeepSeek and
+  Azure (2.29.5). More, and smaller, models make SECTEST F8 more likely, so no release ships them
+  before argument origin (2.23) (GAPS Q17). Bedrock and Vertex (2.30) last.
+- **Shells:** first a shell interface in the core (2.32): proposals in the syntax of the shell
+  ush runs in, `--shell NAME` to choose one; then bash (2.27), POSIX sh without a plugin (2.33),
+  fish (2.28) and PowerShell 7 on macOS and Linux (2.34). Agent mode only where a shell's
+  implementation has a policy and executor, zsh for now (GAPS Q15); not on Windows for now
+  (GAPS Q16).
+- **History as context (2.26),** per shell, once the shells exist: filtered, off by default.
+
+**0.3.0** (TODO 5.11, user, 2026-10-30: "for the next version 0.3.0, expand to bash, sh and other
+commonly used shells") takes the first steps of both tracks: the shell interface with bash, fish
+and POSIX sh, and the Chat Completions adapter with OpenAI, Mistral and any OpenAI-compatible URL.
+Because of the new adapter it also needs argument origin (2.23, GAPS Q17). PowerShell, the local
+server presets and the other platforms come after it.
+
+## 5. Shared paradigm with wish
+
+What counts as a request, what history records, what replay does, and how the policy decides: the
+same in ush and wish (2.7), once wish has a shell. wish, the web intelligent shell, is developed in
+its own repository since 2026-11-10; its phases and TODO are there.
 
 ## Ideas not scheduled
 
-- **Analyse files one by one:** `ush notes "INSTRUCTIONS" FILE…` (ush TODO 2.25, built
-  2026-10-29) sends the files together, at most 200 KB, and gives one answer. Still an idea:
-  applying the instructions to each file in turn, with a result per file, e.g. `ush notes --each
-  "list the commands this script runs; flag destructive ones" deploy/*.sh`, past the 200 KB.
+- **Agent mode in bash and other shells:** a policy tokenizer and executor for bash (or POSIX sh)
+  behind the shell interface of TODO 2.32, with its own corpus and negative tests (GAPS Q15).
+- **One policy contract for ush and wish:** the corpus in [tests/conform/](../tests/conform/) could
+  become the shared `//` policy contract that TODO 2.7 wants for wish.
+- **Faster start-up as a feature:** the Go binary starts in milliseconds, so the zsh plugin could
+  run checks on every line, e.g. warn before a mistyped command runs.
+- **Analyse files one by one:** `ush notes "INSTRUCTIONS" FILE…` (TODO 2.25, built 2026-10-29)
+  sends the files together, at most 200 KB, and gives one answer. Still an idea: applying the
+  instructions to each file in turn, with a result per file, e.g. `ush notes --each "list the
+  commands this script runs; flag destructive ones" deploy/*.sh`, past the 200 KB.
 - **Data loss prevention on the way to the provider:** filters on everything ush sends (requests,
   command output, piped input, files) that remove credentials and system internals (host names,
   internal addresses, user and path names beyond what the request needs). This would go further
   than today's pattern redaction. The adversarial checker would also review outgoing data for
-  leaks. Today it never sees command output, so that injected text can't steer it (ush ARCH). A
-  leak check needs to see that output, so it would be a separate role that can only answer "leak"
-  or "no leak" and only block, never approve.
-- **One policy corpus** for both ush implementations and later wish: command lines with expected
-  decisions, as the shared contract (ush ROAD).
+  leaks. Today it never sees command output, so that injected text can't steer it (ARCH). A leak
+  check needs to see that output, so it would be a separate role that can only answer "leak" or
+  "no leak" and only block, never approve.

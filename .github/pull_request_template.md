@@ -19,7 +19,7 @@ matrix entries were not run. -->
 - [ ] New dependencies pinned, with licence and maturity checked and recorded in ARCH
 - [ ] Blocking GAPS questions answered by the user, not assumed
 
-## Security impact (the project's docs/SEC.md)
+## Security impact (docs/SEC.md)
 
 <!-- None, or what changes. Changes to grants, storage, isolation, egress, credentials or
 authorization need a threat-model update and negative tests. -->
