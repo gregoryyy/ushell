@@ -14,6 +14,38 @@ implementation kept its own log: [ushpy](archive/DONE-ushpy.md), [ushgo](archive
 
 ---
 
+## 2026-11-10 15:02 — CI: zsh for the ushgo job on Ubuntu
+
+TODO items: 6.2 (new, done). PR: not yet opened (branch `fix/ci-ushgo-zsh`, stacked on #46).
+
+Agent: Opus 5.5, reasoning: not exposed, subagents: none.
+
+### Implementation notes
+
+- GitHub Actions starts jobs again. Every run, on `main` as on PRs, failed in `ushgo
+  (ubuntu-latest)`: `TestPipefailAndNoRcFiles`, "pipefail is off" (e.g. runs 42796504428,
+  42802552924, 42809019552). Ubuntu runners have no zsh, so `FindShell` fell back to `/bin/sh -c`
+  (dash), which has no pipefail. The ushpy and conformance jobs already install zsh; the ushgo job
+  didn't, and local CI, on macOS, always has zsh.
+- [ci.yml](../.github/workflows/ci.yml): the same "Install zsh" step in the ushgo job.
+  [ARCH](ARCH.md) names the `sh` fallback and that it has no pipefail. `tools/ci/test_workflow.py`
+  expects the ushgo job's extra step.
+- **Validation:** `just ci --job ushgo,tools,links` on macOS: all pass (on macOS zsh is present, so
+  the step does nothing there). `just links`: passed. The fix itself shows only on an Ubuntu
+  runner; see the PR's Actions run.
+
+### Deviations
+
+- None. The test is unchanged: it states the behaviour ush promises with zsh.
+
+### Insights
+
+- With Actions back, the Linux matrix entries that local CI leaves unchecked run again; this failure
+  had been hidden since local CI took over.
+- The `sh` fallback silently drops pipefail on a machine without zsh. ush needs zsh for its plugin,
+  so this mainly affects `ush` without the plugin; whether to set pipefail where `sh` supports it is
+  open.
+
 ## 2026-11-10 12:30 — One project, one layout: `src/`, `docs/`, `tests/conform/`
 
 TODO items: 6.1 (new, done). PR: not yet opened (branch `chore/src-layout`, stacked on #45, which

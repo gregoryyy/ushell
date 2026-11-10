@@ -70,7 +70,8 @@ scripted fake.
    off, and the checker model, if one is configured, answers OK. Otherwise the user approves, declines (with an optional reason sent to the
    model), edits, or aborts. Scripts always need approval.
 5. Execution uses `zsh -f -o pipefail -c`: no rc files, so the user's aliases cannot
-   change meaning. Commands get stdin from `/dev/null` and their own process group,
+   change meaning. Without zsh it falls back to `/bin/sh -c`, which has no pipefail, so a failing
+   command before a pipe isn't reported; the tests and CI assume zsh. Commands get stdin from `/dev/null` and their own process group,
    with a timeout. Approved commands keep the terminal so `sudo` can prompt. Output
    is bounded (head and tail kept) and redacted before it becomes a `tool_result`.
 6. The final text is the answer. Follow-up questions append to the same
