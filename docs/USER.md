@@ -62,7 +62,12 @@ read-only commands itself and asks before anything else ([Agent mode](#agent-mod
 | `sudo ush //…` | commands run as root; see [Using sudo](#using-sudo) |
 
 Without the plugin, quote requests (`ush '//why is my disk full?'`): otherwise zsh interprets `?`,
-`'` and `*` before ush sees them.
+`'` and `*` before ush sees them. The plugin does the same for `ush explain`: everything after
+`ush explain [-v]` is the command line to explain, exactly as typed, so
+`ush explain find . -name "*.log" | xargs rm` explains the whole pipeline and runs none of it. A
+command line in one pair of quotes (`ush explain 'ls -la'`) is passed as it is. Without the plugin,
+quote any command line with `|`, `;`, `>`, `&`, `*`, `$` or quotes in it, or zsh acts on them
+first.
 
 ## Proposals
 
@@ -199,7 +204,7 @@ A model name starting with `claude-` is Anthropic's, any other is Ollama's; `ant
 | `ush ai status` | what is configured, and where things are |
 | `ush ai clear-key` | remove the stored API key |
 | `ush allow [add\|remove RULE]` | your allowlist |
-| `ush explain [-v] COMMAND…` | explain a command line with the model, without running it |
+| `ush explain [-v] COMMAND…` | explain a command line with the model, without running it; with the plugin, no quotes needed |
 | `ush notes [-v] [QUESTION] FILE…` | notes on files or piped input with the model (see [Notes](#notes)) |
 | `ush history [-n N]` | recent requests and the commands they ran (default 10) |
 | `ush replay ID\|last [-n]` | run those commands again, without AI, through the same approval checks |

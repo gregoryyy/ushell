@@ -93,6 +93,25 @@ class ZshPluginTest(TempDirTest):
         self.assertEqual(results[3], ["ush", "//"])
         self.assertEqual(results[4], ["ush", "history"])
 
+    def test_explain_gets_the_command_line_verbatim_and_runs_none_of_it(self):
+        marker = os.path.join(self.tmp, "ran")
+        results = self.run_lines([
+            'ush explain find . -name "*.log" -mtime +7 | xargs rm',
+            "ush explain -v tar czf x.tgz *.nomatch",
+            f"ush explain echo $HOME; touch {marker}",
+            "ush explain -- don't > out",
+            "ush explain 'ls -la'",
+            "ush explain",
+        ])
+        self.assertEqual(results[0], ["ush", "explain", "--", 'find . -name "*.log" -mtime +7 | xargs rm'])
+        self.assertEqual(results[1], ["ush", "explain", "-v", "--", "tar czf x.tgz *.nomatch"])
+        self.assertEqual(results[2], ["ush", "explain", "--", f"echo $HOME; touch {marker}"])
+        self.assertEqual(results[3], ["ush", "explain", "--", "don't > out"])
+        self.assertEqual(results[4], ["ush", "explain", "ls -la"])  # quoted already: unchanged
+        self.assertEqual(results[5], ["ush", "explain"])
+        self.assertFalse(os.path.exists(marker), "a command after ; ran")
+        self.assertFalse(os.path.exists(os.path.join(self.tmp, "out")), "the explanation was redirected")
+
     def test_bare_slash_can_be_disabled(self):
         results = self.run_lines(["// hello"], env={"USH_BARE_SLASH": "0"})
         self.assertIsInstance(results[0], str)  # zsh ran "//" as a path, not ush

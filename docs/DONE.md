@@ -14,6 +14,50 @@ implementation kept its own log: [ushpy](archive/DONE-ushpy.md), [ushgo](archive
 
 ---
 
+## 2026-11-10 22:58 — `ush explain` without quotes
+
+TODO items: 2.43 (new, done), in the plugin both implementations share. PR: not yet opened
+(branch `feat/ush-2.43-explain-verbatim`).
+
+Agent: Opus 5.5, reasoning: not exposed, subagents: none.
+
+### Implementation notes
+
+- **The request** (user, 2026-11-10): "can we have the ush explain 'arg' as args without quotes".
+  Both implementations already join unquoted words, so `ush explain ls -la /tmp` worked. But zsh
+  acts on the line first: `*.log` is expanded (or fails with "no matches found"), quotes are
+  removed, `ush explain cat x | sort` runs `sort` on the explanation, `; cmd` runs `cmd`, and
+  `> out` writes the explanation into `out`.
+- **[ush.plugin.zsh](../src/shell/ush.plugin.zsh):** `_ush_rewrite`, which already quotes
+  `//` requests before zsh parses the line, also rewrites `ush explain [-v] [--] REST` to
+  `ush explain [-v] -- 'REST'`, with REST exactly as typed. A command line in one pair of quotes,
+  `ush explain` alone and `ush explain -v` alone are left unchanged. Only a line starting with
+  `ush explain` is rewritten, as for `ush //`; `sudo ush explain` isn't needed, since explaining
+  runs nothing.
+- **Test:** `test_zsh_plugin` `test_explain_gets_the_command_line_verbatim_and_runs_none_of_it`
+  drives zsh through a pty with a fake `ush` that prints its arguments: a pipeline, an unmatched
+  glob with `-v`, `echo $HOME; touch MARKER`, `-- don't > out`, a quoted line and none. It
+  asserts the arguments ush receives, that MARKER wasn't created and `out` wasn't written. Against
+  the old plugin it fails (the pipeline's output went to `xargs`).
+- **Docs:** [USER](USER.md) (the quoting paragraph and the commands table) and the
+  [manual page](../src/man/ush.1).
+- **Validation:** `python -m unittest test_zsh_plugin.ZshPluginTest`: 3 tests OK; the new test
+  against the old plugin: FAILED, as expected. `PYTHON=/opt/homebrew/bin/python3.12 just
+  ushpy-test`: 226 tests OK. `just ushgo-conform`: 83 tests OK (the plugin tests included).
+  `just links`: passed.
+
+### Deviations
+
+- None. The CLI still joins its words when there is no plugin; that's documented, with the advice
+  to quote.
+
+### Insights
+
+- The rewrite also closes a trap: `ush explain CMD; rm -rf x` used to run the `rm` while asking
+  what the command does. With the plugin, nothing after `ush explain` runs.
+- `${#${(z)s}}` counts characters, not words, when `(z)` yields one word; split into an array
+  first.
+
 ## 2026-11-10 15:02 — CI: zsh for the ushgo job on Ubuntu
 
 TODO items: 6.2 (new, done). PR: not yet opened (branch `fix/ci-ushgo-zsh`, stacked on #46).
