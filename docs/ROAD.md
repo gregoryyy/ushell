@@ -95,8 +95,10 @@ Two tracks that touch different code and can run side by side: the platforms liv
 provider adapters, the shells in the plugins and the prompts. In the user's order of need
 (2026-10-30):
 
-- **Platforms (2.29),** one PR each: the provider table and model profiles (2.29.1); the Chat
-  Completions adapter with OpenAI, Mistral and any OpenAI-compatible URL (2.29.2); the local
+- **Platforms (2.29),** one PR each: the provider table and model profiles (2.29.1); OpenAI
+  through its own Responses API adapter (2.29.6), in the code since 2026-11-11 as a preview that
+  becomes a supported provider after a live smoke test (2.51); the Chat Completions adapter with
+  Mistral and any OpenAI-compatible URL (2.29.2); the local
   servers beyond Ollama (llama.cpp, LM Studio, vLLM, LocalAI, Jan, llamafile, MLX), under
   Ollama's loopback rules (2.29.3); other European platforms such as Scaleway, OVHcloud, IONOS,
   STACKIT and Nebius (2.29.4); then Hugging Face, Gemini, Groq, OpenRouter, Together, DeepSeek and
