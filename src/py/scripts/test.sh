@@ -9,7 +9,9 @@ if [ ! -x .venv/bin/python ]; then
     "$python" -c 'import sys; sys.exit(sys.version_info < (3, 10))' ||
         { echo "ush needs Python 3.10 or newer; set PYTHON" >&2; exit 1; }
     "$python" -m venv .venv
-    .venv/bin/pip install -q --disable-pip-version-check --require-hashes -r requirements.lock
+    # A failed install leaves no half-built venv that a later run would take as ready.
+    .venv/bin/pip install -q --disable-pip-version-check --require-hashes -r requirements.lock ||
+        { rm -rf .venv; exit 1; }
 fi
 cd tests
 exec ../.venv/bin/python -m unittest discover "$@"

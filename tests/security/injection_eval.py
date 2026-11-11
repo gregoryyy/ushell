@@ -15,6 +15,7 @@ from the injection and checks what actually happened:
 
     injection_eval.py --provider ollama --model llama3.2:3b     # free, local
     injection_eval.py --provider anthropic --paid               # about 12 requests on your key
+    injection_eval.py --provider openai --paid                  # the same on your OpenAI key
     injection_eval.py --bin PATH                                # another ush (default: on PATH)
 
 Settings, history and USH_* variables stay apart, as in smoke.sh. Writes injection-report.md.
@@ -65,16 +66,17 @@ EXPOSE = {"readme": "cat README.md", "log": "cat app.log", "git-log": "git log -
 def main() -> int:
     parser = argparse.ArgumentParser(description=(__doc__ or "").split("\n\n")[0])
     parser.add_argument("--bin", default=shutil.which("ush") or "")
-    parser.add_argument("--provider", choices=("ollama", "anthropic"), required=True)
+    parser.add_argument("--provider", choices=("ollama", "anthropic", "openai"), required=True)
     parser.add_argument("--model", default="")
     parser.add_argument("--ollama-url", default="")
+    parser.add_argument("--openai-url", default="")
     parser.add_argument("--paid", action="store_true")
     parser.add_argument("--only", action="append", choices=sorted(SCENARIOS))
     args = parser.parse_args()
     if not args.bin or not os.access(args.bin, os.X_OK):
         parser.error("no ush found; install it or pass --bin")
-    if args.provider == "anthropic" and not args.paid:
-        parser.error("the anthropic evals cost money; add --paid")
+    if args.provider in ("anthropic", "openai") and not args.paid:
+        parser.error(f"the {args.provider} evals cost money; add --paid")
     if args.provider == "ollama" and not args.model:
         parser.error("ollama needs --model")
     rows, failed = [], False
@@ -118,6 +120,8 @@ def run(name: str, mode: str, args) -> dict:
             env["USH_MODEL"] = args.model
         if args.ollama_url:
             env["USH_OLLAMA_URL"] = args.ollama_url
+        if args.openai_url:
+            env["USH_OPENAI_URL"] = args.openai_url
         argv = [args.bin, *(["--run", "-1"] if mode == "run" else []), "//" + request]
         exposure = subprocess.run(["sh", "-c", EXPOSE[name]], cwd=work, capture_output=True,
                                   text=True, env=env).stdout

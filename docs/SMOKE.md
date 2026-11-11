@@ -27,6 +27,7 @@ both implementations of the command, Python ([src/py/](../src/py/README.md)) and
 tests/smoke/smoke.sh                                    # offline: no model, no cost
 tests/smoke/smoke.sh --provider ollama --model qwen3.5:9b --checker ollama:llama3.2:3b
 tests/smoke/smoke.sh --provider anthropic --paid        # your configured model; --model to change
+tests/smoke/smoke.sh --provider openai --paid           # the same on your OpenAI key
 tests/smoke/smoke.sh --bin ~/go/bin/ush                 # another implementation or install
 ```
 

@@ -6,9 +6,11 @@
 #   smoke.sh                                       offline checks: no model, no cost
 #   smoke.sh --provider ollama --model qwen3.5:9b [--checker ollama:llama3.2:3b]
 #   smoke.sh --provider anthropic --paid [--model M]   about 15 API requests on your key
+#   smoke.sh --provider openai --paid [--model M]      the same on your OpenAI key
 #
 #   --bin PATH         the ush to test (default: ush on PATH)
 #   --ollama-url URL   Ollama on this machine (default: ush's, http://127.0.0.1:11434)
+#   --openai-url URL   another OpenAI endpoint (default: ush's, https://api.openai.com)
 #   --keep             keep the scratch directory (the report is copied to the current directory)
 #
 # The model checks run ush without a terminal, as cron or CI would. In propose mode (the default)
@@ -19,7 +21,7 @@
 # status 1 if a check failed.
 set -uo pipefail
 
-bin=$(command -v ush || true) provider= model= checker= paid= keep= ollama_url=
+bin=$(command -v ush || true) provider= model= checker= paid= keep= ollama_url= openai_url=
 while [ $# -gt 0 ]; do
     case "$1" in
         --bin) bin=${2:?--bin needs a path}; shift 2 ;;
@@ -27,9 +29,10 @@ while [ $# -gt 0 ]; do
         --model) model=${2:?}; shift 2 ;;
         --checker) checker=${2:?}; shift 2 ;;
         --ollama-url) ollama_url=${2:?}; shift 2 ;;
+        --openai-url) openai_url=${2:?}; shift 2 ;;
         --paid) paid=1; shift ;;
         --keep) keep=1; shift ;;
-        -h|--help) sed -n '2,19p' "$0"; exit 0 ;;
+        -h|--help) sed -n '2,21p' "$0"; exit 0 ;;
         *) echo "smoke.sh: unknown option $1" >&2; exit 2 ;;
     esac
 done
@@ -37,8 +40,8 @@ done
 [ "$(id -u)" != 0 ] || { echo "smoke.sh: run it as yourself; the sudo checks are manual (SMOKE.md)" >&2; exit 2; }
 case "$provider" in
     ""|ollama) ;;
-    anthropic) [ -n "$paid" ] || { echo "smoke.sh: the anthropic checks cost money; add --paid" >&2; exit 2; } ;;
-    *) echo "smoke.sh: --provider is ollama or anthropic" >&2; exit 2 ;;
+    anthropic|openai) [ -n "$paid" ] || { echo "smoke.sh: the $provider checks cost money; add --paid" >&2; exit 2; } ;;
+    *) echo "smoke.sh: --provider is ollama, anthropic or openai" >&2; exit 2 ;;
 esac
 [ "$provider" != ollama ] || [ -n "$model" ] || { echo "smoke.sh: ollama needs --model" >&2; exit 2; }
 bin=$(cd "$(dirname "$bin")" && pwd)/$(basename "$bin")
@@ -51,13 +54,14 @@ mkdir -p "$work" "$scratch/out"
 cd "$work" || exit 2
 
 # Your settings, history, and USH_* variables stay out; the key comes from your keychain or
-# ANTHROPIC_API_KEY as usual.
+# the provider's variable (ANTHROPIC_API_KEY, OPENAI_API_KEY) as usual.
 for name in $(env | sed -n 's/^\(USH_[A-Z_]*\)=.*/\1/p'); do unset "$name"; done
 export XDG_CONFIG_HOME=$scratch/config XDG_STATE_HOME=$scratch/state NO_COLOR=1
 [ -z "$provider" ] || export USH_PROVIDER=$provider
 [ -z "$model" ] || export USH_MODEL=$model
 [ -z "$checker" ] || export USH_CHECKER=$checker
 [ -z "$ollama_url" ] || export USH_OLLAMA_URL=$ollama_url
+[ -z "$openai_url" ] || export USH_OPENAI_URL=$openai_url
 
 results=() failed=0
 result() {  # STATUS NAME [DETAIL]
@@ -109,8 +113,9 @@ else result FAIL "unknown command is a usage error" "exit $code, expected 2"; fi
 
 ush status ai status
 if [ "$code" != 0 ]; then result FAIL "ai status" "exit $code: $(err status | head -1)"
-elif out status | grep -Eq 'sk-ant-[A-Za-z0-9_-]{20,}' ||
-     { [ -n "${ANTHROPIC_API_KEY:-}" ] && out status | grep -qF "$ANTHROPIC_API_KEY"; }; then
+elif out status | grep -Eq 'sk-[A-Za-z0-9_-]{20,}' ||
+     { [ -n "${ANTHROPIC_API_KEY:-}" ] && out status | grep -qF "$ANTHROPIC_API_KEY"; } ||
+     { [ -n "${OPENAI_API_KEY:-}" ] && out status | grep -qF "$OPENAI_API_KEY"; }; then
     result FAIL "ai status" "prints a full API key"
 else result PASS "ai status" "no key shown in full"; fi
 
@@ -147,6 +152,7 @@ if [ -n "$provider" ]; then
     case "$provider" in
         ollama) disclosure="stay on this machine\|via Ollama" ;;
         anthropic) disclosure="go to Anthropic" ;;
+        openai) disclosure="go to OpenAI" ;;
     esac
     if err propose | grep -q "$disclosure" && err read | grep -q "$disclosure"; then result PASS "disclosure banner"
     else result FAIL "disclosure banner" "no '$disclosure' before the request"; fi
