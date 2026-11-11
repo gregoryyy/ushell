@@ -6,7 +6,9 @@ import pty
 import re
 import select
 import shutil
+import signal
 import sys
+import threading
 import time
 import unittest
 
@@ -16,6 +18,12 @@ from mock_api import MockAPI
 PLUGIN = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "shell", "ush.plugin.zsh")
 SRC = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "src")
 ZSH = shutil.which("zsh") or ""
+
+# After a bare Esc, zsh waits KEYTIMEOUT (0.4 s) for a key that would make it Alt-key, and prints
+# nothing until it has handled it. A step after Esc waits for that output, not only for a quiet
+# terminal: on a slow machine zsh may not have read the Esc yet when the terminal falls quiet, and
+# the next key would then arrive with it (Esc l: Alt-l).
+ANY_OUTPUT = re.compile(r"[\s\S]")
 
 FAKE = """#!/bin/sh
 exec python3 -c 'import json, sys; print("ARGS" + json.dumps(sys.argv[1:]))' "{prefix}" "$@"
@@ -59,7 +67,9 @@ class ZshPluginTest(TempDirTest):
     @staticmethod
     def _read(fd, until, timeout=10.0):
         """Output until `until` has appeared and the terminal has been quiet for 0.5 s, which is
-        also longer than zsh's KEYTIMEOUT, so a following key isn't read as Alt-key."""
+        also longer than zsh's KEYTIMEOUT, so a following key isn't read as Alt-key. `until` is
+        text in the output without escape sequences, or a pattern searched in the raw output
+        (ANY_OUTPUT)."""
         out, end = "", time.time() + timeout
         seen = time.time() if not until else None  # "": just until the terminal is quiet
         while time.time() < end:
@@ -73,7 +83,9 @@ class ZshPluginTest(TempDirTest):
                     break
                 out += chunk.decode(errors="replace")
                 plain = re.sub(r"\x1b\[[0-9;?]*[A-Za-z]|\r", "", out)  # e.g. bracketed paste
-                seen = time.time() if until.rstrip() in plain else None
+                found = (until.search(out) is not None if isinstance(until, re.Pattern)
+                         else until.rstrip() in plain)
+                seen = time.time() if found else None
             elif seen and time.time() - seen > 0.5:
                 return out
         return out
@@ -472,7 +484,9 @@ class SessionPrefillTest(TempDirTest):
     """A session's proposal is pre-filled with zsh's vared (Python's readline can't with
     libedit), with the plugin's keys."""
 
-    def edit(self, keys):
+    def edit(self, keys, stalled=False):
+        """The keys, each until its output; `stalled`: zsh is stopped before the first key and
+        resumed a second later, as on a starved machine, so it reads that key late."""
         src = SRC
         pid, fd = pty.fork()
         if pid == 0:
@@ -487,6 +501,9 @@ class SessionPrefillTest(TempDirTest):
             os.execv(sys.executable, [sys.executable, "-c", EDITOR])
         try:
             outputs = [ZshPluginTest._read(fd, "ush> echo prefilled")]
+            if stalled:
+                os.killpg(pid, signal.SIGSTOP)
+                threading.Timer(1.0, os.killpg, (pid, signal.SIGCONT)).start()
             for key, until in keys:
                 os.write(fd, key.encode())
                 outputs.append(ZshPluginTest._read(fd, until, timeout=20))
@@ -501,7 +518,13 @@ class SessionPrefillTest(TempDirTest):
         self.assertIn("GOT'echo prefilled more'", out[1])
 
     def test_esc_clears_the_line(self):
-        out = self.edit([("\x1b", ""), ("ls\r", "END")])
+        out = self.edit([("\x1b", ANY_OUTPUT), ("ls\r", "END")])
+        self.assertIn("GOT'ls'", out[2])
+
+    def test_the_key_after_esc_waits_for_a_slow_zsh(self):
+        # Regression (TODO 2.44): waiting only for a quiet terminal sent `ls` while zsh still
+        # hadn't read the Esc; zsh then read Esc l as Alt-l and the line became "echo prefilleds".
+        out = self.edit([("\x1b", ANY_OUTPUT), ("ls\r", "END")], stalled=True)
         self.assertIn("GOT'ls'", out[2])
 
     def test_up_closes_the_explanation(self):
@@ -626,8 +649,8 @@ class SessionExplainTest(TempDirTest):
                     ("\x1b[A", "echo kept-one"),
                     (" x", " x"),                        # an edit
                     ("\x1b[B", "SECOND-EXPLANATION"),  # Down: asks again
-                    ("\x1b", ""),                       # Esc closes it
-                    ("\x1b", ""),                       # Esc clears the line
+                    ("\x1b", ANY_OUTPUT),               # Esc closes it
+                    ("\x1b", ANY_OUTPUT),               # Esc clears the line
                     ("\x04", ""),                       # Ctrl-D ends the session
                 ]
                 for keys, until in steps:
