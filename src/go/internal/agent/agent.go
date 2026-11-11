@@ -9,6 +9,8 @@ package agent
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -36,6 +38,7 @@ var Control = regexp.MustCompile(`[\x00-\x08\x0b-\x1f\x7f-\x{9f}\x{200b}-\x{200f
 // Options of a request.
 type Options struct {
 	DryRun, ConfirmAll, Verbose, Once, Propose bool
+	Research                                   bool // `//? TEXT`, `ush research`: the model only answers (TODO 2.38)
 }
 
 // Agent holds the conversation.
@@ -56,8 +59,11 @@ type Agent struct {
 	steps        int
 	Proposal     block   // propose mode: id, command, purpose, verbose, interactive, cwd
 	Unanswered   []block // results due with the next request
+	Question     block   // the model asked the user (TODO 2.35): id, question
+	Next         block   // next steps the model offered (TODO 2.41): id, steps
 	Ran          *handoff.Ran
 	system       string
+	research     string // the system prompt of a research request
 	tools        []block
 }
 
@@ -76,12 +82,13 @@ func New(p provider.Provider, t *ui.Terminal, s config.Settings, id config.Ident
 	shell := strings.Join(execute.FindShell()[:len(execute.FindShell())-1], " ")
 	cwd, _ := os.Getwd()
 	prompt := systemRun
-	a.tools = Tools
+	a.tools = append(append([]block{}, Tools...), AskTool, NextTool)
 	if o.Propose {
-		prompt, a.tools = systemPropose, []block{ProposeTool}
+		prompt, a.tools = systemPropose, []block{ProposeTool, ScriptTool, AskTool, NextTool}
 	}
-	a.system = strings.NewReplacer("{os}", OSName(), "{user}", id.Name, "{root}", root, "{cwd}", cwd,
-		"{shell}", shell).Replace(prompt)
+	replacer := strings.NewReplacer("{os}", OSName(), "{user}", id.Name, "{root}", root, "{cwd}", cwd,
+		"{shell}", shell)
+	a.system, a.research = replacer.Replace(prompt), replacer.Replace(systemResearch)
 	return a
 }
 
@@ -148,15 +155,34 @@ func exitText(code *int) string {
 // Ask sends a request, or with an empty one continues after a proposal. ran is what the user ran
 // since the proposal; tracked is false when ush can't know (no shell integration).
 func (a *Agent) Ask(ctx context.Context, request string, ran *handoff.Ran, tracked bool) *history.Entry {
+	return a.ask(ctx, request, ran, tracked, false)
+}
+
+// Research sends a research request (TODO 2.38): the model only answers; ush runs and proposes
+// nothing for it. A pending proposal is answered as for any request.
+func (a *Agent) Research(ctx context.Context, request string, ran *handoff.Ran, tracked bool) *history.Entry {
+	return a.ask(ctx, request, ran, tracked, true)
+}
+
+func (a *Agent) ask(ctx context.Context, request string, ran *handoff.Ran, tracked, research bool) *history.Entry {
 	label := request
-	if label == "" {
+	if research {
+		label = "? " + request
+	} else if label == "" {
 		label = "(continue)"
 	}
 	entry := a.History.NewEntry(label, a.Provider.Model(), a.ID.Name)
 	entry.Steps = append(entry.Steps, a.pendingSteps...)
 	a.pendingSteps = nil
 	var results []block
-	if a.Proposal != nil {
+	answering := a.Question != nil // the request answers the model's question
+	if answering {
+		results = a.questionResults(request)
+	} else if a.Next != nil {
+		// `//N` picks an offered step and `//` goes on: both answer the offer, without text.
+		answering = request == "" || a.HasStep(request)
+		results = a.nextResults(request)
+	} else if a.Proposal != nil {
 		if ran == nil {
 			ran = a.Ran
 		}
@@ -169,13 +195,18 @@ func (a *Agent) Ask(ctx context.Context, request string, ran *handoff.Ran, track
 	}
 	content := append(append([]block{}, results...), a.pending...)
 	if request != "" {
-		content = append(content, block{"type": "text", "text": request})
+		if !answering {
+			content = append(content, block{"type": "text", "text": request})
+		}
 		a.Requests = append(a.Requests, request)
+	}
+	if len(content) == 0 {
+		content = append(content, block{"type": "text", "text": "Go on."}) // `//` after an answer (2.41)
 	}
 	a.Messages = append(a.Messages, block{"role": "user", "content": content})
 	a.pending = nil
 	a.steps = 0
-	outcome, answer, err := a.loop(ctx, entry)
+	outcome, answer, err := a.loop(ctx, entry, research)
 	switch {
 	case err == nil:
 	case errors.Is(err, context.Canceled), errors.Is(err, errAbort):
@@ -198,10 +229,20 @@ func (a *Agent) Ask(ctx context.Context, request string, ran *handoff.Ran, track
 // would otherwise loop.
 const maxRefusedTurns = 3
 
-func (a *Agent) loop(ctx context.Context, entry *history.Entry) (string, string, error) {
+func (a *Agent) loop(ctx context.Context, entry *history.Entry, research bool) (string, string, error) {
 	refused := 0
+	system := a.system
+	if research {
+		system = a.research
+	}
 	for {
-		turn, err := a.Provider.Turn(ctx, a.system, a.tools, a.Messages, a.UI.Answer, a.UI.Progress)
+		tools := a.tools
+		if research && !hasToolUse(a.Messages) {
+			// No tools, unless the conversation has tool calls: a request with tool_use blocks
+			// must define them. Any call the model makes is refused below.
+			tools = []block{}
+		}
+		turn, err := a.Provider.Turn(ctx, system, tools, a.Messages, a.UI.Answer, a.UI.Progress)
 		if err != nil {
 			if ctx.Err() != nil {
 				return "aborted", "", context.Canceled
@@ -241,6 +282,27 @@ func (a *Agent) loop(ctx context.Context, entry *history.Entry) (string, string,
 			}
 			return "answered", text.String(), nil
 		}
+		if research {
+			var results []block
+			for _, b := range uses {
+				results = append(results, result(b, notResearch, true))
+			}
+			a.Messages = append(a.Messages, block{"role": "user", "content": results})
+			if refused++; refused >= maxRefusedTurns {
+				return a.stopRefused(), text.String(), nil
+			}
+			continue
+		}
+		if due, asked := a.askBack(uses); asked {
+			a.Unanswered = due
+			return "asked", text.String(), nil
+		}
+		if a.offerNext(uses) {
+			if a.Options.DryRun {
+				return "dry-run", text.String(), nil
+			}
+			return "answered", text.String(), nil
+		}
 		if a.Options.Propose {
 			results := a.propose(ctx, uses, entry)
 			if a.Proposal != nil {
@@ -260,6 +322,10 @@ func (a *Agent) loop(ctx context.Context, entry *history.Entry) (string, string,
 				results = append(results, result(b, "Not run: the user stopped the request.", false))
 				continue
 			}
+			if str(b["name"]) == str(NextTool["name"]) {
+				results = append(results, a.notShown(b))
+				continue
+			}
 			r, err := a.tool(ctx, b, entry)
 			if err != nil {
 				aborted = true
@@ -276,6 +342,25 @@ func (a *Agent) loop(ctx context.Context, entry *history.Entry) (string, string,
 			return a.stopRefused(), text.String(), nil
 		}
 	}
+}
+
+// hasToolUse: whether a conversation has a tool call.
+func hasToolUse(messages []block) bool {
+	for _, m := range messages {
+		content, _ := m["content"].([]any)
+		blocks, _ := m["content"].([]block)
+		for _, c := range content {
+			if b, ok := c.(block); ok {
+				blocks = append(blocks, b)
+			}
+		}
+		for _, b := range blocks {
+			if b["type"] == "tool_use" {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // countRefused continues the count of turns whose tool results were all errors, or restarts it.
@@ -311,16 +396,120 @@ func (a *Agent) rules() [][]string {
 	return a.Settings.AllowRules()
 }
 
+// askBack: if the model asks the user a valid question, show it as `// question` and return the
+// results of its other calls, due with the answer (TODO 2.35).
+func (a *Agent) askBack(uses []block) ([]block, bool) {
+	var ask block
+	for _, b := range uses {
+		if str(b["name"]) == str(AskTool["name"]) && validate(str(b["name"]), b["input"], a.tools) == "" {
+			ask = b
+			break
+		}
+	}
+	if ask == nil {
+		return nil, false
+	}
+	question := truncate(strings.Join(strings.Fields(str(ask["input"].(block)["question"])), " "), 1000)
+	a.UI.ShowQuestion(question)
+	a.Question = block{"id": ask["id"], "question": question}
+	due := []block{}
+	for _, b := range uses {
+		if b["id"] != ask["id"] {
+			due = append(due, result(b, "Not done: you asked the user a question first; wait for the answer.", false))
+		}
+	}
+	return due, true
+}
+
+// questionResults: the user's answer to the model's question, and the results due with it.
+func (a *Agent) questionResults(request string) []block {
+	q, due := a.Question, a.Unanswered
+	a.Question, a.Unanswered = nil, nil
+	text := "The user did not answer; continue with what you have, or ask again."
+	if request != "" {
+		text = "The user answers: " + a.clean(request)
+	}
+	return append([]block{result(block{"id": q["id"]}, text, false)}, due...)
+}
+
+// HasStep: whether request (`//2`) picks a step the model offered.
+func (a *Agent) HasStep(request string) bool {
+	return Step.MatchString(request) && a.Next != nil && int(request[0]-'0') <= len(steps(a.Next))
+}
+
+// Offered is how many next steps are on offer.
+func (a *Agent) Offered() int { return len(steps(a.Next)) }
+
+func steps(offer block) []string {
+	var out []string
+	raw, _ := offer["steps"].([]any)
+	for _, s := range raw {
+		out = append(out, str(s))
+	}
+	if typed, ok := offer["steps"].([]string); ok {
+		out = typed
+	}
+	return out
+}
+
+// offerNext shows the next steps the model offers with its answer, if valid and alone with it;
+// their result is due with the next request.
+func (a *Agent) offerNext(uses []block) bool {
+	if len(uses) != 1 || str(uses[0]["name"]) != str(NextTool["name"]) ||
+		validate(str(uses[0]["name"]), uses[0]["input"], a.tools) != "" {
+		return false
+	}
+	var shown []string
+	for _, s := range uses[0]["input"].(block)["steps"].([]any) {
+		shown = append(shown, truncate(strings.Join(strings.Fields(str(s)), " "), 200))
+	}
+	a.UI.ShowNext(shown)
+	a.Next = block{"id": uses[0]["id"], "steps": shown}
+	return true
+}
+
+// notShown answers an offer of next steps that ush didn't show: invalid, or not alone.
+func (a *Agent) notShown(b block) block {
+	if problem := validate(str(b["name"]), b["input"], a.tools); problem != "" {
+		return result(b, invalid(b["input"], problem), true)
+	}
+	return result(b, notShown, false)
+}
+
+// nextResults: what the user did with the offered steps: picked one, went on, or asked otherwise.
+func (a *Agent) nextResults(request string) []block {
+	offer, offered := a.Next, steps(a.Next)
+	a.Next = nil
+	text := "The user asked something else instead."
+	switch {
+	case Step.MatchString(request) && int(request[0]-'0') <= len(offered):
+		n := int(request[0] - '0')
+		text = fmt.Sprintf("The user chose step %d: %s", n, offered[n-1])
+	case request == "":
+		text = "The user says: go on with the next step."
+	}
+	return []block{result(block{"id": offer["id"]}, text, false)}
+}
+
 // propose presents the first valid proposal; the others get results due with the next request.
 func (a *Agent) propose(ctx context.Context, uses []block, entry *history.Entry) []block {
 	var results []block
 	for _, b := range uses {
 		name, args := str(b["name"]), b["input"]
+		if name == str(NextTool["name"]) {
+			results = append(results, a.notShown(b))
+			continue
+		}
 		if a.Proposal != nil {
 			results = append(results, result(b, "Not proposed: propose one command at a time.", false))
 			continue
 		}
-		problem := validate(name, args, a.tools)
+		// An invalid question gets its own error; any other tool is not a proposal.
+		tools := []block{ProposeTool, ScriptTool}
+		if name == str(AskTool["name"]) {
+			tools = a.tools
+		}
+		problem := validate(name, args, tools)
 		if problem == "" && a.steps >= a.Settings.MaxSteps {
 			problem = fmt.Sprintf("the limit of %d proposals per request is reached; answer with what you have", a.Settings.MaxSteps)
 		}
@@ -330,7 +519,11 @@ func (a *Agent) propose(ctx context.Context, uses []block, entry *history.Entry)
 		}
 		in := args.(block)
 		a.steps++
+		script := name == str(ScriptTool["name"])
 		command := strings.TrimSpace(str(in["command"]))
+		if script {
+			command = ScriptLine(str(in["language"]), str(in["source"]))
+		}
 		purpose := truncate(strings.Join(strings.Fields(str(in["purpose"])), " "), 200)
 		verdict := policy.Classify(command, a.rules()) // advisory only: the user runs it
 		var notes []string
@@ -340,8 +533,12 @@ func (a *Agent) propose(ctx context.Context, uses []block, entry *history.Entry)
 			notes = append(notes, "not verified as read-only: "+verdict.Reason)
 		}
 		step := history.Step{Kind: "proposal", Command: command, Purpose: purpose, Decision: "proposed"}
+		kind, checked := "command", command
+		if script {
+			step.Language, kind, checked = str(in["language"]), str(in["language"]), str(in["source"])
+		}
 		if a.Checker != nil {
-			v := a.Checker.Check(ctx, a.cleanAll(a.Requests), "command", a.clean(command), a.clean(purpose), str(in["effect"]))
+			v := a.Checker.Check(ctx, a.cleanAll(a.Requests), kind, a.clean(checked), a.clean(purpose), str(in["effect"]))
 			step.Check = v.Summary()
 			if !v.OK() {
 				what := "gave no verdict"
@@ -351,13 +548,42 @@ func (a *Agent) propose(ctx context.Context, uses []block, entry *history.Entry)
 				notes = append(notes, fmt.Sprintf("the checker %s: %s", what, v.Reason))
 			}
 		}
-		a.UI.ShowProposal(command, purpose, notes)
+		if script {
+			a.UI.ShowScript(str(in["language"]), str(in["source"]), purpose, "")
+			a.UI.ShowProposal(strings.SplitN(command, "\n", 2)[0]+" …", "", notes)
+		} else {
+			a.UI.ShowProposal(command, purpose, notes)
+		}
 		entry.Steps = append(entry.Steps, step)
 		cwd, _ := os.Getwd()
 		a.Proposal = block{"id": b["id"], "command": command, "purpose": purpose, "verbose": a.Options.Verbose,
 			"interactive": in["interactive"] == true, "cwd": cwd}
 	}
 	return results
+}
+
+// ScriptLine is a proposed script as one entry for the user's command line (TODO 2.36): the source
+// as it is, in a quoted here-document, run with `LANGUAGE -c`, so the terminal stays its stdin and
+// nothing in the source is expanded first. The end marker is one no line of the source is.
+func ScriptLine(language, source string) string {
+	lines := strings.Split(strings.TrimRight(source, "\n"), "\n")
+	marker := "USH_EOF"
+	for containsLine(lines, marker) {
+		b := make([]byte, 3)
+		_, _ = rand.Read(b)
+		marker = "USH_EOF_" + hex.EncodeToString(b)
+	}
+	parts := append([]string{language + ` -c "$(cat <<'` + marker + `'`}, lines...)
+	return strings.Join(append(parts, marker, `)"`), "\n")
+}
+
+func containsLine(lines []string, s string) bool {
+	for _, l := range lines {
+		if l == s {
+			return true
+		}
+	}
+	return false
 }
 
 // proposalResults: the result of the pending proposal, and the results due with it.
@@ -407,8 +633,15 @@ func (a *Agent) State() block {
 	if a.Proposal != nil {
 		proposal = a.Proposal
 	}
+	var question, next any
+	if a.Question != nil {
+		question = a.Question
+	}
+	if a.Next != nil {
+		next = a.Next
+	}
 	return block{"version": 1, "messages": nonNil(a.Messages), "requests": nonNilS(a.Requests),
-		"proposal": proposal, "unanswered": nonNil(a.Unanswered)}
+		"proposal": proposal, "unanswered": nonNil(a.Unanswered), "question": question, "next": next}
 }
 
 // Restore continues a saved conversation; anything unknown is ignored.
@@ -434,6 +667,26 @@ func (a *Agent) Restore(data block) {
 		if due, ok := data["unanswered"].([]any); ok {
 			a.Unanswered = toBlocks(due)
 		}
+	} else if q, ok := data["question"].(block); ok {
+		if _, ok := q["id"].(string); ok {
+			a.Question = q
+			if due, ok := data["unanswered"].([]any); ok {
+				a.Unanswered = toBlocks(due)
+			}
+		}
+	}
+	if offer, ok := data["next"].(block); ok && a.Proposal == nil && a.Question == nil {
+		_, hasID := offer["id"].(string)
+		list, isList := offer["steps"].([]any)
+		allText := isList
+		for _, s := range list {
+			if _, ok := s.(string); !ok {
+				allText = false
+			}
+		}
+		if hasID && allText {
+			a.Next = offer
+		}
 	}
 }
 
@@ -448,7 +701,11 @@ func (a *Agent) cleanAll(texts []string) []string {
 // tool handles one tool call in agent mode.
 func (a *Agent) tool(ctx context.Context, b block, entry *history.Entry) (block, error) {
 	name, args := str(b["name"]), b["input"]
-	if problem := validate(name, args, Tools); problem != "" {
+	tools := Tools
+	if name == str(AskTool["name"]) {
+		tools = a.tools // an invalid question gets its own error
+	}
+	if problem := validate(name, args, tools); problem != "" {
 		return result(b, invalid(args, problem), true), nil
 	}
 	in := args.(block)
@@ -627,7 +884,7 @@ func validate(name string, args any, tools []block) string {
 		}
 	}
 	props := schema["properties"].(block)
-	for _, key := range []string{"command", "language", "source", "purpose", "effect", "timeout_seconds", "interactive"} {
+	for _, key := range []string{"command", "language", "source", "purpose", "effect", "timeout_seconds", "interactive", "question"} {
 		raw, ok := props[key]
 		if !ok {
 			continue
@@ -660,6 +917,35 @@ func validate(name string, args any, tools []block) string {
 			}
 		}
 	}
+	if name == str(NextTool["name"]) {
+		list, ok := in["steps"].([]any)
+		if !ok {
+			return "steps must be a list"
+		}
+		for _, s := range list {
+			if text, ok := s.(string); !ok || strings.TrimSpace(text) == "" {
+				return "steps must be a list of short phrases"
+			}
+		}
+		if len(list) < 1 || len(list) > MaxNext {
+			return fmt.Sprintf("offer one to %d steps", MaxNext)
+		}
+		for _, s := range list {
+			if Control.MatchString(s.(string)) {
+				return "a step contains control characters; offer it without them"
+			}
+		}
+		return ""
+	}
+	if name == str(AskTool["name"]) {
+		if strings.TrimSpace(str(in["question"])) == "" {
+			return "empty question"
+		}
+		if Control.MatchString(str(in["question"])) {
+			return "the question contains control characters; ask it without them"
+		}
+		return ""
+	}
 	text := str(in["command"])
 	if text == "" {
 		text = str(in["source"])
@@ -669,6 +955,9 @@ func validate(name string, args any, tools []block) string {
 	}
 	if len([]rune(text)) > 100_000 {
 		return "command or script is too long"
+	}
+	if name == str(ScriptTool["name"]) && Control.MatchString(text) {
+		return "the script contains control characters; propose it without them"
 	}
 	if name == "propose_command" && Control.MatchString(text) {
 		// It goes onto the user's command line: nothing there may hide or rewrite what it shows.

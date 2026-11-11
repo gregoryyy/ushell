@@ -52,8 +52,11 @@ read-only commands itself and asks before anything else ([Agent mode](#agent-mod
 | You type | What happens |
 | --- | --- |
 | `// REQUEST` (with the plugin) | ush proposes a command on your command line, or answers |
-| `//` | continue: ush gets what you ran (command, exit status, output) and proposes the next one |
-| `// TEXT` after a proposal | continue with a remark or a new question, e.g. `// that's the wrong disk` |
+| `//` | continue: ush gets what you ran (command, exit status, output) and proposes the next one; after an answer, go on with the next step |
+| `//1`, `//2`, `//3` | pick a next step: with its answer, ush may list up to three (`//1 restart nginx`); `//2` picks the second, `//` goes on, and any other request leaves them |
+| `// TEXT` after a proposal | ask instead of running it: a remark or a new question, e.g. `// that's the wrong disk`; the proposal counts as not run |
+| `// ANSWER` after a `//` question | when ush needs to know something, it asks with a `//` line (`// Which directory, build or dist?`) and puts `// ` on your command line: type the answer after it |
+| `//? TEXT`, or `ush research TEXT` | research only: the model compares the options, e.g. `//? which backup tool fits a Mac`; ush proposes and runs nothing for it, and a proposal on your line counts as not run |
 | `ush //REQUEST` | the same as `// REQUEST`, without the plugin's `//` shortcut |
 | `ush --new //REQUEST` | start over instead of continuing this shell's conversation |
 | `ush --run //REQUEST` | [agent mode](#agent-mode): ush runs the commands itself, then offers follow-up questions |
@@ -67,7 +70,11 @@ Without the plugin, quote requests (`ush '//why is my disk full?'`): otherwise z
 `ush explain find . -name "*.log" | xargs rm` explains the whole pipeline and runs none of it. A
 command line in one pair of quotes (`ush explain 'ls -la'`) is passed as it is. Without the plugin,
 quote any command line with `|`, `;`, `>`, `&`, `*`, `$` or quotes in it, or zsh acts on them
-first.
+first. `ush research TEXT` gets its text the same way.
+
+Research (`//?`) is part of the conversation: the next `// do the second one` can build on it. The
+model answers from what it knows, without running anything to look; commands in its answer are
+examples for you to read, not proposals.
 
 ## Proposals
 
@@ -75,8 +82,25 @@ A proposal shows the command, its purpose, and in yellow what deserves a second 
 changes something, that ush's policy can't verify it as read-only, or that the checker model
 objected. With the zsh plugin it then waits on your command line:
 - **Enter** runs it in your shell, as if you had typed it: `cd` and variables persist, and it lands
-  in your shell history. ush records the exit status and the output for the next `//`.
+  in your shell history. ush records the exit status and the output for the next `//`. Nothing of
+  the proposal runs before you press Enter on it (or Ctrl-N, below): explaining it, removing it,
+  or asking something else over it starts nothing.
 - **Edit** it first; ush sees the command that actually ran.
+
+When one command line won't do, ush proposes a short **script** (`sh`, `zsh` or `python3`). It
+shows the whole source with line numbers, then puts it on your command line as one entry:
+
+```sh
+python3 -c "$(cat <<'USH_EOF'
+import os
+print(os.getcwd())
+USH_EOF
+)"
+```
+
+The source between the markers is exactly the script, expanded by nothing; read it there, move
+into it with Up and edit it, and Enter runs all of it, as you left it. Esc removes it, as any
+proposal. Your terminal stays the script's input, and ush records its output for `//`.
 - **Down** (the arrow key, past the last line of the proposal) explains it: what each part of
   the command does, and what it accesses: files and network, read and write, and whether
   personal data or secrets end up hidden or exposed. With `-v` (`ush -v` for a session, or `ush -v //…`) you also get a summary,
@@ -199,6 +223,12 @@ A model name starting with `claude-` is Anthropic's, any other is Ollama's; `ant
 | `-m`, `--model M` | model for this run |
 | `-e`, `--effort L` | Anthropic effort: `low`, `medium`, `high`, `xhigh`, `max` |
 | `-k`, `--checker MODEL` | checker for this run (`claude-haiku-5-5`, `llama3.2:3b`, `off`) |
+| `--no-thinking`, `--thinking` | hide or show the model's thinking and progress lines (`… `) for this run |
+
+The model's thinking is shown by default, as dim lines starting with `…`. To hide it for good,
+answer `hide` in `ush ai configure`, or set `USH_THINKING=hide`. Only the display changes: the
+model still thinks, ush sends the same request, and the conversation keeps the thinking, so `//`
+continues as before.
 
 ## Other commands
 

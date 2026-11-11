@@ -356,7 +356,7 @@ Done in Python, and in Go through the port (section 4).
   syntax, propose mode only (GAPS Q15). Not on Windows (GAPS Q16: "not now").
   Acceptance: the plugin's pty tests ported to pwsh 7 on macOS and Linux; the installer offers
   the profile; the Go archive carries the module.
-- [ ] 2.35 *py – go –* Ask back instead of running a proposal (user, 2026-11-08): provide an
+- [x] 2.35 *py ✓ go ✓* Ask back instead of running a proposal (user, 2026-11-08): provide an
   explicit interactive action from a pending proposal to ask a follow-up or clarify the request,
   without running the proposal. `// TEXT` already continues without running it; make this choice
   available and clear in the proposal and session UI. When the model asks the user a follow-up
@@ -364,31 +364,62 @@ Done in Python, and in Go through the port (section 4).
   at the natural-language request level, not presenting a shell command. Acceptance: pty tests in
   both interfaces show the follow-up reaches the saved conversation, the proposal is not executed,
   the model's question is prefixed with `//`, and the next response can replace the proposal.
-- [ ] 2.36 *py – go –* Multi-line scripts in propose mode (user, 2026-11-08): let ush build a
+  Done: on a proposal, the hint line (plugin and session) says `// TEXT` instead asks, which
+  answers the proposal as not run. The model asks with `ask_user` (both modes), shown as
+  `// question`; the plugin gets `// ` on the command line (mode `ask`), the session pre-fills it,
+  and the answer is the tool's result. Tests: `test_the_model_asks_back_at_the_request_level`,
+  `test_a_question_puts_slashes_on_the_line_without_proposal_keys`,
+  `test_a_question_prefills_slashes_for_the_answer` (both implementations), and ushpy's
+  `test_the_model_asks_back_and_the_answer_is_its_result`, `test_no_answer_and_bad_questions`.
+- [x] 2.36 *py ✓ go ✓* Multi-line scripts in propose mode (user, 2026-11-08): let ush build a
   multi-line script for a task, show its complete source for review and editing, then execute it
   only after the user explicitly approves that reviewed source. Agent mode already has
   `run_script`, which requires approval; this adds the reviewed script workflow to propose mode.
   Acceptance: tests cover complete, terminal-safe source display; edits are exactly what runs;
   decline, abort, and invalid scripts run nothing; execution and captured output continue the
   conversation in both implementations.
-- [ ] 2.37 *py – go –* Toggle thinking visibility (user, 2026-11-08): let the user show or hide
+  Done (the user chose "On the command line"): `propose_script` (`sh`, `zsh`, `python3`); the
+  source is shown with line numbers and handed over as one entry,
+  `LANGUAGE -c "$(cat <<'USH_EOF' … USH_EOF\n)"`, a quoted here-document with an end marker no
+  source line equals; control characters refused. Enter runs it as edited, Esc removes it, `//`
+  continues with what ran. Tests: `test_a_script_is_proposed_as_one_entry_for_the_command_line`,
+  `test_bad_scripts_are_refused` (ushpy), `test_a_proposed_script_is_handed_over_whole`,
+  `test_a_proposed_script_runs_whole_on_enter_as_edited`,
+  `test_a_proposed_script_is_prefilled_whole_in_the_session` (both implementations).
+- [x] 2.37 *py ✓ go ✓* Toggle thinking visibility (user, 2026-11-08): let the user show or hide
   model thinking/progress blocks in the terminal without changing the request, provider behavior,
   or conversation data needed for follow-up. Acceptance: on/off tests in both implementations
   verify the display changes while follow-up requests remain valid and no hidden content leaks
   into unrelated output or history.
-- [ ] 2.38 *py – go –* Research available options without executing tasks (user, 2026-11-08):
+  Done: the setting `thinking` (`show`, the default, or `hide`) in `ush ai configure`, `USH_THINKING`,
+  and `--no-thinking` / `--thinking` for one run; `ush ai status` shows it. Hidden, the terminal
+  drops the thinking and progress lines; the request, the saved conversation and the history are
+  the same. Test: `test_thinking_can_be_hidden_without_changing_the_request` (both
+  implementations).
+- [x] 2.38 *py ✓ go ✓* Research available options without executing tasks (user, 2026-11-08):
   provide a research-only path for comparing available approaches. It must not execute commands
   or scripts, stage a proposal for shell execution, or perform the requested task; research results
   are information for the user to act on. Acceptance: tests with command-like and task-like model
   output prove that neither implementation starts a process, creates a handoff proposal, or
   otherwise performs the task.
-- [ ] 2.39 *py – go –* Confirm every proposed command before execution (user, 2026-11-08,
+  Done (the user chose "Both"): `//? TEXT` and `ush research TEXT`, in the plugin (quoted like
+  `ush explain`), the session and without it, in propose and agent mode. A research system prompt;
+  no tools on a new conversation, and an error result for any tool call; nothing reaches the
+  executor or the handoff. Tests: `test_research_proposes_and_runs_nothing`,
+  `test_research_over_a_proposal_answers_it_as_not_run`, `test_research_gets_its_text_verbatim`
+  (both implementations).
+- [x] 2.39 *py ✓ go ✓* Confirm every proposed command before execution (user, 2026-11-08,
   possible propose-mode bug): audit every propose-mode path and require explicit, per-command
   user confirmation before any proposed command executes. A proposal or pre-filled command line
   is not consent; until confirmation, no process may start. Acceptance: tests cover the plugin,
   session, edited proposals, and commands requiring an interactive terminal; decline or missing
   confirmation runs nothing, and confirmation runs only the exact command the user reviewed.
-  **Blocking:** GAPS Q18 (what counts as confirmation).
+  GAPS Q18, answered 2026-11-11: Enter on the reviewed line is the confirmation. Done: the audit
+  found no path that starts a process before it. Tests: `test_a_proposal_runs_only_on_enter` in
+  the plugin (captured and interactive; Down, Up, Esc, Ctrl-C, a new request over it) and in the
+  `ush>` session (Down, Esc, a new request over it), both run against ushgo by the conformance
+  suite; `test_propose_mode_never_starts_a_process` (ushpy's agent, with every way to start a
+  process patched to fail).
 - [x] 2.40 *py ✓ go ✓* Fix macOS Fn-Backspace/Delete in the session editor (user, 2026-11-08):
   pressing Fn-Backspace to delete the character under the cursor currently inserts the literal
   terminal sequence `[3~` instead. Bind and handle the Delete sequence correctly in the editor
@@ -399,13 +430,20 @@ Done in Python, and in Go through the port (section 4).
   fn-backspace".) Done: the session editor binds Delete, Home, End (also `\eOH`/`\e[1~`,
   `\eOF`/`\e[4~`) and Page Up/Down (`beep`); the plugin binds the same keys for a proposal where
   the emacs keymap leaves them undefined, and removes them with Esc's binding (ARCH).
-- [ ] 2.41 *py – go –* Contextual "go on" actions for larger plans (user, 2026-11-08): when a
+- [x] 2.41 *py ✓ go ✓* Contextual "go on" actions for larger plans (user, 2026-11-08): when a
   request spans multiple steps, offer the typical next actions and a shortcut to choose "go on"
   and continue to the next step without retyping the request. This asks ush/model to continue the
   interaction; it must not itself execute a proposed command or bypass the review and confirmation
   flow. Acceptance: session and plugin tests cover showing relevant next actions, invoking the
   shortcut, continuing the same conversation, and ensuring commands remain proposals pending the
   usual user action.
+  Done (the user chose "`//1`…`//3`, `//` goes on"): `offer_next` (one to three steps, both modes),
+  listed as `//1 …`; `//N` picks one, `//` alone goes on, another request leaves them, each sent as
+  the offer's result; `//N` not offered is exit 2 and sends nothing; `//` with a conversation goes
+  on ("Go on."), without one it opens a session as before. Nothing runs or is proposed by it.
+  Tests: `test_next_steps_are_picked_with_a_number_or_gone_on_with`,
+  `test_next_steps_with_a_proposal_are_not_shown`, `test_next_steps_are_picked_in_the_session`
+  (both implementations), ushpy's `test_bad_next_steps_are_refused`.
 - [x] 2.42 *py ✓ go ✓* Bug (user, 2026-11-10): "cd does not move away from the initial
   directory". In the `ush>` session every line, typed or an accepted proposal, ran in a fresh
   `zsh -c`, so `cd` was lost when it ended. A session line now reports its final `$PWD` through

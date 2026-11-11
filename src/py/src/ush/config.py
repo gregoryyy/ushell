@@ -27,6 +27,7 @@ DEFAULT_MODEL = "claude-opus-5-5"
 EFFORTS = ("low", "medium", "high", "xhigh", "max")
 PROVIDERS = NAMES               # providers.PROVIDERS: the table
 MODES = ("propose", "run")      # ARCH: propose mode (default) and agent mode
+THINKING = ("show", "hide")     # the model's thinking and progress in the terminal (TODO 2.37)
 KEYCHAIN_SERVICE = "ush"
 KEYCHAIN_ACCOUNT = "anthropic"
 SECURITY = "/usr/bin/security"
@@ -90,6 +91,7 @@ class Settings:
     ollama_url: str = OLLAMA_URL
     ollama_model: str = ""         # no default: it must be a model the user has pulled
     checker: str = ""              # "provider:model" of the checker model (check.py); "" is off
+    thinking: str = "show"         # show or hide the model's thinking; what is sent is the same
     allow: list = field(default_factory=list)   # the user's allow rules (policy.parse_rule)
     max_steps: int = 30
     command_timeout: int = 120     # default seconds per command
@@ -115,6 +117,8 @@ class Settings:
             s.ollama_model = data["ollama_model"]
         if isinstance(data.get("checker"), str):
             s.set_checker(data["checker"])
+        if data.get("thinking") in THINKING:
+            s.thinking = data["thinking"]
         if data.get("allow") is not None:
             if not isinstance(data["allow"], list):
                 raise ConfigError("allow must be a list of rules such as \"git status\"")
@@ -131,7 +135,7 @@ class Settings:
     def to_dict(self) -> dict:
         return {"mode": self.mode, "provider": self.provider, "model": self.model, "effort": self.effort,
                 "ollama_url": self.ollama_url, "ollama_model": self.ollama_model,
-                "checker": self.checker, "allow": list(self.allow), "max_steps": self.max_steps,
+                "checker": self.checker, "thinking": self.thinking, "allow": list(self.allow), "max_steps": self.max_steps,
                 "command_timeout": self.command_timeout, "max_timeout": self.max_timeout,
                 "output_limit": self.output_limit, "show_lines": self.show_lines}
 
@@ -146,6 +150,11 @@ class Settings:
         if mode not in MODES:
             raise ConfigError(f"mode must be one of {', '.join(MODES)}")
         self.mode = mode
+
+    def set_thinking(self, value: str) -> None:
+        if value not in THINKING:
+            raise ConfigError(f"thinking must be one of {', '.join(THINKING)}")
+        self.thinking = value
 
     def set_provider(self, provider: str) -> None:
         if provider not in PROVIDERS:
@@ -231,7 +240,7 @@ def check_ollama_url(url: str) -> str:
 
 
 def apply_environment(settings: Settings, ident: Identity, environ: Optional[dict] = None) -> None:
-    """USH_PROVIDER, USH_OLLAMA_URL, USH_MODEL, and USH_CHECKER override the settings file,
+    """USH_PROVIDER, USH_OLLAMA_URL, USH_MODEL, USH_CHECKER, and USH_THINKING override the settings file,
     except as root: a root session uses only the invoking user's settings file (as for
     USH_BASE_URL)."""
     if ident.is_root:
@@ -245,6 +254,8 @@ def apply_environment(settings: Settings, ident: Identity, environ: Optional[dic
         settings.set_model(env["USH_MODEL"].strip())
     if env.get("USH_CHECKER"):
         settings.set_checker(env["USH_CHECKER"])
+    if env.get("USH_THINKING"):
+        settings.set_thinking(env["USH_THINKING"].strip())
 
 
 def load_settings(ident: Identity) -> Settings:

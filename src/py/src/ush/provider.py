@@ -79,6 +79,8 @@ class AnthropicProvider:
             tools = [{**t, "eager_input_streaming": True} for t in tools]
         params: dict = {"model": self.model, "max_tokens": p.output_limit, "system": system,
                         "tools": tools, "messages": messages}
+        if not tools:   # a research request (TODO 2.38): no tool list at all
+            del params["tools"]
         if p.prompt_cache:
             params["cache_control"] = {"type": "ephemeral"}
         if p.effort:

@@ -72,19 +72,24 @@ class CliTest(TempDirTest):
         # A bad answer used to end `ai configure` with an error, losing what was entered; now the
         # same question is asked again. Ollama on an unused port: no key prompt, no models listed.
         answers = ["agent", "run", "openai", "ollama", "http://127.0.0.1:9", "bad name!", "llama3.2:3b",
-                   "anthropic:", "claude-haiku-5-5"]
+                   "anthropic:", "claude-haiku-5-5", "maybe", "hide"]
         result = self.ush("ai", "configure", stdin="\n".join(answers) + "\n")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("mode must be one of", result.stderr)
         self.assertIn("provider must be one of", result.stderr)
         self.assertIn("checker 'anthropic:' is not a model name", result.stderr)
         self.assertIn("checker: claude-haiku-5-5 through anthropic", result.stderr)
+        self.assertIn("thinking must be one of show, hide", result.stderr)
         with open(os.path.join(self.tmp, "config", "ush", "config.json"), encoding="utf-8") as f:
             saved = json.load(f)
         self.assertEqual((saved["mode"], saved["provider"], saved["ollama_url"],
-                          saved["ollama_model"], saved["checker"]),
+                          saved["ollama_model"], saved["checker"], saved["thinking"]),
                          ("run", "ollama", "http://127.0.0.1:9", "llama3.2:3b",
-                          "anthropic:claude-haiku-5-5"))
+                          "anthropic:claude-haiku-5-5", "hide"))
+        self.assertIn("thinking:  hidden", self.ush("ai", "status").stdout)
+        # Fewer answers than questions: the rest keep their values (it used to end in EOFError).
+        again = self.ush("ai", "configure", stdin="propose\n")
+        self.assertEqual(again.returncode, 0, again.stderr)
 
     @unittest.skipUnless(HAVE_SDK, "anthropic SDK not installed")
     def test_propose_mode_hands_over_and_continues(self):
@@ -111,7 +116,7 @@ class CliTest(TempDirTest):
             with open(os.path.join(handoff, "proposal")) as f:
                 self.assertEqual(f.read(), f"capture\ntouch {made}")
             self.assertEqual([t["name"] for t in api.requests[0]["body"]["tools"]],
-                             ["propose_command"])
+                             ["propose_command", "propose_script", "ask_user", "offer_next"])
             os.remove(os.path.join(handoff, "proposal"))  # taken by the plugin
             with open(os.path.join(handoff, "ran"), "w") as f:
                 f.write(f"0\ntouch {made}\n")
@@ -370,6 +375,241 @@ class CliTest(TempDirTest):
         self.assertEqual(cli.brief("Parts:\n- a\nSummary: late"), "Parts:\n- a")
         self.assertEqual(cli.brief("Notes: x\nAccess: none\nParts:\n- a"), "Parts:\n- a\nAccess: none")
         self.assertEqual(cli.brief("free text"), "free text")
+
+    @unittest.skipUnless(HAVE_SDK, "anthropic SDK not installed")
+    def test_the_model_asks_back_at_the_request_level(self):
+        # TODO 2.35: ask_user's question is shown as `// question`; with the plugin, `// ` goes
+        # on the command line (mode `ask`, not a proposal); the answer is the tool's result.
+        handoff = os.path.join(self.tmp, "ush.handoff1")
+        os.mkdir(handoff, 0o700)
+        ask = ([{"type": "tool_use", "id": "q1", "name": "ask_user",
+                 "input": {"question": "Which directory, build or dist?"}}], "tool_use")
+        propose = ([{"type": "tool_use", "id": "p1", "name": "propose_command",
+                     "input": {"command": "rm -rf build", "purpose": "clean", "effect": "change",
+                               "interactive": False}}], "tool_use")
+        env = {"ANTHROPIC_API_KEY": SYNTHETIC_KEY, "USH_HANDOFF": handoff}
+        with MockAPI([ask, propose]) as api:
+            env["USH_BASE_URL"] = api.url
+            first = self.ush("//clean up", env=env)
+            self.assertEqual(first.returncode, 0, first.stderr)
+            self.assertIn("// Which directory, build or dist?", first.stderr)
+            self.assertIn("answer on your command line: // TEXT", first.stderr)
+            with open(os.path.join(handoff, "proposal")) as f:
+                self.assertEqual(f.read(), "ask\n// ")
+            os.remove(os.path.join(handoff, "proposal"))  # taken by the plugin
+            second = self.ush("//build", env=env)
+        self.assertEqual(second.returncode, 0, second.stderr)
+        sent = api.requests[1]["body"]["messages"][-1]["content"]
+        self.assertEqual(sent, [{"type": "tool_result", "tool_use_id": "q1",
+                                 "content": "The user answers: build"}])
+        with open(os.path.join(handoff, "proposal")) as f:
+            self.assertEqual(f.read(), "capture\nrm -rf build")
+        # Without the plugin, and agent mode; `//` alone tells the model there was no answer.
+        done = ([{"type": "text", "text": "Taking build."}], "end_turn")
+        with MockAPI([ask, done, ask]) as api:
+            env = {"ANTHROPIC_API_KEY": SYNTHETIC_KEY, "USH_BASE_URL": api.url}
+            plain = self.ush("-N", "//clean up", env=env)
+            self.assertIn("answer with `ush //TEXT`", plain.stderr)
+            self.assertEqual(self.ush("//", env=env).returncode, 0)
+            agent = self.ush("-r", "//clean up", env=env)
+        self.assertIn("did not answer", json.dumps(api.requests[1]["body"]["messages"][-1]))
+        self.assertEqual(agent.returncode, 0, agent.stderr)
+        self.assertIn("// Which directory, build or dist?", agent.stderr)
+        self.assertEqual([t["name"] for t in api.requests[2]["body"]["tools"]],
+                         ["run_command", "run_script", "ask_user", "offer_next"])
+
+    @unittest.skipUnless(HAVE_SDK, "anthropic SDK not installed")
+    def test_a_proposed_script_is_handed_over_whole(self):
+        # TODO 2.36: the script goes to the plugin as one entry; `//` continues with what ran.
+        handoff = os.path.join(self.tmp, "ush.handoff1")
+        os.mkdir(handoff, 0o700)
+        source = "for f in *.log; do\n  wc -l \"$f\"\ndone"
+        replies = [
+            ([{"type": "tool_use", "id": "s1", "name": "propose_script",
+               "input": {"language": "sh", "source": source, "purpose": "count lines",
+                         "effect": "read", "interactive": False}}], "tool_use"),
+            ([{"type": "text", "text": "a.log has 3 lines."}], "end_turn"),
+        ]
+        line = "sh -c \"$(cat <<'USH_EOF'\n" + source + "\nUSH_EOF\n)\""
+        env = {"ANTHROPIC_API_KEY": SYNTHETIC_KEY, "USH_HANDOFF": handoff}
+        with MockAPI(replies) as api:
+            env["USH_BASE_URL"] = api.url
+            first = self.ush("//count the log lines", env=env)
+            self.assertEqual(first.returncode, 0, first.stderr)
+            self.assertIn("sh script", first.stderr)
+            self.assertIn('   2 │   wc -l "$f"', first.stderr)
+            with open(os.path.join(handoff, "proposal")) as f:
+                self.assertEqual(f.read(), "capture\n" + line)
+            os.remove(os.path.join(handoff, "proposal"))
+            with open(os.path.join(handoff, "ran"), "w") as f:
+                f.write("0\n" + line + "\n")
+            with open(os.path.join(handoff, "output"), "w") as f:
+                f.write("3 a.log\n")
+            second = self.ush("//", env=env)
+        self.assertEqual(second.returncode, 0, second.stderr)
+        result = api.requests[1]["body"]["messages"][-1]["content"][0]
+        self.assertEqual(result["tool_use_id"], "s1")
+        self.assertIn("ran the proposed command", result["content"])
+        self.assertIn("3 a.log", result["content"])
+
+    @unittest.skipUnless(HAVE_SDK, "anthropic SDK not installed")
+    def test_next_steps_are_picked_with_a_number_or_gone_on_with(self):
+        # TODO 2.41: offer_next lists //1…//3 with the answer; `//2` picks one, `//` goes on,
+        # and either is the offer's result. Nothing runs or is proposed by it.
+        handoff = os.path.join(self.tmp, "ush.handoff1")
+        os.mkdir(handoff, 0o700)
+
+        def offer(ident):
+            return ([{"type": "text", "text": "nginx failed at 09:12."},
+                     {"type": "tool_use", "id": ident, "name": "offer_next",
+                      "input": {"steps": ["show the  error log", "restart nginx", "check the config"]}}],
+                    "tool_use")
+        done = ([{"type": "text", "text": "STEP-DONE"}], "end_turn")
+        env = {"ANTHROPIC_API_KEY": SYNTHETIC_KEY, "USH_HANDOFF": handoff}
+        with MockAPI([offer("n1"), done, offer("n2"), done, done]) as api:
+            env["USH_BASE_URL"] = api.url
+            first = self.ush("//why did the site go down", env=env)
+            self.assertEqual(first.returncode, 0, first.stderr)
+            self.assertIn("nginx failed at 09:12.", first.stdout)
+            self.assertIn("//1 show the error log", first.stderr)
+            self.assertIn("//3 check the config", first.stderr)
+            self.assertIn("// goes on", first.stderr)
+            self.assertEqual(os.listdir(handoff), [])  # nothing for the command line
+            self.assertEqual(self.ush("//4", env=env).returncode, 2)  # not offered
+            self.assertEqual(self.ush("//2", env=env).returncode, 0)
+            self.assertEqual(self.ush("//again", env=env).returncode, 0)
+            self.assertEqual(self.ush("//", env=env).returncode, 0)
+            self.assertEqual(self.ush("//", env=env).returncode, 0)  # nothing offered: "Go on."
+        sent = [r["body"]["messages"][-1]["content"] for r in api.requests]
+        self.assertEqual(sent[1], [{"type": "tool_result", "tool_use_id": "n1",
+                                    "content": "The user chose step 2: restart nginx"}])
+        self.assertEqual(sent[3], [{"type": "tool_result", "tool_use_id": "n2",
+                                    "content": "The user says: go on with the next step."}])
+        self.assertEqual(sent[4], [{"type": "text", "text": "Go on."}])
+        self.assertEqual(len(api.requests), 5)
+        self.assertIn("no step 4 was offered", self.ush("//4", env=env).stderr)
+
+    @unittest.skipUnless(HAVE_SDK, "anthropic SDK not installed")
+    def test_next_steps_with_a_proposal_are_not_shown(self):
+        handoff = os.path.join(self.tmp, "ush.handoff1")
+        os.mkdir(handoff, 0o700)
+        replies = [([{"type": "tool_use", "id": "p1", "name": "propose_command",
+                      "input": {"command": "df -h", "purpose": "space", "effect": "read",
+                                "interactive": False}},
+                     {"type": "tool_use", "id": "n1", "name": "offer_next",
+                      "input": {"steps": ["clean up"]}}], "tool_use"),
+                   ([{"type": "text", "text": "ok"}], "end_turn")]
+        env = {"ANTHROPIC_API_KEY": SYNTHETIC_KEY, "USH_HANDOFF": handoff}
+        with MockAPI(replies) as api:
+            env["USH_BASE_URL"] = api.url
+            first = self.ush("//disk", env=env)
+            self.assertNotIn("//1", first.stderr)
+            os.remove(os.path.join(handoff, "proposal"))
+            self.ush("//", env=env)
+        content = api.requests[1]["body"]["messages"][-1]["content"]
+        self.assertEqual([r["tool_use_id"] for r in content], ["p1", "n1"])
+        self.assertIn("Not shown", content[1]["content"])
+
+    @unittest.skipUnless(HAVE_SDK, "anthropic SDK not installed")
+    def test_research_proposes_and_runs_nothing(self):
+        # TODO 2.38: `//? TEXT` and `ush research TEXT`, in propose and agent mode, send no tools;
+        # a tool call the model writes anyway is refused, nothing runs, and nothing is proposed.
+        made = os.path.join(self.tmp, "made")
+        handoff = os.path.join(self.tmp, "ush.handoff1")
+        os.mkdir(handoff, 0o700)
+        sneaky = [
+            {"type": "tool_use", "id": "x1", "name": "propose_command",
+             "input": {"command": f"touch {made}", "purpose": "do it", "effect": "change",
+                       "interactive": False}},
+            {"type": "tool_use", "id": "x2", "name": "run_command",
+             "input": {"command": f"touch {made}", "purpose": "do it", "effect": "change",
+                       "timeout_seconds": 5}},
+        ]
+        answer = [{"type": "text", "text": "Time Machine is built in; restic is scriptable."}]
+        env = {"ANTHROPIC_API_KEY": SYNTHETIC_KEY, "USH_HANDOFF": handoff}
+        for args in (["//? which backup tool fits"], ["research", "which backup tool fits"],
+                     ["research", "--", "which backup tool fits"], ["-r", "//? which backup tool fits"]):
+            with self.subTest(args=args), MockAPI([(sneaky, "tool_use"), (answer, "end_turn")]) as api:
+                env["USH_BASE_URL"] = api.url
+                result = self.ush("-N", *args, env=env)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertIn("restic is scriptable", result.stdout)
+                self.assertIn("research, runs and proposes nothing", result.stderr)
+                self.assertFalse(os.path.exists(made))
+                self.assertEqual(os.listdir(handoff), [])  # no proposal for the command line
+                first, second = (r["body"] for r in api.requests)
+                self.assertIn("research only", json.dumps(first["system"]))
+                self.assertNotIn("tools", first)
+                self.assertEqual(first["messages"][-1]["content"][-1]["text"], "which backup tool fits")
+                refused = second["messages"][-1]["content"]
+                self.assertEqual([r["tool_use_id"] for r in refused], ["x1", "x2"])
+                self.assertTrue(all(r.get("is_error") and "research request" in r["content"]
+                                    for r in refused), refused)
+        self.assertIn("// ? which backup tool fits", self.ush("history").stdout)
+        for bad in (["//?"], ["research"], ["research", "--"]):
+            self.assertEqual(self.ush(*bad, env=env).returncode, 2, bad)
+
+    @unittest.skipUnless(HAVE_SDK, "anthropic SDK not installed")
+    def test_research_over_a_proposal_answers_it_as_not_run(self):
+        handoff = os.path.join(self.tmp, "ush.handoff1")
+        os.mkdir(handoff, 0o700)
+        replies = [
+            ([{"type": "tool_use", "id": "p1", "name": "propose_command",
+               "input": {"command": "rm -rf build", "purpose": "clean", "effect": "change",
+                         "interactive": False}}], "tool_use"),
+            ([{"type": "text", "text": "make clean is safer."}], "end_turn"),
+        ]
+        env = {"ANTHROPIC_API_KEY": SYNTHETIC_KEY, "USH_HANDOFF": handoff}
+        with MockAPI(replies) as api:
+            env["USH_BASE_URL"] = api.url
+            self.assertEqual(self.ush("//clean the build", env=env).returncode, 0)
+            os.remove(os.path.join(handoff, "proposal"))  # taken by the plugin, not run
+            result = self.ush("//? is there a safer way", env=env)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("make clean is safer.", result.stdout)
+        body = api.requests[1]["body"]
+        # The conversation has a tool call, so the tools stay defined; the proposal is answered.
+        self.assertEqual([t["name"] for t in body["tools"]],
+                         ["propose_command", "propose_script", "ask_user", "offer_next"])
+        content = body["messages"][-1]["content"]
+        self.assertEqual(content[0]["tool_use_id"], "p1")
+        self.assertIn("did not run the proposed command", content[0]["content"])
+        self.assertEqual(content[-1]["text"], "is there a safer way")
+        self.assertIn("research only", json.dumps(body["system"]))
+        self.assertEqual(os.listdir(handoff), [])
+
+    @unittest.skipUnless(HAVE_SDK, "anthropic SDK not installed")
+    def test_thinking_can_be_hidden_without_changing_the_request(self):
+        # TODO 2.37: --no-thinking, --thinking and USH_THINKING change only what the terminal
+        # shows. The request is the same, the thinking stays in the saved conversation for `//`,
+        # and none of it goes to stdout or the history.
+        reply = ([{"type": "thinking", "thinking": "PONDERING-THE-DISK"},
+                  {"type": "text", "text": "Plenty of space."}], "end_turn")
+        runs = {}
+        for name, args, extra in [("default", (), {}), ("flag", ("--no-thinking",), {}),
+                                  ("env", (), {"USH_THINKING": "hide"}),
+                                  ("flag over env", ("--thinking",), {"USH_THINKING": "hide"})]:
+            with MockAPI([reply]) as api:
+                env = {"ANTHROPIC_API_KEY": SYNTHETIC_KEY, "USH_BASE_URL": api.url, **extra}
+                result = self.ush("-N", *args, "//disk space?", env=env)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("Plenty of space.", result.stdout)
+            self.assertNotIn("PONDERING-THE-DISK", result.stdout)
+            sessions = os.path.join(self.tmp, "state", "ush", "sessions")
+            saved = "".join(open(os.path.join(sessions, n)).read() for n in os.listdir(sessions))
+            self.assertIn("PONDERING-THE-DISK", saved, name)  # kept for the next `//`
+            runs[name] = (result.stderr, api.requests[0]["body"])
+        self.assertIn("PONDERING-THE-DISK", runs["default"][0])
+        self.assertNotIn("PONDERING-THE-DISK", runs["flag"][0])
+        self.assertNotIn("PONDERING-THE-DISK", runs["env"][0])
+        self.assertIn("PONDERING-THE-DISK", runs["flag over env"][0])
+        bodies = [body for _, body in runs.values()]
+        self.assertTrue(all(body == bodies[0] for body in bodies), bodies)
+        with open(os.path.join(self.tmp, "state", "ush", "history.jsonl")) as f:
+            self.assertNotIn("PONDERING-THE-DISK", f.read())
+        bad = self.ush("//x", env={"ANTHROPIC_API_KEY": SYNTHETIC_KEY, "USH_THINKING": "loud"})
+        self.assertEqual(bad.returncode, 2)
+        self.assertIn("thinking must be one of show, hide", bad.stderr)
 
     def test_ai_status_never_prints_the_key(self):
         result = self.ush("ai", "status", env={"ANTHROPIC_API_KEY": SYNTHETIC_KEY})

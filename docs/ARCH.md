@@ -88,9 +88,9 @@ The default since 2026-10-28 (TODO 2.17). The user's request: "the idea of the u
 propose specific shell commands and prewrite them to be executed by the user"; their choices are in
 [GAPS](GAPS.md) Q6.
 
-1. `// REQUEST` runs `ush` as in agent mode, but the model has one tool, `propose_command`
-   (`command`, `purpose`, `effect`, `interactive`), and a system prompt that says it runs nothing.
-   The model either proposes one command or answers. ush shows the proposal with notes: a change, a
+1. `// REQUEST` runs `ush` as in agent mode, but the model has `propose_command` (`command`,
+   `purpose`, `effect`, `interactive`) and `ask_user`, and a system prompt that says it runs nothing.
+   The model either proposes one command, asks one question, or answers. ush shows the proposal with notes: a change, a
    command the policy can't verify as read-only, or the checker's objection. It runs nothing.
 2. **Handoff:** ush writes the proposal into the plugin's handoff directory (`USH_HANDOFF`), and
    saves the conversation in `sessions/KEY.json`, one per shell.
@@ -105,6 +105,48 @@ propose specific shell commands and prewrite them to be executed by the user"; t
    `propose_command` with what ran: the same or an edited command, the exit status, a changed
    working directory, and the redacted output (bounded head and tail), or that nothing ran. The
    model then proposes the next command or answers.
+
+**Scripts** (TODO 2.36): `propose_script` (`language`: `sh`, `zsh` or `python3`; `source`,
+`purpose`, `effect`, `interactive`) proposes a script for the command line. ush shows the source
+with line numbers (`show_script`) and hands it over as one multi-line proposal (`script_line`):
+
+    LANGUAGE -c "$(cat <<'USH_EOF'
+    SOURCE
+    USH_EOF
+    )"
+
+The here-document is quoted, so nothing in the source is expanded; `-c` keeps the terminal as the
+script's stdin (with `sh <<EOF` the script would read its own rest). If a source line is
+`USH_EOF`, the marker gets a random suffix. Control characters other than tab and newline are
+refused. The plugin's `print -z` puts the whole entry on the line; `preexec` records it as typed,
+edits included, and the `ush>` session pre-fills it in `vared`. From there it is a proposal like
+any other: Enter runs it, Esc removes it, `//` continues with what ran and its output.
+
+**Asking back** (TODO 2.35): `ask_user` (`question`) is offered in both modes. ush shows the
+question as a `//` line (`// Which directory, build or dist?`), and the request ends as `asked`.
+The other calls of that turn get "wait for the answer" results, due with it. With the plugin, ush
+writes `proposal` with the mode `ask` and the literal text `// `: the plugin puts that on the
+command line for the answer, without the proposal's keys and without recording a run; the model's
+text never goes there. In the `ush>` session `// ` is pre-filled. The next request is the answer,
+sent as the question's tool result (`The user answers: …`); `//` alone answers that there was no
+answer. The saved conversation keeps the open question (`question`). On a proposal, the hint
+line says that `// TEXT` instead asks: a new request over the proposal answers it as not run.
+
+**Next steps** (TODO 2.41): `offer_next` (`steps`, one to three short phrases) is offered in both
+modes. Sent alone with the answer, ush lists the steps as `//1 …`, `//2 …` and ends the request as
+answered; its result is due with the next request: "The user chose step 2: …" for `//2`, "go on
+with the next step" for `//` alone, or "asked something else instead" with any other request.
+`//N` for a step that wasn't offered is an error (exit 2) and sends nothing. Sent with a proposal
+or a command to run, the offer is answered "Not shown". `//` alone goes on whenever the shell has a
+conversation, with "Go on." if nothing is pending; it opens a session only without one. The saved
+conversation keeps the offer (`next`). Offering runs and proposes nothing.
+
+**Research** (`//? TEXT`, `ush research TEXT`, TODO 2.38) is a request in the same conversation,
+in either mode, with its own system prompt: compare the options, carry out nothing. On a new
+conversation it is sent without tools. Once the conversation has tool calls, a request has to
+define the tools, so they are sent, and any call the model makes is answered with an error result
+("a research request"), unrun and unproposed, at most three turns in a row. A pending proposal is
+answered as not run, as for any request. The history records the request as `? TEXT`.
 
 **Keys on a proposal** (TODO 2.18–2.21):
 - The plugin binds Esc and Down only while a proposal is on the line. It saves their bindings as
@@ -227,7 +269,9 @@ can only add friction (always ask, or never run, even when approved) is safe and
 - **Model defaults:** `claude-opus-5-5`, adaptive thinking, effort `medium`. Between
   tool calls, ush shows progress updates (`display: "updates"`), and refusals fall
   back server-side (`fallbacks: "default"`). Both features are sent only to models
-  that support them.
+  that support them. The `thinking` setting (TODO 2.37) only decides whether the terminal shows
+  those updates and thinking blocks: `Terminal.progress` drops them when hidden, and the request,
+  the echoed conversation and the saved session are the same either way.
 - **Local models through Ollama's Anthropic-compatible API** (TODO 2.8) rather than
   a second adapter for Ollama's native or OpenAI-style API. A probe on 2026-10-27
   (Ollama 0.40.7) showed that `/v1/messages` accepts ush's request, strict tools

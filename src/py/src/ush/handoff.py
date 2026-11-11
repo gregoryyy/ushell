@@ -6,7 +6,7 @@ continues the conversation with it.
 
 - The handoff directory is the plugin's: made with `mktemp -d` when the plugin loads, passed as
   USH_HANDOFF, removed when the shell exits. ush writes `proposal` (a mode line, `capture` or
-  `interactive`, then the command); the plugin writes `ran` (the exit status, then the command
+  `interactive`, then the command; or `ask`, then `// ` for the answer to the model's question); the plugin writes `ran` (the exit status, then the command
   line that ran) and `output` (what it printed, unless the proposal was interactive). ush uses
   the directory only if it is a real directory of the user's, closed to others, and never as
   root. When `//` takes `ran` and `output`, they stay as `last-ran` and `last-output` for notes
@@ -72,6 +72,19 @@ def write_proposal(directory: str, command: str, interactive: bool) -> None:
     fd = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
     with os.fdopen(fd, "w", encoding="utf-8") as f:
         f.write(("interactive" if interactive else "capture") + "\n" + command)
+    os.replace(temporary, os.path.join(directory, "proposal"))
+
+
+def write_question(directory: str) -> None:
+    """The model asked the user (TODO 2.35): the plugin puts `// ` on the next command line for
+    the answer, as text, not as a proposal (mode `ask`)."""
+    for name in ("ran", "output"):
+        _remove(os.path.join(directory, name))
+    temporary = os.path.join(directory, f".proposal.{os.getpid()}")
+    _remove(temporary)
+    fd = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+    with os.fdopen(fd, "w", encoding="utf-8") as f:
+        f.write("ask\n// ")
     os.replace(temporary, os.path.join(directory, "proposal"))
 
 

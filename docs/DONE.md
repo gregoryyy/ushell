@@ -14,6 +14,317 @@ implementation kept its own log: [ushpy](archive/DONE-ushpy.md), [ushgo](archive
 
 ---
 
+## 2026-11-11 09:31 — Scripts in propose mode, on the command line (TODO 2.36)
+
+TODO items: 2.36 (done). PR: not yet opened (branch `feat/ush-2.35-interaction`).
+
+Agent: Opus 5.5, reasoning: not exposed, subagents: none.
+
+### Implementation notes
+
+- **The user's choice:** "On the command line (Recommended)".
+- **`propose_script`** (`language`: `sh`, `zsh` or `python3`; `source`, `purpose`, `effect`,
+  `interactive`), in propose mode after `propose_command`. The system prompt says to use it when
+  one line is impractical.
+  - ush shows the source with line numbers (`show_script`) and a `→` line with the notes, and
+    hands it over as one multi-line proposal: `script_line` / `ScriptLine` build
+    `LANGUAGE -c "$(cat <<'USH_EOF'`, the source as it is, `USH_EOF`, `)"`.
+  - The here-document is quoted, so nothing in the source is expanded. `-c` keeps the terminal
+    as stdin: with `sh <<EOF` a command that reads stdin would read the rest of the script.
+  - A source line equal to `USH_EOF` gets the marker a random suffix. Control characters other
+    than tab and newline are refused, as are unknown languages and empty sources.
+  - From there it is a proposal: the plugin's `print -z` puts it on the line, `preexec` records it
+    as edited, `ush>` pre-fills it in `vared`, Esc removes it, `//` continues with what ran.
+  - The history step has the language.
+- **Tests:**
+  - `test_a_script_is_proposed_as_one_entry_for_the_command_line` (ushpy): the exact entry with
+    `$HOME` and backquotes left alone, the numbered source, and marker collision.
+  - `test_bad_scripts_are_refused` (ushpy): `perl`, an empty source, an escape sequence, `\r`.
+  - `test_a_proposed_script_is_handed_over_whole`: the handoff file and the continuation.
+  - `test_a_proposed_script_runs_whole_on_enter_as_edited` (plugin): Esc runs nothing; Up twice,
+    End and `+1` edit a line inside it, Enter runs it (`sum=42+1`), and `//` gets the edited
+    entry and its output.
+  - `test_a_proposed_script_is_prefilled_whole_in_the_session` (`ush>`).
+  - All but the two ushpy unit tests run against both implementations.
+- **Correction to the 09:01 entry (2.35):** the branch that test added to the plugin tests' fake
+  `ush` went in between the `//` branch's `print` and its cleanup loop. From then on, `//` in the
+  fake kept `ran` and `output`, and the loop ran for requests instead. That commit and 2.41's ran
+  only selected tests, so no run failed. The loop is back under `//`, and this commit's full runs
+  are the first since 2.35 with all plugin tests.
+- **Docs:** USER (Proposals, with an example), the man page (the plugin's Enter), ARCH, SEC.
+- **Validation** on macOS, Go 1.27.4, with all six items:
+  - `just ushgo-test`: exit 0;
+  - `PYTHON=/opt/homebrew/bin/python3.12 just ushpy-test`: 248 tests OK (227 on main);
+  - `just ushgo-conform`: 99 tests OK (84 on main);
+  - `just links`, `mandoc -T lint -W warning`: clean.
+
+### Deviations
+
+- **One form for all three languages** (`LANGUAGE -c "$(cat <<…)"`), not `python3 - <<EOF` and
+  `sh <<EOF`. The marker lines frame the source, but stdin stays the terminal.
+
+### Insights
+
+- A here-document in a command substitution is a readable, editable way to put a script on a
+  command line, and zsh's line editor handles it as one entry.
+
+---
+
+## 2026-11-11 09:13 — Next steps: `//1`…`//3`, and `//` goes on (TODO 2.41)
+
+TODO items: 2.41 (done). PR: not yet opened (branch `feat/ush-2.35-interaction`).
+
+Agent: Opus 5.5, reasoning: not exposed, subagents: none.
+
+### Implementation notes
+
+- **The user's choice:** "`//1`…`//3`, `//` goes on (Recommended)".
+- **`offer_next`** (`steps`: one to three phrases), in both modes after `ask_user`. Both system
+  prompts say to offer the next steps with it when the task has more.
+  - Sent alone with the answer: ush lists `//1 …`, `//2 …` and a hint line (`show_next` /
+    `ShowNext`), and the request ends as answered. The offer is saved (`next`) and answered by the
+    next request: "The user chose step N: …", "go on with the next step", or "asked something
+    else instead" (then with the request as text).
+  - Sent with a proposal or a command to run: answered "Not shown". An invalid offer gets its
+    validation error (empty or more than three steps, not a list, control characters).
+  - In both implementations, a question that reaches the propose path is validated as a question,
+    and any other tool there as a proposal. Before, the propose path validated against all
+    tools.
+- **`//N`** (`STEP`, one digit): picks an offered step. For one that wasn't offered, ush prints
+  "no step N was offered" (with a hint) and exits 2 without a request; in `ush>` it continues.
+- **`//` alone** now goes on whenever this shell has a conversation: it answers what's pending,
+  or sends "Go on.". Only without a conversation does it open a session, as before; the session's
+  own `//` follows the same rule.
+- **Usage** (`ush //` and `ush //N`), identical in both: `diff <(ushgo help) <(ushpy help)` is
+  empty. Also USER, the man page, ARCH, SEC and ushpy's README.
+- **Tests** (both implementations unless noted):
+  - `test_next_steps_are_picked_with_a_number_or_gone_on_with`: the listing, nothing handed
+    off, `//4` refused, `//2`, another request, `//` going on, and `//` with nothing offered
+    sending "Go on."; five requests in all.
+  - `test_next_steps_with_a_proposal_are_not_shown`.
+  - `test_next_steps_are_picked_in_the_session` (`ush>`): `//5` refused without a request, then
+    `//2` and `//`.
+  - ushpy's `test_bad_next_steps_are_refused`.
+  - The tool lists asserted in three earlier tests now include `offer_next`.
+- **Test timing:** the 2.35 and 2.39 session tests and this one waited 20 s per step for a prompt
+  the step before had already read. Each step now waits for its text and the prompt at once; the
+  session test went from 84 s to 4 s.
+- **Validation:** `./scripts/test.sh -p 'test_[apc]*.py'`: 144 tests OK. Against the Go binary,
+  `test_cli`: 29 tests OK. `-k next_steps` in `test_zsh_plugin`: OK in both. `go vet`,
+  `go test ./...`: ok. `just links`, `mandoc -T lint -W warning`, `test_docs`: clean.
+
+### Deviations
+
+- **`//` alone no longer opens a session after an answer:** as the user chose. `ush` alone still
+  does, and so does `//` in a shell without a conversation.
+
+### Insights
+
+- An offer, a question and a proposal are each a pending tool call with a result due. Keeping one
+  of them open at a time kept the conversation valid in every combination the tests try.
+
+---
+
+## 2026-11-11 09:01 — Asking back at the `//` level (TODO 2.35)
+
+TODO items: 2.35 (done). PR: not yet opened (branch `feat/ush-2.35-interaction`).
+
+Agent: Opus 5.5, reasoning: not exposed, subagents: none.
+
+### Implementation notes
+
+- **Asking instead of running a proposal:** `// TEXT` over a proposal already did it. The hint line
+  now says so ("// TEXT instead asks", in `ush //` and the `ush>` session), and the 2.39 tests
+  show the proposal doesn't run.
+- **The model asks with `ask_user`** (`question`), in both modes, next to `propose_command` or the
+  agent-mode tools; both system prompts say to ask with it instead of guessing.
+  - ush shows the question as `// question` (`show_question` / `ShowQuestion`) and ends the request
+    as `asked`. The turn's other calls get "wait for the answer" results, sent with the answer.
+  - The next request is the answer, as the question's tool result (`The user answers: …`), not
+    as a text block too. `//` alone answers "did not answer". The open question is saved with the
+    conversation.
+  - Validation: an empty question, or one with control characters, is refused; the question is
+    shortened to 1000 characters and its whitespace collapsed.
+- **Handoff:** `write_question` / `WriteQuestion` writes `proposal` as `ask` and `// `. The plugin
+  puts that on the command line without the proposal's keys or a recorded run; only that literal
+  text, never the model's.
+- **Session:** after a question, `// ` is pre-filled at `ush>`, also for an agent-mode follow-up.
+- **Changed tests:** the tool lists asserted in `test_propose_mode_hands_over_and_continues`,
+  `test_research_over_a_proposal_answers_it_as_not_run` and `test_only_the_proposal_tool_is_offered`
+  now include `ask_user`.
+- **New tests** (both implementations unless noted):
+  - `test_the_model_asks_back_at_the_request_level`: the `// …` line, the handoff `ask\n// `, and
+    the answer as the tool result, after which the next proposal is handed off. Also without the
+    plugin ("answer with `ush //TEXT`"), `//` with no answer, and agent mode with its tool list.
+  - `test_a_question_puts_slashes_on_the_line_without_proposal_keys` (plugin): Down keeps
+    `down-line-or-history`; `// build` is a request, not a recorded run.
+  - `test_a_question_prefills_slashes_for_the_answer` (`ush>` against the mock).
+  - ushpy's unit tests: `test_the_model_asks_back_and_the_answer_is_its_result` (with save and
+    restore) and `test_no_answer_and_bad_questions`.
+- **Docs:** USER (the Asking table), the man page (Requests), ARCH (asking back, propose mode's
+  tools), SEC (a threat row), `handoff.py`'s format note.
+- **Validation:** `./scripts/test.sh -p 'test_[apc]*.py'`: 140 tests OK.
+  `./scripts/test.sh -p 'test_*.py' -k asks_back -k question`: 5 tests OK. Against the Go binary,
+  `-k asks_back -k question -k hands_over -k research`: 7 tests OK. `go vet`, `go test ./...`:
+  ok. `just links`, `mandoc -T lint -W warning`: clean.
+
+### Deviations
+
+- **No key to ask over a proposal:** `// TEXT` typed over it does that, and the hint line says
+  so. A key would only save typing `// `.
+
+### Insights
+
+- The answer as a tool result keeps the conversation valid without an extra text block. The
+  model sees exactly which question was answered.
+
+---
+
+## 2026-11-11 08:54 — Research only: `//? TEXT` and `ush research TEXT` (TODO 2.38)
+
+TODO items: 2.38 (done). PR: not yet opened (branch `feat/ush-2.35-interaction`).
+
+Agent: Opus 5.5, reasoning: not exposed, subagents: none.
+
+### Implementation notes
+
+- **The user's choice:** "Both" (`//? TEXT` and `ush research TEXT`). The model answers from its
+  own knowledge; web search would be an item of its own.
+- **Agent** ([agent.py](../src/py/src/ush/agent.py) `ask(…, research=True)`,
+  [agent.go](../src/go/internal/agent/agent.go) `Research`):
+  - `SYSTEM_RESEARCH` / `systemResearch`: compare the options, carry out nothing, call no tool.
+  - Tools, decided each turn: none while the conversation has no tool call. Otherwise all of them,
+    since a request with `tool_use` blocks must define them.
+  - Every tool call gets `NOT_RESEARCH` as an error result; at most three such turns, then the
+    request stops (`MAX_REFUSED_TURNS`).
+  - A pending proposal is answered as for any request. History records the request as `? TEXT`.
+- **Providers:** an empty tool list is left out of the request (`tools` key absent), in both.
+- **CLI:**
+  - `ush research [--] TEXT...` becomes `//? TEXT`; `//?` with no text is a usage error (2).
+  - The banner says "research, runs and proposes nothing".
+  - In the `ush>` session, `//? TEXT` is a research request.
+  - Usage text, completion, README, USER, the man page (synopsis, Requests, COMMANDS), ARCH, SEC.
+- **Plugin:** `ush research TEXT` is quoted as `ush research -- 'TEXT'`, like `ush explain`; one
+  quoted word is left alone. `//? TEXT` was already passed verbatim.
+- **Tests** (all in both implementations):
+  - `test_research_proposes_and_runs_nothing`: `//?`, `ush research`, `ush research --` and `-r //?`.
+    Against a mock that answers with `propose_command` and `run_command`: no file is made, the
+    handoff stays empty, the first request has no `tools` and the research prompt, both calls get
+    error results, and the answer is printed. History shows `// ? …`; three usage errors.
+  - `test_research_over_a_proposal_answers_it_as_not_run`: tools stay defined, the proposal is
+    answered "did not run", and nothing is handed off.
+  - `test_research_gets_its_text_verbatim`: the plugin's quoting.
+- **Validation:** `./scripts/test.sh -p 'test_*.py' -k research`: 3 tests OK. The same against the
+  Go binary: 3 tests OK. `./scripts/test.sh -p 'test_[apd]*.py'`: 84 tests OK. `go test ./...`: ok.
+  `just links`, `mandoc -T lint -W warning`, `test_docs`: clean.
+
+### Deviations
+
+- **Tools are sent in a conversation that has them,** with every call refused, instead of none at
+  all: the API needs them defined once `tool_use` blocks are in the messages.
+
+### Insights
+
+- The refusal path is what makes research safe, not the prompt: the test's mock ignores the prompt
+  and calls both tools, and nothing happens.
+
+---
+
+## 2026-11-11 08:49 — Thinking shown or hidden (TODO 2.37)
+
+TODO items: 2.37 (done). PR: not yet opened (branch `feat/ush-2.35-interaction`).
+
+Agent: Opus 5.5, reasoning: not exposed, subagents: none.
+
+### Implementation notes
+
+- **The setting** `thinking` in `config.json`, `show` (the default, as before) or `hide`:
+  - asked last in `ush ai configure`;
+  - overridden by `USH_THINKING` (not as root, like the other overrides) and, for one run, by
+    `--no-thinking` or `--thinking`;
+  - shown by `ush ai status` (`thinking:  shown` or `hidden (…)`).
+  - In [config.py](../src/py/src/ush/config.py) and [config.go](../src/go/internal/config/config.go),
+    with `set_thinking` / `SetThinking`; in both usages, the man page, USER, ADMIN, ARCH and
+    ushpy's README.
+- **Display only:** `Terminal.progress` (ushpy) and `Terminal.Progress` (ushgo) return without
+  printing when hidden. The provider still gets `thinking` and `display: "updates"`, and the
+  thinking blocks stay in the messages that are echoed back and saved for `//`.
+- **`ush ai configure` with fewer answers than questions** used to end ushpy with an `EOFError`
+  traceback; now the remaining questions keep their values, as in ushgo.
+- **Tests** (both implementations, [test_cli.py](../src/py/tests/test_cli.py)):
+  - `test_thinking_can_be_hidden_without_changing_the_request`: a mock reply with a thinking block,
+    run four ways (default, `--no-thinking`, `USH_THINKING=hide`, `--thinking` over
+    `USH_THINKING=hide`). The thinking shows only in the first and the last, on stderr. The four
+    request bodies are identical. The saved session keeps the thinking; stdout and
+    `history.jsonl` don't have it. `USH_THINKING=loud` is a usage error.
+  - `test_configure_asks_again_after_a_bad_answer`: a bad answer, then `hide`; `ush ai status`
+    shows it; a configure with one answer ends without error.
+- **Validation:** `./scripts/test.sh -p test_cli.py -k thinking -k configure_asks`: 2 tests OK.
+  The same against the Go binary (`USH_TEST_BIN`): 2 tests OK. `go test ./...`: ok. `test_docs`:
+  5 tests OK. `just links`, `mandoc -T lint -W warning`: clean.
+
+### Deviations
+
+- **No key in the session to toggle it:** a setting and two options. A key would need the line
+  editor to report back to ush, more than the item asks for.
+
+### Insights
+
+- The thinking reached the terminal through one callback (`on_progress`) in both
+  implementations, so hiding it took one check there.
+
+---
+
+## 2026-11-11 08:46 — A proposal runs only on Enter: the audit of TODO 2.39
+
+TODO items: 2.39 (done); GAPS Q18 (answered). PR: not yet opened (branch
+`feat/ush-2.35-interaction`).
+
+Agent: Opus 5.5, reasoning: not exposed, subagents: none.
+
+### Implementation notes
+
+- **The request** (user, 2026-11-11): "implement them", for TODO 2.35–2.39 and 2.41. To GAPS Q18
+  the user answered "Enter on the line (Recommended)", so 2.39 is an audit: no path may start a
+  process before Enter on the reviewed line.
+- **Paths audited:**
+  - In the plugin: the proposal goes onto the line with `print -z`, which runs nothing. Down runs
+    `ush explain`, which runs nothing either. Up, Esc and Ctrl-C only edit or leave the line, and
+    a new `// …` over the proposal is a new request. `preexec`, which records the run, only sees
+    lines the user accepted.
+  - In the `ush>` session: the proposal is pre-filled in `vared`; only an accepted line reaches
+    `run_explicit`.
+  - In propose mode ush offers the model only `propose_command`. Without the plugin, ush prints
+    the proposal.
+  - Ctrl-N runs the line by design (notes on its output) and is the user's key, like Enter.
+  - No path ran a proposal early.
+- **Tests:**
+  - `ZshProposeTest.test_a_proposal_runs_only_on_enter`: for a captured and an interactive
+    proposal of `touch mark`, Down, Up, Esc, Ctrl-C and `// …` over it leave no file, and `//`
+    hears that nothing ran; then Enter creates it.
+  - `SessionExplainTest.test_a_proposal_runs_only_on_enter`: in `ush>` against the mock API,
+    Down, Esc and `// never mind` leave no file, and the model hears "did not run the proposed
+    command"; then Enter runs it.
+  - `test_propose_mode_never_starts_a_process` (ushpy's agent): `execute.run_command`,
+    `run_script`, `run_session_command` and `subprocess.Popen` patched to fail. A proposal, a
+    request over it, and a continuation whose model calls `run_command` start nothing.
+  - Both pty tests run against ushgo through `test_zsh_plugin` in the conformance suite.
+- **Docs:** SEC's threat table has a row for consent; USER says so under Enter; GAPS Q18 answered
+  and resolved.
+- **Validation:** `./scripts/test.sh -p test_zsh_plugin.py -k runs_only_on_enter`: 2 tests OK;
+  `-p test_propose.py -k never_starts`: OK. The full suites run with the other items.
+
+### Deviations
+
+- **No code change:** the audit found nothing to fix.
+
+### Insights
+
+- The plugin's and the session's tests exercised Enter, but never the keys that must not run a
+  proposal. These tests now do.
+
+---
+
 ## 2026-11-11 08:32 — The interaction follow-ups of 2026-11-08 on main: TODO 2.35–2.39, 2.41
 
 TODO items: 2.35, 2.36, 2.37, 2.38, 2.39, 2.41 (new, open); GAPS Q18 (new). PR: not yet opened
@@ -121,6 +432,8 @@ Agent: Opus 5.5, reasoning: not exposed, subagents: none.
   `\e` run that widget and type the rest. Binding to `undefined-key` doesn't prevent that; any
   real widget does, `beep` included. Other unbound keys (Insert, F-keys, Ctrl-arrows in some
   terminals) still behave that way on a proposal and in the session.
+
+---
 
 ## 2026-11-11 07:44 — No 0.2.4: Homebrew's Go is now 1.27.4
 

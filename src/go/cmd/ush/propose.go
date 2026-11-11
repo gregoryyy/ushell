@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -17,7 +18,7 @@ import (
 func newHistory(id config.Identity) *history.History { return history.New(id.StateDir()) }
 
 // proposeStep is one step of propose mode: send the request (or what ran), then hand over the
-// proposal. done is false when `//` has nothing to continue, which opens a session instead.
+// proposal. done is false when `//` has no conversation to continue, which opens a session instead.
 func proposeStep(a *agent.Agent, term *ui.Terminal, id config.Identity, settings config.Settings,
 	options agent.Options, ov overrides, request, piped string, stop *interrupts) (int, bool, error) {
 	dir := handoff.Dir(id.UID, id.IsRoot(), os.Getenv)
@@ -30,8 +31,11 @@ func proposeStep(a *agent.Agent, term *ui.Terminal, id config.Identity, settings
 	} else if saved := sessions.Load(); saved != nil {
 		a.Restore(saved)
 	}
-	if request == "" && piped == "" && a.Proposal == nil {
-		return 0, false, nil
+	if status, bad := noSuchStep(a, request, term); bad {
+		return status, true, nil
+	}
+	if request == "" && piped == "" && a.Proposal == nil && a.Question == nil && len(a.Messages) == 0 {
+		return 0, false, nil // nothing to continue or go on with (TODO 2.41)
 	}
 	banner(term, id, settings, options)
 	if piped != "" {
@@ -41,10 +45,26 @@ func proposeStep(a *agent.Agent, term *ui.Terminal, id config.Identity, settings
 	if dir != "" && a.Proposal != nil {
 		ran = handoff.TakeRan(dir, settings.OutputLimit)
 	}
-	entry := a.Ask(stop.begin(), request, ran, dir != "")
+	ask := a.Ask
+	if options.Research {
+		ask = a.Research
+	}
+	entry := ask(stop.begin(), request, ran, dir != "")
 	stop.end()
 	if err := sessions.Save(a.State()); err != nil {
 		term.Warn("could not save the conversation: " + err.Error())
+	}
+	if entry.Outcome == "asked" {
+		if dir != "" {
+			if err := handoff.WriteQuestion(dir); err == nil {
+				term.Info("answer on your command line: // TEXT")
+				return 0, true, nil
+			} else {
+				term.Warn("could not put // on your command line: " + err.Error())
+			}
+		}
+		term.Info("answer with `ush //TEXT`")
+		return 0, true, nil
 	}
 	if entry.Outcome != "proposed" || a.Proposal == nil {
 		switch entry.Outcome {
@@ -59,7 +79,7 @@ func proposeStep(a *agent.Agent, term *ui.Terminal, id config.Identity, settings
 		interactive, _ := a.Proposal["interactive"].(bool)
 		command, _ := a.Proposal["command"].(string)
 		if err := handoff.WriteProposal(dir, command, interactive); err == nil {
-			term.Info("on your command line: Enter runs it, or edit it first · then // continues")
+			term.Info("on your command line: Enter runs it, or edit it first · then // continues · // TEXT instead asks")
 			return 0, true, nil
 		} else {
 			term.Warn("could not put it on your command line: " + err.Error())
@@ -76,6 +96,22 @@ func proposeStep(a *agent.Agent, term *ui.Terminal, id config.Identity, settings
 	}
 	term.Info("to get it on your command line, add the zsh plugin to ~/.zshrc and open a new terminal" + where)
 	return 0, true, nil
+}
+
+// noSuchStep: `//N` names a step the model didn't offer (TODO 2.41); say so instead of sending it.
+func noSuchStep(a *agent.Agent, request string, term *ui.Terminal) (int, bool) {
+	if !agent.Step.MatchString(request) || a.HasStep(request) {
+		return 0, false
+	}
+	hint := "; // TEXT asks"
+	switch offered := a.Offered(); {
+	case offered > 1:
+		hint = fmt.Sprintf("; //1…//%d picks one", offered)
+	case offered == 1:
+		hint = "; //1 picks it"
+	}
+	term.Error("no step " + request + " was offered" + hint)
+	return 2, true
 }
 
 // pluginPath is the installed zsh plugin: PREFIX/lib/ush, or ~/.local/share/ush for a user install.
@@ -96,7 +132,9 @@ func pluginPath() string {
 
 func banner(term *ui.Terminal, id config.Identity, settings config.Settings, options agent.Options) {
 	parts := []string{"ush · " + settings.ActiveModel()}
-	if options.Propose {
+	if options.Research {
+		parts = append(parts, "research, runs and proposes nothing")
+	} else if options.Propose {
 		parts = append(parts, "proposes, you run")
 	}
 	if id.IsRoot() {
@@ -167,11 +205,14 @@ func session(a *agent.Agent, term *ui.Terminal, factory *providerFactory, follow
 	case followUp:
 		term.Info("follow up with // QUESTION, run a command, or press Enter to finish")
 	case a.Options.Propose:
-		term.Info("// REQUEST asks · proposals appear at the prompt: Enter runs, // continues · exit or Ctrl-D ends")
+		term.Info("// REQUEST asks · proposals appear at the prompt: Enter runs, // continues, // TEXT instead asks · exit or Ctrl-D ends")
 	default:
 		term.Info("// REQUEST asks · other lines run as commands · exit or Ctrl-D ends")
 	}
 	offer := ""
+	if a.Question != nil {
+		offer = "// " // answer the model's question (TODO 2.35)
+	}
 	for {
 		stop.take()
 		line, ok := term.ReadLine("ush> ", offer, true)
@@ -196,7 +237,15 @@ func session(a *agent.Agent, term *ui.Terminal, factory *providerFactory, follow
 		}
 		if strings.HasPrefix(line, "//") {
 			request := strings.TrimSpace(line[2:])
-			if request == "" && a.Proposal == nil {
+			ask := a.Ask
+			research := strings.HasPrefix(request, "?") // `//? TEXT` (TODO 2.38)
+			if research {
+				request, ask = strings.TrimSpace(request[1:]), a.Research
+			}
+			if request == "" && (research || len(a.Messages) == 0) {
+				continue
+			}
+			if _, bad := noSuchStep(a, request, term); bad {
 				continue
 			}
 			secrets, err := factory.secrets()
@@ -205,10 +254,12 @@ func session(a *agent.Agent, term *ui.Terminal, factory *providerFactory, follow
 				continue
 			}
 			a.Secrets = secrets
-			a.Ask(stop.begin(), request, nil, true)
+			ask(stop.begin(), request, nil, true)
 			stop.end()
 			if a.Proposal != nil {
 				offer, _ = a.Proposal["command"].(string)
+			} else if a.Question != nil {
+				offer = "// " // the model asked: the answer goes at the `//` level (TODO 2.35)
 			}
 		} else {
 			a.RunExplicit(stop.begin(), line)

@@ -10,13 +10,13 @@ from dataclasses import dataclass
 from typing import Callable, Optional
 
 from . import __version__, execute, notes
-from .agent import Agent, Options, os_name
+from .agent import STEP, Agent, Options, os_name
 from .check import Checker
-from .config import (EFFORTS, PROVIDERS, ConfigError, Identity, KeyStore, Settings, path_risks,
+from .config import (EFFORTS, PROVIDERS, THINKING, ConfigError, Identity, KeyStore, Settings, path_risks,
                      apply_environment, check_ollama_url, identity, load_settings, mask,
                      save_settings)
 from .handoff import (Explanations, Sessions, handoff_dir, last_ran, session_key, take_ran,
-                      write_proposal)
+                      write_proposal, write_question)
 from .history import History, Step
 from .policy import classify
 from .provider import (API_URL, AnthropicProvider, OllamaProvider, Provider, ProviderError,
@@ -31,13 +31,17 @@ ush, the you shell: ask in natural language, get the commands that answer it.
 
 usage:
   ush [OPTIONS] //REQUEST...   propose a command for your command line, or answer
-  ush [OPTIONS] //             continue: send what you ran, get the next proposal
+  ush [OPTIONS] //             continue: send what you ran, get the next proposal;
+                               after an answer, go on with the next step
+  ush [OPTIONS] //N            pick next step N that the model offered (1 to 3)
   ush explain COMMAND...       explain a command line with the model, without running it
                                (with the plugin: Down on a proposal)
   ush notes [INSTRUCTION] FILE...
                                notes on files or piped input with the model, e.g.
                                ush notes 'any errors?' app.log (with the plugin:
                                Ctrl-N, also on a command's output)
+  ush research TEXT...         research only: the model compares the options and
+                               proposes and runs nothing (also: //? TEXT)
   ush [OPTIONS]                start a session
   ush ai configure [--file]    set the provider (Anthropic or a local Ollama), API key
                                (keychain on macOS), model, and effort
@@ -60,6 +64,8 @@ options:
   -m, --model MODEL  model for this run (default from `ush ai configure`)
   -e, --effort LEVEL low, medium, high, xhigh, or max
   -k, --checker MODEL checker for this run: claude-haiku-5-5, qwen3.5:4b, or off
+      --no-thinking  hide the model's thinking and progress for this run
+                     (--thinking shows it; the default from `ush ai configure`)
 
 By default ush runs nothing: it proposes one command at a time. With the zsh
 plugin the proposal lands on your command line; run it with Enter, edit it, or
@@ -73,8 +79,8 @@ Requests and command output (with secrets redacted) are sent to the configured
 AI provider; with a local Ollama model they stay on this machine. A checker
 model, if configured, judges each proposed command against your requests only;
 what it flags gets a warning, or needs your approval in agent mode.
-USH_PROVIDER, USH_MODEL, USH_CHECKER, and USH_OLLAMA_URL override the settings
-(not as root).
+USH_PROVIDER, USH_MODEL, USH_CHECKER, USH_THINKING, and USH_OLLAMA_URL override
+the settings (not as root).
 
 With the zsh plugin, `ush //...` and `// ...` need no quoting:
   source src/shell/ush.plugin.zsh
@@ -199,6 +205,9 @@ def _main(argv: list[str], ui: Terminal) -> int:
         settings.set_checker(overrides["checker"])
     if "mode" in overrides:
         settings.set_mode(overrides["mode"])
+    if "thinking" in overrides:
+        settings.set_thinking(overrides["thinking"])
+    ui.thinking = settings.thinking == "show"
     keys = KeyStore(ident)
     history = History(ident.state_dir())
 
@@ -214,11 +223,18 @@ def _main(argv: list[str], ui: Terminal) -> int:
         return _notes(rest[1:], ui, ident, settings, keys, options)
     if rest and rest[0] == "replay":
         return _replay(rest[1:], ui, history, settings, options)
+    if rest and rest[0] == "research":
+        words = rest[1:][1:] if rest[1:2] == ["--"] else rest[1:]
+        rest = ["//?", *words]
     if rest and not rest[0].startswith("//"):
         ui.error(f"unknown command {rest[0]!r}; requests start with //, see `ush help`")
         return 2
 
     request = " ".join(rest)[2:].strip() if rest else ""
+    if request.startswith("?"):   # `//? TEXT`: research only (TODO 2.38)
+        options.research, request = True, request[1:].strip()
+        if not request:
+            raise ConfigError("usage: ush research TEXT..., or //? TEXT")
     continuing = bool(rest) and not request     # `ush //`: continue after a proposal
     piped = None
     if not sys.stdin.isatty() and (request or continuing):
@@ -243,10 +259,13 @@ def _main(argv: list[str], ui: Terminal) -> int:
             saved = sessions.load()
             if saved:
                 agent.restore(saved)
-        if request or piped or agent.proposal is not None:
+        if _no_such_step(agent, request, ui):
+            return 2
+        if (request or piped or agent.proposal is not None or agent.question is not None or
+                agent.messages):   # `//` alone goes on (TODO 2.41)
             return _propose(agent, ui, ident, settings, options, request, piped, handoff,
                             sessions)
-        # `//` with nothing to continue opens a session, as before.
+        # `//` with no conversation in this shell opens a session, as before.
     _banner(ui, ident, settings, options)
     if piped:
         agent.add_context("Input piped to ush on stdin:", piped)
@@ -256,10 +275,10 @@ def _main(argv: list[str], ui: Terminal) -> int:
             return 2
         _session(agent, ui, factory, follow_up=False)
         return 0
-    entry = agent.ask(request)
+    entry = agent.ask(request, research=options.research)
     if not options.once and ui.can_prompt:
         _session(agent, ui, factory, follow_up=True)
-    return {"answered": 0, "dry-run": 0, "aborted": 130}.get(entry.outcome, 1)
+    return {"answered": 0, "asked": 0, "dry-run": 0, "aborted": 130}.get(entry.outcome, 1)
 
 
 def _propose(agent: Agent, ui: Terminal, ident: Identity, settings: Settings, options: Options,
@@ -272,17 +291,28 @@ def _propose(agent: Agent, ui: Terminal, ident: Identity, settings: Settings, op
     ran = None
     if handoff and agent.proposal is not None:
         ran = take_ran(handoff, settings.output_limit)
-    entry = agent.ask(request, ran, tracked=handoff is not None)
+    entry = agent.ask(request, ran, tracked=handoff is not None, research=options.research)
     try:
         sessions.save(agent.state())
     except OSError as exc:
         ui.warn(f"could not save the conversation: {exc}")
+    if entry.outcome == "asked":
+        if handoff:
+            try:
+                write_question(handoff)
+                ui.info("answer on your command line: // TEXT")
+                return 0
+            except OSError as exc:
+                ui.warn(f"could not put // on your command line: {exc}")
+        ui.info("answer with `ush //TEXT`")
+        return 0
     if entry.outcome != "proposed" or agent.proposal is None:
         return {"answered": 0, "aborted": 130}.get(entry.outcome, 1)
     if handoff:
         try:
             write_proposal(handoff, agent.proposal["command"], agent.proposal["interactive"])
-            ui.info("on your command line: Enter runs it, or edit it first · then // continues")
+            ui.info("on your command line: Enter runs it, or edit it first · then // continues · "
+                    "// TEXT instead asks")
             return 0
         except OSError as exc:
             ui.warn(f"could not put it on your command line: {exc}")
@@ -294,6 +324,17 @@ def _propose(agent: Agent, ui: Terminal, ident: Identity, settings: Settings, op
     ui.info("to get it on your command line, add the zsh plugin to ~/.zshrc and open a new "
             "terminal" + (f":\n  source '{plugin}'" if plugin else " (see `ush help`)"))
     return 0
+
+
+def _no_such_step(agent: Agent, request: str, ui: Terminal) -> bool:
+    """`//N` names a step the model didn't offer (TODO 2.41): say so instead of sending it."""
+    if not STEP.match(request) or agent.has_step(request):
+        return False
+    offered = len(agent.next["steps"]) if agent.next else 0
+    ui.error(f"no step {request} was offered" +
+             (f"; //1…//{offered} picks one" if offered > 1 else "; //1 picks it" if offered else
+              "; // TEXT asks"))
+    return True
 
 
 def _plugin_path() -> str:
@@ -526,6 +567,8 @@ def _parse_options(argv: list[str]) -> tuple[Options, dict, list[str]]:
             overrides["mode"] = "run"
         elif a in ("-N", "--new"):
             overrides["new"] = True
+        elif a in ("--thinking", "--no-thinking"):
+            overrides["thinking"] = "show" if a == "--thinking" else "hide"
         elif a in ("-m", "--model", "-e", "--effort", "-k", "--checker") and i + 1 < len(argv):
             value = argv[i + 1]
             if a in ("-e", "--effort"):
@@ -545,7 +588,9 @@ def _parse_options(argv: list[str]) -> tuple[Options, dict, list[str]]:
 
 def _banner(ui: Terminal, ident: Identity, settings: Settings, options: Options) -> None:
     parts = [f"ush · {settings.active_model}"]
-    if options.propose:
+    if options.research:
+        parts.append("research, runs and proposes nothing")
+    elif options.propose:
         parts.append("proposes, you run")
     if ident.is_root:
         parts.append("as root" + (f" (for {ident.owner_name})" if ident.via_sudo else ""))
@@ -584,11 +629,11 @@ def _session(agent: Agent, ui: Terminal, factory: ProviderFactory, follow_up: bo
     if follow_up:
         ui.info("follow up with // QUESTION, run a command, or press Enter to finish")
     elif agent.options.propose:
-        ui.info("// REQUEST asks · proposals appear at the prompt: Enter runs, // continues · "
-                "exit or Ctrl-D ends")
+        ui.info("// REQUEST asks · proposals appear at the prompt: Enter runs, // continues, "
+                "// TEXT instead asks · exit or Ctrl-D ends")
     else:
         ui.info("// REQUEST asks · other lines run as commands · exit or Ctrl-D ends")
-    offer = ""
+    offer = "// " if agent.question is not None else ""   # answer the model's question
     while True:
         try:
             line = ui.read_line("ush> ", prefill=offer, session=True)
@@ -609,16 +654,23 @@ def _session(agent: Agent, ui: Terminal, factory: ProviderFactory, follow_up: bo
             break
         if line.startswith("//"):
             request = line[2:].strip()
-            if not request and agent.proposal is None:
+            research = request.startswith("?")   # `//? TEXT` (TODO 2.38)
+            if research:
+                request = request[1:].strip()
+            if not request and (research or not agent.messages):
+                continue
+            if _no_such_step(agent, request, ui):
                 continue
             try:
                 agent.secrets = factory.secrets()
             except ConfigError as exc:
                 ui.error(str(exc))
                 continue
-            agent.ask(request)
+            agent.ask(request, research=research)
             if agent.proposal is not None:
                 offer = agent.proposal["command"]
+            elif agent.question is not None:
+                offer = "// "   # the model asked: the answer goes at the `//` level (TODO 2.35)
         else:
             agent.run_explicit(line)
 
@@ -630,7 +682,10 @@ def _session(agent: Agent, ui: Terminal, factory: ProviderFactory, follow_up: bo
 def _ask(ui: Terminal, prompt: str, apply: Callable[[str], None]) -> None:
     """Ask until the answer is empty (keep the current value) or `apply` accepts it."""
     while True:
-        answer = input(prompt).strip()
+        try:
+            answer = input(prompt).strip()
+        except EOFError:   # no more answers: keep the current value
+            return
         if not answer:
             return
         try:
@@ -681,6 +736,8 @@ def _ai(args: list[str], ui: Terminal, ident: Identity, settings: Settings,
         _ask(ui, f"checker model, or off [{settings.checker or 'off'}]: ", set_checker)
         if settings.checker:
             ui.info(f"checker: {settings.checker_model} through {settings.checker_provider}")
+        _ask(ui, f"the model's thinking: {'/'.join(THINKING)} [{settings.thinking}]: ",
+             settings.set_thinking)
         ui.info(f"settings saved to {save_settings(ident, settings)}")
         return 0
     if action == "status":
@@ -700,6 +757,8 @@ def _ai(args: list[str], ui: Terminal, ident: Identity, settings: Settings,
         print("mode:      " + ("propose: ush proposes commands, you run them" if
                                 settings.mode == "propose" else "run: ush runs commands (agent)"))
         print(f"checker:   {checker_disclosure(settings) if settings.checker else 'off'}")
+        print("thinking:  " + ("shown" if settings.thinking == "show" else
+                                "hidden (the model still thinks; only the display is off)"))
         print(f"allow:     {len(settings.allow)} rule(s), see `ush allow`" +
               (" (not used as root)" if ident.is_root and settings.allow else ""))
         print(f"user:      {ident.name}" + (f" (key and settings of {ident.owner_name})"

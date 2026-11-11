@@ -318,6 +318,9 @@ enough, or as if a proposal ran without it.
 - **Alternative B:** ask again only when the command isn't read-only by ush's policy.
 - **Also:** if you saw a proposal run without pressing Enter, which request was it, and in the
   plugin or the session? That would be a bug to fix first, whatever the answer here.
+- **Answer** (2026-11-11 08:45, Gregor Heinrich): "Enter on the line (Recommended)".
+- **Resolved:** TODO 2.39 is the audit, with tests in both implementations; [SEC](SEC.md) states
+  the confirmation in its threat table, [USER](USER.md) under the proposal's keys.
 
 ## Assumptions
 

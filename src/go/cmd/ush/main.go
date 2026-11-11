@@ -37,13 +37,17 @@ var usage = `ush, the you shell: ask in natural language, get the commands that 
 
 usage:
   ush [OPTIONS] //REQUEST...   propose a command for your command line, or answer
-  ush [OPTIONS] //             continue: send what you ran, get the next proposal
+  ush [OPTIONS] //             continue: send what you ran, get the next proposal;
+                               after an answer, go on with the next step
+  ush [OPTIONS] //N            pick next step N that the model offered (1 to 3)
   ush explain COMMAND...       explain a command line with the model, without running it
                                (with the plugin: Down on a proposal)
   ush notes [INSTRUCTION] FILE...
                                notes on files or piped input with the model, e.g.
                                ush notes 'any errors?' app.log (with the plugin:
                                Ctrl-N, also on a command's output)
+  ush research TEXT...         research only: the model compares the options and
+                               proposes and runs nothing (also: //? TEXT)
   ush [OPTIONS]                start a session
   ush ai configure [--file]    set the provider (Anthropic or a local Ollama), API key
                                (keychain on macOS), model, and effort
@@ -66,6 +70,8 @@ options:
   -m, --model MODEL  model for this run (default from ` + "`" + `ush ai configure` + "`" + `)
   -e, --effort LEVEL low, medium, high, xhigh, or max
   -k, --checker MODEL checker for this run: claude-haiku-5-5, qwen3.5:4b, or off
+      --no-thinking  hide the model's thinking and progress for this run
+                     (--thinking shows it; the default from ` + "`" + `ush ai configure` + "`" + `)
 
 By default ush runs nothing: it proposes one command at a time. With the zsh
 plugin the proposal lands on your command line; run it with Enter, edit it, or
@@ -79,8 +85,8 @@ Requests and command output (with secrets redacted) are sent to the configured
 AI provider; with a local Ollama model they stay on this machine. A checker
 model, if configured, judges each proposed command against your requests only;
 what it flags gets a warning, or needs your approval in agent mode.
-USH_PROVIDER, USH_MODEL, USH_CHECKER, and USH_OLLAMA_URL override the settings
-(not as root).
+USH_PROVIDER, USH_MODEL, USH_CHECKER, USH_THINKING, and USH_OLLAMA_URL override
+the settings (not as root).
 
 With the zsh plugin, ` + "`" + `ush //...` + "`" + ` and ` + "`" + `// ...` + "`" + ` need no quoting:
   source src/shell/ush.plugin.zsh
@@ -112,9 +118,9 @@ func run(args []string, stdout, stderr io.Writer) int {
 }
 
 type overrides struct {
-	model, effort, checker, mode string
-	newConversation              bool
-	set                          map[string]bool
+	model, effort, checker, mode, thinking string
+	newConversation                        bool
+	set                                    map[string]bool
 }
 
 func parseOptions(argv []string) (agent.Options, overrides, []string, error) {
@@ -136,6 +142,11 @@ func parseOptions(argv []string) (agent.Options, overrides, []string, error) {
 			ov.mode, ov.set["mode"] = "run", true
 		case a == "-N" || a == "--new":
 			ov.newConversation = true
+		case a == "--thinking" || a == "--no-thinking":
+			ov.thinking, ov.set["thinking"] = "show", true
+			if a == "--no-thinking" {
+				ov.thinking = "hide"
+			}
 		case (a == "-m" || a == "--model" || a == "-e" || a == "--effort" || a == "-k" || a == "--checker") && i+1 < len(argv):
 			value := argv[i+1]
 			switch a {
@@ -198,6 +209,12 @@ func realMain(argv []string, term *ui.Terminal) (int, error) {
 			return 2, err
 		}
 	}
+	if ov.set["thinking"] {
+		if err := settings.SetThinking(ov.thinking); err != nil {
+			return 2, err
+		}
+	}
+	term.Thinking = settings.Thinking == "show"
 	keys := config.NewKeyStore(id)
 	hist := newHistory(id)
 	if len(rest) > 0 {
@@ -214,6 +231,12 @@ func realMain(argv []string, term *ui.Terminal) (int, error) {
 			return notesCommand(rest[1:], term, id, settings, keys, options)
 		case "replay":
 			return replayCommand(rest[1:], term, id, hist, settings, options)
+		case "research":
+			words := rest[1:]
+			if len(words) > 0 && words[0] == "--" {
+				words = words[1:]
+			}
+			rest = append([]string{"//?"}, words...)
 		}
 		if !strings.HasPrefix(rest[0], "//") {
 			return 2, usageError("unknown command %s; requests start with //, see `ush help`", pyRepr(rest[0]))
@@ -222,6 +245,12 @@ func realMain(argv []string, term *ui.Terminal) (int, error) {
 	request := ""
 	if len(rest) > 0 {
 		request = strings.TrimSpace(strings.Join(rest, " ")[2:])
+	}
+	if strings.HasPrefix(request, "?") { // `//? TEXT`: research only (TODO 2.38)
+		options.Research, request = true, strings.TrimSpace(request[1:])
+		if request == "" {
+			return 2, usageError("usage: ush research TEXT..., or //? TEXT")
+		}
 	}
 	continuing := len(rest) > 0 && request == "" // `ush //`: continue after a proposal
 	piped := ""
@@ -248,7 +277,7 @@ func realMain(argv []string, term *ui.Terminal) (int, error) {
 		if done || err != nil {
 			return status, err
 		}
-		// `//` with nothing to continue opens a session, as before.
+		// `//` with no conversation in this shell opens a session, as before.
 	}
 	banner(term, id, settings, options)
 	if piped != "" {
@@ -261,13 +290,17 @@ func realMain(argv []string, term *ui.Terminal) (int, error) {
 		session(a, term, factory, false, stop)
 		return 0, nil
 	}
-	entry := a.Ask(stop.begin(), request, nil, true)
+	ask := a.Ask
+	if options.Research {
+		ask = a.Research
+	}
+	entry := ask(stop.begin(), request, nil, true)
 	stop.end()
 	if !options.Once && term.CanPrompt() {
 		session(a, term, factory, true, stop)
 	}
 	switch entry.Outcome {
-	case "answered", "dry-run":
+	case "answered", "asked", "dry-run":
 		return 0, nil
 	case "aborted":
 		return 130, nil

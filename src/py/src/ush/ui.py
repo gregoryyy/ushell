@@ -53,6 +53,7 @@ class Terminal:
         self._answer_open = False
         self._status_open = False
         self.verbose = False   # -v: explanations from the line editor in full
+        self.thinking = True   # show the model's thinking and progress (TODO 2.37)
         self.history: list[str] = []   # session lines, for Up in the line editor
 
     # -- styling -----------------------------------------------------------
@@ -81,6 +82,9 @@ class Terminal:
         self._emit(self._style("31", "ush: " + visible(text)))
 
     def progress(self, text: str) -> None:
+        """The model's thinking or progress, unless hidden: only the display changes."""
+        if not self.thinking:
+            return
         self._emit(self.dim("… " + visible(" ".join(text.split()))))
 
     def answer(self, chunk: str) -> None:
@@ -110,6 +114,17 @@ class Terminal:
                    (self.dim(f"   # {visible(purpose)}") if purpose else ""))
         for note in notes:
             self._emit(self._style("33", f"  {visible(note)}"))
+
+    def show_question(self, question: str) -> None:
+        """The model asks the user (TODO 2.35): a `//` line, the level the answer goes at."""
+        self._emit(self._style("36", "// ") + self.bold(visible(question)))
+
+    def show_next(self, steps: list[str]) -> None:
+        """The next steps the model offers (TODO 2.41): `//N` picks one, `//` goes on."""
+        for n, step in enumerate(steps, 1):
+            self._emit(self._style("36", f"//{n} ") + visible(step))
+        self._emit(self.dim(f"// goes on · //1…//{len(steps)} picks a step" if len(steps) > 1
+                            else "// goes on"))
 
     def show_script(self, language: str, source: str, purpose: str, note: str) -> None:
         self._emit(self._style("36", f"$ {language} script") +

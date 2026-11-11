@@ -35,6 +35,7 @@ var (
 	Efforts        = []string{"low", "medium", "high", "xhigh", "max"}
 	Providers      = providers.Names()          // the provider table
 	Modes          = []string{"propose", "run"} // ARCH: propose mode (default) and agent mode
+	Thinking       = []string{"show", "hide"}   // the model's thinking in the terminal (TODO 2.37)
 	anthropicModel = providers.AnthropicModel
 	ollamaModel    = providers.OllamaModel
 )
@@ -107,6 +108,7 @@ type Settings struct {
 	OllamaURL      string   `json:"ollama_url"`
 	OllamaModel    string   `json:"ollama_model"` // no default: a model the user has pulled
 	Checker        string   `json:"checker"`      // "provider:model" of the checker; "" is off
+	Thinking       string   `json:"thinking"`     // show or hide the model's thinking; what is sent is the same
 	Allow          []string `json:"allow"`        // the user's allow rules
 	MaxSteps       int      `json:"max_steps"`
 	CommandTimeout int      `json:"command_timeout"` // default seconds per command
@@ -118,7 +120,7 @@ type Settings struct {
 // Defaults are ushpy's.
 func Defaults() Settings {
 	return Settings{Mode: "propose", Provider: "anthropic", Model: DefaultModel, Effort: "medium",
-		OllamaURL: OllamaURL, Allow: []string{}, MaxSteps: 30, CommandTimeout: 120,
+		Thinking: "show", OllamaURL: OllamaURL, Allow: []string{}, MaxSteps: 30, CommandTimeout: 120,
 		MaxTimeout: 900, OutputLimit: 32_000, ShowLines: 12}
 }
 
@@ -153,6 +155,9 @@ func FromMap(data map[string]any, parseRule func(string) ([]string, error)) (Set
 		if err := s.SetChecker(v); err != nil {
 			return s, err
 		}
+	}
+	if v, ok := str("thinking"); ok && contains(Thinking, v) {
+		s.Thinking = v
 	}
 	if raw, present := data["allow"]; present && raw != nil {
 		list, ok := raw.([]any)
@@ -200,6 +205,15 @@ func (s *Settings) Endpoint(provider string) string {
 		return s.OllamaURL
 	}
 	return spec.URL
+}
+
+// SetThinking shows or hides the model's thinking.
+func (s *Settings) SetThinking(value string) error {
+	if !contains(Thinking, value) {
+		return Errorf("thinking must be one of %s", strings.Join(Thinking, ", "))
+	}
+	s.Thinking = value
+	return nil
 }
 
 func (s *Settings) SetMode(mode string) error {
@@ -316,7 +330,7 @@ func CheckOllamaURL(raw string) (string, error) {
 	return u.Scheme + "://" + u.Host, nil
 }
 
-// ApplyEnvironment: USH_PROVIDER, USH_OLLAMA_URL, USH_MODEL and USH_CHECKER override the
+// ApplyEnvironment: USH_PROVIDER, USH_OLLAMA_URL, USH_MODEL, USH_CHECKER and USH_THINKING override the
 // settings file, except as root.
 func ApplyEnvironment(s *Settings, id Identity, getenv func(string) string) error {
 	if id.IsRoot() {
@@ -341,6 +355,11 @@ func ApplyEnvironment(s *Settings, id Identity, getenv func(string) string) erro
 	}
 	if v := getenv("USH_CHECKER"); v != "" {
 		if err := s.SetChecker(v); err != nil {
+			return err
+		}
+	}
+	if v := getenv("USH_THINKING"); v != "" {
+		if err := s.SetThinking(strings.TrimSpace(v)); err != nil {
 			return err
 		}
 	}

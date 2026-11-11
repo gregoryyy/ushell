@@ -3,10 +3,11 @@
 import json
 import os
 import time
+from unittest import mock
 
 from helpers import SYNTHETIC_KEY, TempDirTest, fake_identity, text
 from test_agent import assert_every_tool_use_answered
-from ush.agent import PROPOSE_TOOL
+from ush.agent import ASK_TOOL, NEXT_TOOL, PROPOSE_TOOL, SCRIPT_TOOL, script_line
 from ush.handoff import (EXPLANATIONS_KEPT, SESSION_TTL, Explanations, Ran, Sessions,
                          handoff_dir, last_ran, session_key, take_ran, write_proposal)
 
@@ -21,6 +22,120 @@ def propose_use(command: str, effect: str = "read", interactive: bool = False,
 class ProposeAgentTest(TempDirTest):
     def make(self, turns):
         return self.make_agent(turns, propose=True)
+
+    def test_the_model_asks_back_and_the_answer_is_its_result(self):
+        # TODO 2.35: ask_user shows `// question`; the next request is the answer, as the tool's
+        # result. Another call in the same turn waits for it; nothing is proposed meanwhile.
+        ask = {"type": "tool_use", "id": "q1", "name": "ask_user",
+               "input": {"question": "Which   directory:\nbuild or dist?"}}
+        agent, provider, ui, _ = self.make([
+            [text("I need to know one thing."), ask, propose_use("rm -rf build", ident="p0")],
+            [propose_use("rm -rf build", effect="change")],
+        ])
+        entry = agent.ask("clean up")
+        self.assertEqual(entry.outcome, "asked")
+        self.assertIsNone(agent.proposal)
+        self.assertIn("// Which directory: build or dist?", ui.err.getvalue())
+        self.assertEqual(agent.question, {"id": "q1", "question": "Which directory: build or dist?"})
+        saved = agent.state()
+        again, provider2, _, _ = self.make([[propose_use("rm -rf build", effect="change")]])
+        again.restore(saved)
+        self.assertEqual(again.ask("build").outcome, "proposed")
+        sent = provider2.requests[0][-1]["content"]
+        self.assertEqual([r["tool_use_id"] for r in sent], ["q1", "p0"])
+        self.assertEqual(sent[0]["content"], "The user answers: build")
+        self.assertIn("wait for the answer", sent[1]["content"])
+        self.assertEqual(len(sent), 2)  # the answer isn't sent twice as text
+        assert_every_tool_use_answered(self, provider2.requests[0])
+
+    def test_no_answer_and_bad_questions(self):
+        agent, provider, _, _ = self.make([
+            [{"type": "tool_use", "id": "q1", "name": "ask_user", "input": {"question": "Which?"}}],
+            [text("Then I'll take build.")],
+        ])
+        agent.ask("clean up")
+        self.assertEqual(agent.ask("").outcome, "answered")   # `//` alone: no answer
+        self.assertIn("did not answer", provider.requests[1][-1]["content"][0]["content"])
+        for question, problem in (("  ", "empty question"), ("ok\x1b[2Jx", "control characters")):
+            bad, prov, _, _ = self.make([
+                [{"type": "tool_use", "id": "q1", "name": "ask_user", "input": {"question": question}}],
+                [text("fine")],
+            ])
+            self.assertEqual(bad.ask("x").outcome, "answered")
+            self.assertIn(problem, prov.requests[1][-1]["content"][0]["content"])
+
+    def test_bad_next_steps_are_refused(self):
+        for steps, problem in (([], "one to 3"), (["a", "b", "c", "d"], "one to 3"), (["  "], "short phrases"),
+                               (["ok\x1b[2J"], "control characters"), ("restart", "must be a list")):
+            agent, provider, ui, _ = self.make([
+                [{"type": "tool_use", "id": "n1", "name": "offer_next", "input": {"steps": steps}}],
+                [text("fine")],
+            ])
+            self.assertEqual(agent.ask("x").outcome, "answered")
+            self.assertIsNone(agent.next)
+            self.assertIn(problem, provider.requests[1][-1]["content"][0]["content"], steps)
+            self.assertNotIn("//1", ui.err.getvalue())
+
+    def test_a_script_is_proposed_as_one_entry_for_the_command_line(self):
+        # TODO 2.36: the full source is shown, and the proposal is the source in a quoted
+        # here-document, run with `LANGUAGE -c`, so nothing in it is expanded and stdin stays
+        # the terminal. A source line equal to the end marker gets another marker.
+        source = "import os\nprint(os.getcwd())  # $HOME `x` 'q'\n"
+        agent, provider, ui, history = self.make([[{
+            "type": "tool_use", "id": "s1", "name": "propose_script",
+            "input": {"language": "python3", "source": source, "purpose": "where am I",
+                      "effect": "read", "interactive": False}}]])
+        self.assertEqual(agent.ask("where").outcome, "proposed")
+        expected = ("python3 -c \"$(cat <<'USH_EOF'\nimport os\nprint(os.getcwd())  # $HOME `x` 'q'"
+                    "\nUSH_EOF\n)\"")
+        self.assertEqual(agent.proposal["command"], expected)
+        err = ui.err.getvalue()
+        self.assertIn("python3 script", err)
+        self.assertIn("   2 │ print(os.getcwd())", err)
+        step = history.find("last").steps[0]
+        self.assertEqual((step.kind, step.language), ("proposal", "python3"))
+        tricky = script_line("sh", "echo a\nUSH_EOF\necho b")
+        marker = tricky.split("\n")[-2]
+        self.assertTrue(marker.startswith("USH_EOF_"))
+        self.assertEqual(tricky.split("\n")[0], f"sh -c \"$(cat <<'{marker}'")
+
+    def test_bad_scripts_are_refused(self):
+        for language, source, problem in (("perl", "print 1", "must be one of"),
+                                          ("sh", "  \n", "empty command"),
+                                          ("sh", "echo \x1b[2Jhidden", "control characters"),
+                                          ("sh", "echo a\r\necho b", "control characters")):
+            agent, provider, _, _ = self.make([
+                [{"type": "tool_use", "id": "s1", "name": "propose_script",
+                  "input": {"language": language, "source": source, "purpose": "x",
+                            "effect": "read", "interactive": False}}],
+                [text("fine")],
+            ])
+            self.assertEqual(agent.ask("x").outcome, "answered")
+            self.assertIsNone(agent.proposal)
+            self.assertIn(problem, provider.requests[1][-1]["content"][0]["content"], source)
+
+    def test_propose_mode_never_starts_a_process(self):
+        # TODO 2.39 (GAPS Q18): in propose mode the user runs every command, with Enter on their
+        # own command line; ush starts nothing, whatever the model sends or the user does next.
+        def refuse(*args, **kwargs):
+            raise AssertionError(f"ush started a process: {args}")
+        agent, provider, _, _ = self.make([
+            [propose_use("touch made", effect="change")],
+            [propose_use("rm -rf made", effect="change", ident="p2")],
+            [{"type": "tool_use", "id": "r1", "name": "run_command",
+              "input": {"command": "touch made", "purpose": "x", "effect": "change",
+                        "timeout_seconds": 5}}],
+            [text("done")],
+        ])
+        with mock.patch("ush.execute.run_command", refuse), \
+                mock.patch("ush.execute.run_script", refuse), \
+                mock.patch("ush.execute.run_session_command", refuse), \
+                mock.patch("subprocess.Popen", refuse):
+            self.assertEqual(agent.ask("make a file").outcome, "proposed")
+            self.assertEqual(agent.ask("something else instead").outcome, "proposed")
+            self.assertEqual(agent.ask("", None).outcome, "answered")  # run_command is refused
+        self.assertFalse(os.path.exists(os.path.join(self.tmp, "made")))
+        assert_every_tool_use_answered(self, provider.requests[-1])
 
     def test_a_proposal_is_shown_and_not_run(self):
         made = os.path.join(self.tmp, "made")
@@ -43,7 +158,7 @@ class ProposeAgentTest(TempDirTest):
         original = provider.turn
         provider.turn = lambda system, t, *a, **k: (tools.append(t), original(system, t, *a, **k))[1]
         agent.ask("hello")
-        self.assertEqual(tools, [[PROPOSE_TOOL]])
+        self.assertEqual(tools, [[PROPOSE_TOOL, SCRIPT_TOOL, ASK_TOOL, NEXT_TOOL]])
         self.assertIn("You do not run commands", agent.system)
 
     def test_unverified_read_is_marked(self):

@@ -157,8 +157,10 @@ what was measured. `ush replay` runs no checker, as it uses no AI.
 
 ```text
 ush [OPTIONS] //REQUEST...   propose a command for your command line, or answer
-ush [OPTIONS] //             continue with what you ran
+ush [OPTIONS] //             continue with what you ran, or go on with the next step
+ush [OPTIONS] //N            pick next step N the model offered
 ush explain COMMAND...       explain a command line with the model (Down on a proposal)
+ush research TEXT...         research only: compare the options, propose and run nothing (//? TEXT)
 ush [OPTIONS]                start a session
 ush ai configure [--file]    set the mode, provider, API key or Ollama URL, model, and effort
 ush ai status                show provider, model, key source, and paths
@@ -172,6 +174,7 @@ ush replay ID|last [-n]      run those commands again, without AI
 -1, --once      no follow-up questions               -v, --verbose  show complete output
 -m, --model M   model for this run                   -e, --effort L low … max
 -k, --checker M checker for this run (claude-haiku-5-5, llama3.2:3b, off)
+--no-thinking   hide the model's thinking (--thinking shows it)
 ```
 
 Piped input becomes context: `dmesg | tail -50 | ush //explain these errors`.
@@ -179,7 +182,7 @@ Without a terminal (cron, CI), propose mode prints the proposal; agent mode cann
 for approval, so it runs read-only commands only and declines the rest.
 
 Settings live in `~/.config/ush/config.json` (`mode`, `provider`, `model`, `effort`,
-`ollama_url`, `ollama_model`, `checker`, `allow`, `max_steps`, `command_timeout`, `max_timeout`,
+`ollama_url`, `ollama_model`, `checker`, `thinking`, `allow`, `max_steps`, `command_timeout`, `max_timeout`,
 `output_limit`, `show_lines`). The default model
 is `claude-opus-5-5` with effort `medium`. Refusals fall back server-side to a
 model Anthropic selects (`fallbacks: "default"`).

@@ -50,6 +50,7 @@ type Terminal struct {
 	Out, Err io.Writer
 	Color    bool
 	Verbose  bool     // -v: explanations from the line editor in full
+	Thinking bool     // show the model's thinking and progress (TODO 2.37)
 	History  []string // session lines, for Up in the line editor
 	UshArgv  []string // how the line editor runs `ush explain`
 	// Ask, if set, answers approval prompts instead of the terminal (tests).
@@ -65,7 +66,7 @@ type Terminal struct {
 func New() *Terminal {
 	self, _ := os.Executable()
 	return &Terminal{Out: os.Stdout, Err: os.Stderr, Color: IsTerminal(os.Stderr) && os.Getenv("NO_COLOR") == "",
-		UshArgv: []string{self}}
+		UshArgv: []string{self}, Thinking: true}
 }
 
 func (t *Terminal) style(code, text string) string {
@@ -89,6 +90,9 @@ func (t *Terminal) Error(text string) { t.emit(t.style("31", "ush: "+Visible(tex
 
 // Progress is a thinking note between tool calls.
 func (t *Terminal) Progress(text string) {
+	if !t.Thinking { // only the display changes
+		return
+	}
 	t.emit(t.dim("… " + Visible(strings.Join(strings.Fields(text), " "))))
 }
 
@@ -133,6 +137,23 @@ func (t *Terminal) ShowProposal(command, purpose string, notes []string) {
 	t.emit(line)
 	for _, n := range notes {
 		t.emit(t.style("33", "  "+Visible(n)))
+	}
+}
+
+// ShowQuestion: the model asks the user (TODO 2.35), as a `//` line, the level the answer goes at.
+func (t *Terminal) ShowQuestion(question string) {
+	t.emit(t.style("36", "// ") + t.bold(Visible(question)))
+}
+
+// ShowNext: the next steps the model offers (TODO 2.41); `//N` picks one, `//` goes on.
+func (t *Terminal) ShowNext(steps []string) {
+	for n, step := range steps {
+		t.emit(t.style("36", fmt.Sprintf("//%d ", n+1)) + Visible(step))
+	}
+	if len(steps) > 1 {
+		t.emit(t.dim(fmt.Sprintf("// goes on · //1…//%d picks a step", len(steps))))
+	} else {
+		t.emit(t.dim("// goes on"))
 	}
 }
 

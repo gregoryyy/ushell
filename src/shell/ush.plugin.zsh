@@ -10,7 +10,8 @@
 #
 # so ush receives it verbatim. The same goes for the command line after
 # `ush explain [-v]`: `ush explain find . -name *.log | xargs rm` explains that whole line,
-# unexpanded, and runs none of it. A command line given as one quoted word is left as it is. Under sudo, `ush` is replaced by its absolute path
+# unexpanded, and runs none of it. A command line given as one quoted word is left as it is.
+# `ush research TEXT` gets its text the same way, like `//? TEXT`. Under sudo, `ush` is replaced by its absolute path
 # because sudo's secure_path usually does not include the install directory.
 #
 # In propose mode, ush's proposal is put on the next command line, and what you then
@@ -41,6 +42,15 @@ _ush_rewrite() {
     words=(${(z)req})
     [[ $req == [\'\"]* ]] && (( $#words == 1 )) && return 1
     print -r -- "$lead${(q-)${USH_BIN:-ush}} explain${opts} -- ${(qq)req}"
+    return 0
+  fi
+  if [[ $line =~ '^([[:space:]]*)ush[[:space:]]+research[[:space:]]+(.*[^[:space:]].*)$' ]]; then
+    lead=$match[1] req=$match[2]
+    [[ $req == -- ]] && return 1
+    [[ $req =~ '^--[[:space:]]+(.*)$' ]] && req=$match[1]
+    words=(${(z)req})
+    [[ $req == [\'\"]* ]] && (( $#words == 1 )) && return 1
+    print -r -- "$lead${(q-)${USH_BIN:-ush}} research -- ${(qq)req}"
     return 0
   fi
   if [[ $line =~ '^([[:space:]]*)(sudo([[:space:]]+-[^[:space:]]+)*[[:space:]]+)?ush[[:space:]]+(//.*)$' ]]; then
@@ -80,6 +90,7 @@ _ush() {
     'replay:run the commands of an earlier request again, without AI'
     'explain:explain a command line with the model, without running it'
     'notes:notes on files or piped input with the model'
+    'research:compare the options with the model, propose and run nothing'
     'allow:list, add, or remove commands that may run without approval'
     'help:show usage'
   )
@@ -140,6 +151,8 @@ _ush_precmd() {
   command rm -f -- $_ush_dir/proposal
   _ush_mode=${content%%$'\n'*}
   print -rz -- "${content#*$'\n'}"
+  # ush asked a question (TODO 2.35): `// ` for the answer is text, not a proposal; no keys.
+  [[ $_ush_mode == ask ]] && return 0
   _ush_state=offered
   _ush_keys_bind
 }
