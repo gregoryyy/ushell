@@ -670,7 +670,16 @@ Until 2026-10-29: ushgo TODO 2.1–2.7.
   commit, the tag `v0.2.4`, the GitHub release with the four archives and `SHA256SUMS`, and the
   formula in the tap. Acceptance: the gate's results recorded in DONE; the published checksums
   verified after download. Done 2026-11-11 on 8da67d8 (DONE).
-- [ ] 5.11 0.3.0 (user, 2026-10-30: "for the next version 0.3.0, expand to bash, sh and other commonly
+- [ ] 5.14 0.3.0-rc1 (user, 2026-11-11: "then version bump can IMO be to 0.3.0", "for the 0.3.0-rc we
+  can keep testing it extensively as technical debt", "not ANOTHER test of the same!!! don't
+  retest everything again. no repeated tests, release!"): what ships since 0.2.4: OpenAI as a
+  preview (2.29.6), the model list in `ush ai configure` (2.47), per-provider keys, next steps only
+  with an answer in text (2.49). Version 0.3.0-rc1 in both implementations and the man page; release
+  notes [docs/releases/0.3.0-rc1.md](releases/0.3.0-rc1.md). Its checks: those of 87e1824 (DONE 2026-11-11
+  20:02) and GitHub Actions on every commit since; no repeated test run. Released before 2.23 (GAPS
+  Q17, answered for the rc); technical debt 2.51. After the merge: the tag `v0.3.0-rc1`, the GitHub
+  release (a prerelease) with the four archives and `SHA256SUMS`, and the formula in the tap.
+- [ ] 5.11 0.4.0, planned as 0.3.0 until 2026-11-11, when 0.3.0 went to 5.14 (user, 2026-10-30: "for the next version 0.3.0, expand to bash, sh and other commonly
   used shells"; the agent's proposal, accepted with "write to pr as proposed" and adjusted to the
   answers to GAPS Q15–Q17). Contents:
   - **Shells:** the shell interface (2.32), then bash 4 or newer (2.27), fish 3 (2.28) and POSIX

@@ -14,6 +14,43 @@ implementation kept its own log: [ushpy](archive/DONE-ushpy.md), [ushgo](archive
 
 ---
 
+## 2026-11-11 22:52 — Version 0.3.0-rc1: release notes, version, man page
+
+TODO items: 5.14 (new; open until published), 5.11 (now 0.4.0); GAPS Q17 (answered for the rc).
+PR: #65 (branch `chore/ush-testing-scope`, with the testing scope of 22:49).
+
+Agent: Opus 5.5, reasoning: not exposed, subagents: none.
+
+### Implementation notes
+
+- **The request** (user, 2026-11-11): "then version bump can IMO be to 0.3.0", "for the 0.3.0-rc
+  we can keep testing it extensively as technical debt", then, on the reminder that GAPS Q17 holds
+  the release back until 2.23: "not ANOTHER test of the same!!! don't retest everything again. no
+  repeated tests, release!".
+- **Contents,** what ships since `v0.2.4` (`src/go`, `src/shell`, `src/man`: e31cd92, 029c15b,
+  f622921): OpenAI as a preview (2.29.6), the model list in `ush ai configure` and `ush ai models`
+  (2.47), one key per provider and `ush ai clear-key [PROVIDER]`, next steps only with an answer in
+  text (2.49).
+- **Version 0.3.0-rc1** in `pyproject.toml`, `ush/__init__.py`, the man page's header, USER,
+  README, ushgo's README, ROAD's status line and `formula.sh`'s usage line; the Go binary gets it
+  from the release build. 0.3.0 had been the shells release (5.11); that is 0.4.0 now, in TODO
+  and ROAD.
+- **Release notes:** [releases/0.3.0-rc1.md](releases/0.3.0-rc1.md): changed, fixed, install,
+  security, known limitations (OpenAI untested against OpenAI, 2.51; the banner, 2.50; F8 without
+  2.23).
+- **GAPS Q17,** answered for the rc: released before 2.23, with F8 documented, as for 0.2.0-rc1;
+  0.3.0 itself stays open.
+- **Checks, not repeated** (the user's instruction): the release checks on 87e1824 (DONE 20:02)
+  cover the shipped code but for 029c15b's fix (2.49) and the man page's wording (f622921); both
+  passed GitHub Actions (#63, #64: all jobs) and ushgo-conform locally. GitHub Actions on this PR
+  runs on its own. Document checks: `mandoc -T lint -W warning`, `just links`.
+
+### Deviations
+
+- **No fresh gate on the candidate:** AGENTS.md asks for fresh checks on the exact candidate
+  commit; the user waived them for this release candidate ("no repeated tests, release!"). The
+  archives are built from the tag, and their checksums are checked after upload.
+
 ## 2026-11-11 22:49 — Less testing: Actions for PRs, the Go deliverable for releases
 
 TODO items: none (process). PR: #65 (branch `chore/ush-testing-scope`).

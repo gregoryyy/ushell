@@ -5,7 +5,7 @@
 # gregoryyy/homebrew-ush (created by the user). Users then install with:
 #   brew install gregoryyy/ush/ush
 #
-#   tools/release/formula.sh 0.2.4 > ush.rb
+#   tools/release/formula.sh 0.3.0-rc1 > ush.rb
 #
 # The paths are those of the src/ layout (2026-11-10). Tags before it have ush/go/ (from #30) or,
 # before that, ushgo/ and ushpy/shell/ (v0.2.0 among them): their formula comes from formula.sh at
