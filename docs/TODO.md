@@ -670,7 +670,7 @@ Until 2026-10-29: ushgo TODO 2.1–2.7.
   commit, the tag `v0.2.4`, the GitHub release with the four archives and `SHA256SUMS`, and the
   formula in the tap. Acceptance: the gate's results recorded in DONE; the published checksums
   verified after download. Done 2026-11-11 on 8da67d8 (DONE).
-- [ ] 5.14 0.3.0-rc1 (requested 2026-11-11: the next version is 0.3.0, first as a release
+- [x] 5.14 0.3.0-rc1 (requested 2026-11-11: the next version is 0.3.0, first as a release
   candidate; OpenAI's testing is its technical debt; no repeated test runs): what ships since 0.2.4: OpenAI as a
   preview (2.29.6), the model list in `ush ai configure` (2.47), per-provider keys, next steps only
   with an answer in text (2.49). Version 0.3.0-rc1 in both implementations and the man page; release
@@ -678,6 +678,7 @@ Until 2026-10-29: ushgo TODO 2.1–2.7.
   20:02) and GitHub Actions on every commit since; no repeated test run. Released before 2.23 (GAPS
   Q17, answered for the rc); technical debt 2.51. After the merge: the tag `v0.3.0-rc1`, the GitHub
   release (a prerelease) with the four archives and `SHA256SUMS`, and the formula in the tap.
+  Published 2026-11-11 (DONE 23:12).
 - [ ] 5.11 0.4.0, planned as 0.3.0 until 2026-11-11, when 0.3.0 went to 5.14 (requested 2026-10-30: bash, sh and other commonly
   used shells; the agent's proposal, accepted as proposed and adjusted to the
   answers to GAPS Q15–Q17). Contents:

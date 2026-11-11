@@ -14,6 +14,41 @@ implementation kept its own log: [ushpy](archive/DONE-ushpy.md), [ushgo](archive
 
 ---
 
+## 2026-11-11 23:12 — Release 0.3.0-rc1: the tag, the GitHub prerelease and the tap
+
+TODO items: 5.14 (done). PR: #66 (branch `docs/ush-0.3.0-rc1-released`); the release PR was #65,
+the candidate 33894a4, its merge.
+
+Agent: Opus 5.5, reasoning: not exposed, subagents: none.
+
+### Implementation notes
+
+- **The request** (2026-11-11): publish once #65 is merged, without repeating test runs (TODO
+  5.14).
+- **Final tests:** none repeated. The candidate's code is that of the release checks on 87e1824
+  (DONE 20:02) plus 029c15b (2.49) and the documents, which passed GitHub Actions in #63, #64 and
+  #65 (all jobs on ce5024e). Actions' run on the merge commit was in progress at publishing.
+- **Published by the agent, as requested:**
+  - the annotated tag `v0.3.0-rc1` ("ush 0.3.0-rc1") on 33894a4;
+  - the archives, built from it with go1.27.4 (`just ushgo-release 0.3.0-rc1`):
+    - `583d47c1…` darwin-arm64
+    - `038b58da…` darwin-amd64
+    - `96b62b55…` linux-arm64
+    - `fe914cc9…` linux-amd64
+  - the GitHub release v0.3.0-rc1, a prerelease, with the four archives, `SHA256SUMS` and
+    [releases/0.3.0-rc1.md](releases/0.3.0-rc1.md) as notes. Downloaded again: the checksums
+    verify, and `SHA256SUMS` is byte-identical to the build's;
+  - the formula in `gregoryyy/homebrew-ush` (1165634), from `formula.sh 0.3.0-rc1`: the tag
+    tarball's checksum `deb96553…`, checked on a fresh download; `ruby -c` and `brew style`
+    clean. `brew info gregoryyy/ush/ush`: stable 0.3.0-rc1.
+
+### Deviations
+
+- **No fresh gate on the candidate,** as decided for this release candidate (DONE 22:52).
+- **Homebrew's stable version is a release candidate:** the tap has one formula, so `brew
+  upgrade ush` installs 0.3.0-rc1.
+- **The installed `ush`** (Homebrew, 0.2.3) was not upgraded; `brew upgrade ush` is the user's.
+
 ## 2026-11-11 22:52 — Version 0.3.0-rc1: release notes, version, man page
 
 TODO items: 5.14 (new; open until published), 5.11 (now 0.4.0); GAPS Q17 (answered for the rc).
