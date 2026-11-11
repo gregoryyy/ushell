@@ -14,6 +14,46 @@ implementation kept its own log: [ushpy](archive/DONE-ushpy.md), [ushgo](archive
 
 ---
 
+## 2026-11-11 06:17 — Flaky test: the key after Esc waits for zsh
+
+TODO items: 2.44 (new, done); test code only, run against both implementations. PR: not yet
+opened (branch `fix/ush-2.44-esc-test-race`).
+
+Agent: Opus 5.5, reasoning: not exposed, subagents: none.
+
+### Implementation notes
+
+- **The failure:** GitHub Actions on #53, `ushgo-conform (macos-latest)`:
+  `test_zsh_plugin.SessionPrefillTest.test_esc_clears_the_line`, `AssertionError: "GOT'ls'" not
+  found in "…GOT'echo prefilleds'END"`. The re-run passed; #53 doesn't touch the plugin or
+  the test. It failed once in the last 15 Actions runs.
+- **The cause:** after a bare Esc, zsh waits KEYTIMEOUT (0.4 s) for a following key that would
+  make it Alt-key, and prints nothing until it has handled the Esc. The test's step
+  `("\x1b", "")` waited only for 0.5 s of quiet. When zsh hadn't read the Esc within that time,
+  `ls` arrived with it: Esc l is Alt-l (down-case-word), and `s` was typed.
+- **The fix** ([test_zsh_plugin.py](../src/py/tests/test_zsh_plugin.py)): `_read` takes a pattern
+  as well as text; `ANY_OUTPUT` waits for zsh's reaction to the key, then for quiet. Used after
+  the bare Esc in `test_esc_clears_the_line` and in `SessionExplainTest` (two Esc steps before
+  Ctrl-D). Steps that send a whole escape sequence (Up, Down) aren't affected.
+- **Regression test:** `test_the_key_after_esc_waits_for_a_slow_zsh`: `edit(…, stalled=True)`
+  stops the editor's process group (zsh included) before the Esc and resumes it a second later,
+  as a starved runner would. With the old step `("\x1b", "")` it fails with the message from CI
+  ("GOT'echo prefilleds'"); with `ANY_OUTPUT` it passes.
+- **Validation** on macOS: `PYTHON=/opt/homebrew/bin/python3.12 just ushpy-test`: 227 tests OK
+  (one new). `just ushgo-conform`: 84 tests OK (the new test, against Go). The regression test
+  with the old step: FAILED, "GOT'echo prefilleds'". `just links`: passed.
+
+### Deviations
+
+- None.
+
+### Insights
+
+- In a pty test, "quiet for a while" isn't a sign that the program has handled a key: wait for
+  its reaction. A bare Esc is the key where this shows, through KEYTIMEOUT.
+
+---
+
 ## 2026-11-11 05:40 — Release 0.2.3: the gate, the tag, the GitHub release and the tap
 
 TODO items: 5.12 (done). PR: not yet opened (branch `docs/ush-0.2.3-released`); the release PR
