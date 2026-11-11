@@ -14,6 +14,52 @@ implementation kept its own log: [ushpy](archive/DONE-ushpy.md), [ushgo](archive
 
 ---
 
+## 2026-11-11 22:49 — Less testing: Actions for PRs, the Go deliverable for releases
+
+TODO items: none (process). PR: #65 (branch `chore/ush-testing-scope`).
+
+Agent: Opus 5.5, reasoning: not exposed, subagents: none.
+
+### Implementation notes
+
+- **The request** (user, 2026-11-11): "there is an excessive amount of tests now for a seemingly
+  simple tool. did you overdo it by industry standards?", then "adjust testing for future prs and
+  releases". Before: "why do we make extensive tests on the python run when it is the go version
+  being released", "focus on the go part that goes to homebrew", and paid providers for "a few
+  calls", "more of a smoke test", "most tests on local ollama models".
+- **PRs** (AGENTS.md, SDLC, tools/ci/README.md): GitHub Actions' checks decide; locally only the
+  tests a change touches. Local CI (`just ci --post`, `just ci-linux`) is the fallback while
+  Actions doesn't start jobs, not a step after every push. Actions has run every job since
+  2026-11-11 17:40 (#62, #63, #64: 11 of 11).
+- **The workflow:** ushpy runs on Linux only, with Python 3.10 and 3.13 (2 jobs instead of 4);
+  its black-box tests still run on macOS against the Go binary in ushgo-conform.
+  `tools/ci/test_workflow.py` follows.
+- **Releases** (AGENTS.md, Before every release): test what the Homebrew formula ships, the Go
+  binary with its plugin and manual page, not ushpy:
+  - ushgo's suite and the conformance suite on macOS and Linux, where Actions' run on the
+    candidate counts;
+  - the release build twice, and the archive in a temporary prefix;
+  - the smoke test on the archive: offline, on a local Ollama model, and once per paid provider
+    (about 15 requests, low effort; OpenAI at most $1);
+  - the injection eval once, on a local Ollama model; no paid evals (SECTEST); a failed paid check
+    is looked into with the mock or a local model, not by repeating it (SMOKE).
+- **Validation:** `ruff check` and `ruff format --check` on `tools/ci`: clean; `pytest
+  test_workflow.py`: 21 passed; `just links`: OK. `main` has no branch protection, so no required
+  check names the removed macOS ushpy jobs.
+
+### Deviations
+
+- **GAPS Q17's proposal** asked for the injection eval on one model per new adapter; for a paid
+  adapter that is a paid eval, which the user's rule replaces with the smoke test.
+
+### Insights
+
+- **The cost was the process, not the tests:** about 1:1 test to code in ushpy and 0.3:1 in
+  ushgo is ordinary. What went beyond the norm: about 25 minutes of local CI per push, also after
+  Actions worked again and for documents; the Linux container on top; the Python matrix for an
+  implementation that doesn't ship; the injection eval three times plus a paid one; about 40
+  Anthropic requests in one release check.
+
 ## 2026-11-11 21:40 — OpenAI documented as a preview; supported later (2.51)
 
 TODO items: 2.51 (new, open); 2.29.6 (note). PR: #64 (branch `docs/ush-openai-future`).

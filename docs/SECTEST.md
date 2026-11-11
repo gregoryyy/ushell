@@ -16,7 +16,7 @@ machine. The tests are organised by that goal, not by module.
 | Level | What | When | Cost |
 | --- | --- | --- | --- |
 | 1. Deterministic adversarial tests | Scripted fake provider or mock API returns the attacker's tool calls; assertions on what ran, what was shown, and what was sent | Every commit (`just ush-test`, `just ci`) | None |
-| 2. Model-in-the-loop injection evals | A real model reads poisoned command output from a fixture corpus; we measure what it *tries*, and assert that ush blocks it | Before a release; on policy or prompt changes | Free on a local Ollama model, paid on Anthropic (opt-in, TODO 2.11) |
+| 2. Model-in-the-loop injection evals | A real model reads poisoned command output from a fixture corpus; we measure what it *tries*, and assert that ush blocks it | Before a release, once; on policy or prompt changes | Free on a local Ollama model; paid models are not used for it (user, 2026-11-11), though `--paid` remains for a one-off check |
 | 3. Manual review and red team | sudo/keychain on real machines, terminal rendering in real emulators, new GTFOBins entries | Before a release | Human time |
 
 Level 1 is the gate: it never depends on a model behaving well. Level 2 answers a different

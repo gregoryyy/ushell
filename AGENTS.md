@@ -55,11 +55,12 @@ document sets were merged on 2026-10-29; [ush TODO](docs/TODO.md#old-ids) maps t
   for secrets/generated artifacts before committing.
 - Do not rewrite shared history, force-push, delete others' branches, reset unrelated
   work, or run destructive operations without explicit authorization.
-- CI is [.github/workflows/ci.yml](.github/workflows/ci.yml). While GitHub Actions
-  doesn't start jobs, run it locally ([tools/ci/README.md](tools/ci/README.md)): push,
-  run `just ci --post` on the pushed head commit, then open or update the PR. Repeat
-  after every push. The PR states which commit local CI ran on and that its macOS-only
-  run leaves the Linux matrix entries unchecked.
+- CI is [.github/workflows/ci.yml](.github/workflows/ci.yml), run by GitHub Actions on
+  every push and PR; a PR is ready when its checks pass. Run locally only the tests the
+  change touches (`just ushgo-test`, `just ushpy-test -k …`, `just links` for documents).
+  Local CI ([tools/ci/README.md](tools/ci/README.md): `just ci --post`, `just ci-linux`)
+  is the fallback while Actions doesn't start jobs; then the PR states which commit it
+  ran on and which entries it left unchecked.
 - PR descriptions state the problem, resulting behavior, TODO IDs, tests/results,
   deviations, security implications, and remaining limitations. Do not claim a test
   passed if it was skipped, unavailable, or run against a different revision.
@@ -134,14 +135,22 @@ candidate commit and built artifacts. Record the revision, configuration, comman
 and results. Earlier passing checks do not satisfy a new release gate.
 
 1. Run required feature/regression tests and the connected browser acceptance suite
-   for every supported execution profile and browser in the release. For ush, run
-   the suite of the shipped implementation (ushgo) and the conformance suite on every
-   supported OS (and Python version for ushpy),
-   including root/sudo resolution and the zsh integration, plus the user smoke test
-   ([SMOKE](docs/SMOKE.md)) on the built artifact.
+   for every supported execution profile and browser in the release. For ush, test
+   what ships, the Go binary of the Homebrew formula with its plugin and manual page
+   (user, 2026-11-11), not ushpy:
+   - ushgo's suite and the conformance suite (the black-box tests, including root/sudo
+     resolution and the zsh integration, against the Go binary) on macOS and Linux;
+     GitHub Actions' run on the candidate commit counts;
+   - the release build twice (identical), and the archive installed in a temporary prefix;
+   - the user smoke test ([SMOKE](docs/SMOKE.md)) on that archive: offline, with a
+     local Ollama model, and once per paid provider the release supports. A paid run is
+     a smoke test only, about 15 requests, at low effort where possible; OpenAI's
+     costs at most $1 in total.
 2. Run applicable adversarial security tests. For ush: command-policy bypasses,
    prompt injection through command output, secret redaction, credential file and
-   key handling under sudo, and history contents.
+   key handling under sudo, and history contents. The injection eval
+   ([SECTEST](docs/SECTEST.md) level 2) runs once, on a local Ollama model; paid
+   models are not used for it.
 3. For server-enabled releases, also test cross-tenant authorization, CSRF and
    WebSocket authentication where applicable, SSRF/redirect controls, upload bounds,
    kernel isolation, lease expiry, and reconnect/mutation receipts. Record omitted

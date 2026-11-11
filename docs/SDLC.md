@@ -114,10 +114,10 @@ DONE file, below a marker.
 
 ## CI
 
-[ci.yml](../.github/workflows/ci.yml) defines CI. While GitHub Actions doesn't start jobs for this
-account, `just ci` runs it on a clean worktree of a commit and `just ci --post` reports the result
-to the PR as commit statuses; see [tools/ci/README.md](../tools/ci/README.md). Push first, then
-`just ci --post`, after every push.
+[ci.yml](../.github/workflows/ci.yml) defines CI, and GitHub Actions runs it on every push and PR.
+Locally, run the tests the change touches. Only while Actions doesn't start jobs, `just ci` runs
+the workflow on a clean worktree of a commit and `just ci --post` reports the result to the PR as
+commit statuses ([tools/ci/README.md](../tools/ci/README.md)); push first.
 
 ## Definition of done
 
@@ -127,7 +127,8 @@ A TODO item is done when, in the same PR:
 2. **Tests** cover its externally observable behaviour and its relevant errors: cancellation,
    conflicts, limits and denied permissions where they apply. A bug fix comes with a regression test
    that fails on the old code.
-3. **CI passes:** `just ci --post` on the PR's head commit, while Actions is unavailable.
+3. **CI passes:** GitHub Actions on the PR's head commit (`just ci --post` while Actions is
+   unavailable).
 4. **Docs are current:** README, ARCH, SEC, ROAD and GAPS as affected; `just links` passes and
    `just pdfs` builds.
 5. **Security impact** is stated against SEC, even if it's "none". Changes to grants,
