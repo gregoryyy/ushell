@@ -14,6 +14,56 @@ implementation kept its own log: [ushpy](archive/DONE-ushpy.md), [ushgo](archive
 
 ---
 
+## 2026-11-11 08:54 — Research only: `//? TEXT` and `ush research TEXT` (TODO 2.38)
+
+TODO items: 2.38 (done). PR: not yet opened (branch `feat/ush-2.35-interaction`).
+
+Agent: Opus 5.5, reasoning: not exposed, subagents: none.
+
+### Implementation notes
+
+- **The user's choice:** "Both" (`//? TEXT` and `ush research TEXT`). The model answers from its
+  own knowledge; web search would be an item of its own.
+- **Agent** ([agent.py](../src/py/src/ush/agent.py) `ask(…, research=True)`,
+  [agent.go](../src/go/internal/agent/agent.go) `Research`):
+  - `SYSTEM_RESEARCH` / `systemResearch`: compare the options, carry out nothing, call no tool.
+  - Tools, decided each turn: none while the conversation has no tool call. Otherwise all of them,
+    since a request with `tool_use` blocks must define them.
+  - Every tool call gets `NOT_RESEARCH` as an error result; at most three such turns, then the
+    request stops (`MAX_REFUSED_TURNS`).
+  - A pending proposal is answered as for any request. History records the request as `? TEXT`.
+- **Providers:** an empty tool list is left out of the request (`tools` key absent), in both.
+- **CLI:**
+  - `ush research [--] TEXT...` becomes `//? TEXT`; `//?` with no text is a usage error (2).
+  - The banner says "research, runs and proposes nothing".
+  - In the `ush>` session, `//? TEXT` is a research request.
+  - Usage text, completion, README, USER, the man page (synopsis, Requests, COMMANDS), ARCH, SEC.
+- **Plugin:** `ush research TEXT` is quoted as `ush research -- 'TEXT'`, like `ush explain`; one
+  quoted word is left alone. `//? TEXT` was already passed verbatim.
+- **Tests** (all in both implementations):
+  - `test_research_proposes_and_runs_nothing`: `//?`, `ush research`, `ush research --` and `-r //?`.
+    Against a mock that answers with `propose_command` and `run_command`: no file is made, the
+    handoff stays empty, the first request has no `tools` and the research prompt, both calls get
+    error results, and the answer is printed. History shows `// ? …`; three usage errors.
+  - `test_research_over_a_proposal_answers_it_as_not_run`: tools stay defined, the proposal is
+    answered "did not run", and nothing is handed off.
+  - `test_research_gets_its_text_verbatim`: the plugin's quoting.
+- **Validation:** `./scripts/test.sh -p 'test_*.py' -k research`: 3 tests OK. The same against the
+  Go binary: 3 tests OK. `./scripts/test.sh -p 'test_[apd]*.py'`: 84 tests OK. `go test ./...`: ok.
+  `just links`, `mandoc -T lint -W warning`, `test_docs`: clean.
+
+### Deviations
+
+- **Tools are sent in a conversation that has them,** with every call refused, instead of none at
+  all: the API needs them defined once `tool_use` blocks are in the messages.
+
+### Insights
+
+- The refusal path is what makes research safe, not the prompt: the test's mock ignores the prompt
+  and calls both tools, and nothing happens.
+
+---
+
 ## 2026-11-11 08:49 — Thinking shown or hidden (TODO 2.37)
 
 TODO items: 2.37 (done). PR: not yet opened (branch `feat/ush-2.35-interaction`).

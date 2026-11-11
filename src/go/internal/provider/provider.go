@@ -113,6 +113,9 @@ func (c *Client) params(system string, tools []Block, messages []Block) (Block, 
 	}
 	params := Block{"model": c.model, "max_tokens": p.OutputLimit, "system": system, "tools": sent,
 		"messages": messages}
+	if len(sent) == 0 { // a research request (TODO 2.38): no tool list at all
+		delete(params, "tools")
+	}
 	if p.PromptCache {
 		params["cache_control"] = Block{"type": "ephemeral"}
 	}

@@ -377,6 +377,73 @@ class CliTest(TempDirTest):
         self.assertEqual(cli.brief("free text"), "free text")
 
     @unittest.skipUnless(HAVE_SDK, "anthropic SDK not installed")
+    def test_research_proposes_and_runs_nothing(self):
+        # TODO 2.38: `//? TEXT` and `ush research TEXT`, in propose and agent mode, send no tools;
+        # a tool call the model writes anyway is refused, nothing runs, and nothing is proposed.
+        made = os.path.join(self.tmp, "made")
+        handoff = os.path.join(self.tmp, "ush.handoff1")
+        os.mkdir(handoff, 0o700)
+        sneaky = [
+            {"type": "tool_use", "id": "x1", "name": "propose_command",
+             "input": {"command": f"touch {made}", "purpose": "do it", "effect": "change",
+                       "interactive": False}},
+            {"type": "tool_use", "id": "x2", "name": "run_command",
+             "input": {"command": f"touch {made}", "purpose": "do it", "effect": "change",
+                       "timeout_seconds": 5}},
+        ]
+        answer = [{"type": "text", "text": "Time Machine is built in; restic is scriptable."}]
+        env = {"ANTHROPIC_API_KEY": SYNTHETIC_KEY, "USH_HANDOFF": handoff}
+        for args in (["//? which backup tool fits"], ["research", "which backup tool fits"],
+                     ["research", "--", "which backup tool fits"], ["-r", "//? which backup tool fits"]):
+            with self.subTest(args=args), MockAPI([(sneaky, "tool_use"), (answer, "end_turn")]) as api:
+                env["USH_BASE_URL"] = api.url
+                result = self.ush("-N", *args, env=env)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertIn("restic is scriptable", result.stdout)
+                self.assertIn("research, runs and proposes nothing", result.stderr)
+                self.assertFalse(os.path.exists(made))
+                self.assertEqual(os.listdir(handoff), [])  # no proposal for the command line
+                first, second = (r["body"] for r in api.requests)
+                self.assertIn("research only", json.dumps(first["system"]))
+                self.assertNotIn("tools", first)
+                self.assertEqual(first["messages"][-1]["content"][-1]["text"], "which backup tool fits")
+                refused = second["messages"][-1]["content"]
+                self.assertEqual([r["tool_use_id"] for r in refused], ["x1", "x2"])
+                self.assertTrue(all(r.get("is_error") and "research request" in r["content"]
+                                    for r in refused), refused)
+        self.assertIn("// ? which backup tool fits", self.ush("history").stdout)
+        for bad in (["//?"], ["research"], ["research", "--"]):
+            self.assertEqual(self.ush(*bad, env=env).returncode, 2, bad)
+
+    @unittest.skipUnless(HAVE_SDK, "anthropic SDK not installed")
+    def test_research_over_a_proposal_answers_it_as_not_run(self):
+        handoff = os.path.join(self.tmp, "ush.handoff1")
+        os.mkdir(handoff, 0o700)
+        replies = [
+            ([{"type": "tool_use", "id": "p1", "name": "propose_command",
+               "input": {"command": "rm -rf build", "purpose": "clean", "effect": "change",
+                         "interactive": False}}], "tool_use"),
+            ([{"type": "text", "text": "make clean is safer."}], "end_turn"),
+        ]
+        env = {"ANTHROPIC_API_KEY": SYNTHETIC_KEY, "USH_HANDOFF": handoff}
+        with MockAPI(replies) as api:
+            env["USH_BASE_URL"] = api.url
+            self.assertEqual(self.ush("//clean the build", env=env).returncode, 0)
+            os.remove(os.path.join(handoff, "proposal"))  # taken by the plugin, not run
+            result = self.ush("//? is there a safer way", env=env)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("make clean is safer.", result.stdout)
+        body = api.requests[1]["body"]
+        # The conversation has a tool call, so the tools stay defined; the proposal is answered.
+        self.assertEqual([t["name"] for t in body["tools"]], ["propose_command"])
+        content = body["messages"][-1]["content"]
+        self.assertEqual(content[0]["tool_use_id"], "p1")
+        self.assertIn("did not run the proposed command", content[0]["content"])
+        self.assertEqual(content[-1]["text"], "is there a safer way")
+        self.assertIn("research only", json.dumps(body["system"]))
+        self.assertEqual(os.listdir(handoff), [])
+
+    @unittest.skipUnless(HAVE_SDK, "anthropic SDK not installed")
     def test_thinking_can_be_hidden_without_changing_the_request(self):
         # TODO 2.37: --no-thinking, --thinking and USH_THINKING change only what the terminal
         # shows. The request is the same, the thinking stays in the saved conversation for `//`,

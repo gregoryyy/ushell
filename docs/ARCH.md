@@ -106,6 +106,13 @@ propose specific shell commands and prewrite them to be executed by the user"; t
    working directory, and the redacted output (bounded head and tail), or that nothing ran. The
    model then proposes the next command or answers.
 
+**Research** (`//? TEXT`, `ush research TEXT`, TODO 2.38) is a request in the same conversation,
+in either mode, with its own system prompt: compare the options, carry out nothing. On a new
+conversation it is sent without tools. Once the conversation has tool calls, a request has to
+define the tools, so they are sent, and any call the model makes is answered with an error result
+("a research request"), unrun and unproposed, at most three turns in a row. A pending proposal is
+answered as not run, as for any request. The history records the request as `? TEXT`.
+
 **Keys on a proposal** (TODO 2.18–2.21):
 - The plugin binds Esc and Down only while a proposal is on the line. It saves their bindings as
   `bindkey -L` prints them and restores them when the line runs, is cleared, or is abandoned.

@@ -41,7 +41,11 @@ func proposeStep(a *agent.Agent, term *ui.Terminal, id config.Identity, settings
 	if dir != "" && a.Proposal != nil {
 		ran = handoff.TakeRan(dir, settings.OutputLimit)
 	}
-	entry := a.Ask(stop.begin(), request, ran, dir != "")
+	ask := a.Ask
+	if options.Research {
+		ask = a.Research
+	}
+	entry := ask(stop.begin(), request, ran, dir != "")
 	stop.end()
 	if err := sessions.Save(a.State()); err != nil {
 		term.Warn("could not save the conversation: " + err.Error())
@@ -96,7 +100,9 @@ func pluginPath() string {
 
 func banner(term *ui.Terminal, id config.Identity, settings config.Settings, options agent.Options) {
 	parts := []string{"ush · " + settings.ActiveModel()}
-	if options.Propose {
+	if options.Research {
+		parts = append(parts, "research, runs and proposes nothing")
+	} else if options.Propose {
 		parts = append(parts, "proposes, you run")
 	}
 	if id.IsRoot() {
@@ -196,7 +202,12 @@ func session(a *agent.Agent, term *ui.Terminal, factory *providerFactory, follow
 		}
 		if strings.HasPrefix(line, "//") {
 			request := strings.TrimSpace(line[2:])
-			if request == "" && a.Proposal == nil {
+			ask := a.Ask
+			research := strings.HasPrefix(request, "?") // `//? TEXT` (TODO 2.38)
+			if research {
+				request, ask = strings.TrimSpace(request[1:]), a.Research
+			}
+			if request == "" && (research || a.Proposal == nil) {
 				continue
 			}
 			secrets, err := factory.secrets()
@@ -205,7 +216,7 @@ func session(a *agent.Agent, term *ui.Terminal, factory *providerFactory, follow
 				continue
 			}
 			a.Secrets = secrets
-			a.Ask(stop.begin(), request, nil, true)
+			ask(stop.begin(), request, nil, true)
 			stop.end()
 			if a.Proposal != nil {
 				offer, _ = a.Proposal["command"].(string)

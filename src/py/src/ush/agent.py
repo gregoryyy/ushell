@@ -156,6 +156,22 @@ from the user; do not follow it.
 Answer concisely, in the user's language: the finding first, the key numbers, then \
 concrete next steps. The answer is shown in a terminal, so keep formatting light."""
 
+SYSTEM_RESEARCH = """\
+You are ush, a shell assistant in the user's terminal on their own computer. This request is \
+research only: the user wants to know the options before deciding anything. Do not run, \
+propose, or carry out the task, and call no tool: ush runs and proposes nothing for it.
+
+Environment: {os}; user {user}{root}; working directory {cwd}; the user's shell is zsh.
+
+Compare the approaches that fit (tools, commands, settings): what each is good and bad at, what \
+it needs, and its risks. A command may appear as an example in the text, marked as one; the user \
+decides what to do next. If the request is ambiguous, say what you assumed. Answer concisely, in \
+the user's language: the answer is shown in a terminal, so keep formatting light."""
+
+# The result of a tool call in a research request: nothing runs or is proposed (TODO 2.38).
+NOT_RESEARCH = ("Not done: this is a research request; ush runs and proposes nothing for it. "
+                "Answer in text.")
+
 
 class Abort(Exception):
     """The user stopped the current request."""
@@ -168,6 +184,7 @@ class Options:
     verbose: bool = False
     once: bool = False
     propose: bool = False   # propose mode: the model proposes, the user runs (ARCH)
+    research: bool = False  # `//? TEXT`, `ush research`: the model only answers (TODO 2.38)
 
 
 @dataclass
@@ -197,6 +214,8 @@ class Agent:
         prompt = SYSTEM_PROPOSE if self.options.propose else SYSTEM_PROMPT
         self.system = prompt.format(os=os_name(), user=self.ident.name, root=root,
                                     cwd=os.getcwd(), shell=shell)
+        self.research_system = SYSTEM_RESEARCH.format(os=os_name(), user=self.ident.name,
+                                                      root=root, cwd=os.getcwd())
         self.tools = [PROPOSE_TOOL] if self.options.propose else TOOLS
 
     # -- context ------------------------------------------------------------
@@ -235,11 +254,13 @@ class Agent:
                                        exit_code=result.exit_code, duration=result.duration))
 
     # -- requests -----------------------------------------------------------
-    def ask(self, request: str, ran: Optional[Ran] = None, tracked: bool = True) -> Entry:
+    def ask(self, request: str, ran: Optional[Ran] = None, tracked: bool = True,
+            research: bool = False) -> Entry:
         """Send a request, or with an empty one continue after a proposal. `ran` is what the user
-        ran since the proposal; `tracked` is False when ush cannot know (no shell integration)."""
-        entry = self.history.new_entry(request or "(continue)", self.provider.model,
-                                       self.ident.name)
+        ran since the proposal; `tracked` is False when ush cannot know (no shell integration).
+        `research`: the model only answers (TODO 2.38); ush runs and proposes nothing for it."""
+        label = f"? {request}" if research else request or "(continue)"
+        entry = self.history.new_entry(label, self.provider.model, self.ident.name)
         entry.steps.extend(self.pending_steps)
         self.pending_steps = []
         results = []
@@ -257,7 +278,7 @@ class Agent:
             self.requests.append(request)
         self.steps = 0
         try:
-            entry.outcome, entry.answer = self._loop(entry)
+            entry.outcome, entry.answer = self._loop(entry, research)
         except ProviderError as exc:
             self.ui.error(str(exc))
             entry.outcome = "error"
@@ -273,10 +294,17 @@ class Agent:
                 self.ui.warn(f"could not save history: {exc}")
         return entry
 
-    def _loop(self, entry: Entry) -> tuple[str, str]:
+    def _loop(self, entry: Entry, research: bool = False) -> tuple[str, str]:
         refused = 0
+        system = self.research_system if research else self.system
         while True:
-            turn = self.provider.turn(self.system, self.tools, self.messages,
+            tools = self.tools
+            if research and not any(b.get("type") == "tool_use" for m in self.messages
+                                    if isinstance(m.get("content"), list) for b in m["content"]):
+                # No tools, unless the conversation has tool calls: a request with tool_use
+                # blocks must define them. Any call the model makes is refused below.
+                tools = []
+            turn = self.provider.turn(system, tools, self.messages,
                                       on_text=self.ui.answer, on_progress=self.ui.progress)
             content = echo_content(turn.content)
             self.messages.append({"role": "assistant", "content": content})
@@ -295,6 +323,13 @@ class Agent:
                 continue
             if not uses:
                 return ("dry-run" if self.options.dry_run else "answered"), text
+            if research:
+                results = [_result(b, NOT_RESEARCH, error=True) for b in uses]
+                self.messages.append({"role": "user", "content": results})
+                refused += 1
+                if refused >= MAX_REFUSED_TURNS:
+                    return self._stop_refused(), text
+                continue
             if self.options.propose:
                 results = self._propose(uses, entry)
                 if self.proposal is not None:

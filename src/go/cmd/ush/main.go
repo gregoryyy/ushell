@@ -44,6 +44,8 @@ usage:
                                notes on files or piped input with the model, e.g.
                                ush notes 'any errors?' app.log (with the plugin:
                                Ctrl-N, also on a command's output)
+  ush research TEXT...         research only: the model compares the options and
+                               proposes and runs nothing (also: //? TEXT)
   ush [OPTIONS]                start a session
   ush ai configure [--file]    set the provider (Anthropic or a local Ollama), API key
                                (keychain on macOS), model, and effort
@@ -227,6 +229,12 @@ func realMain(argv []string, term *ui.Terminal) (int, error) {
 			return notesCommand(rest[1:], term, id, settings, keys, options)
 		case "replay":
 			return replayCommand(rest[1:], term, id, hist, settings, options)
+		case "research":
+			words := rest[1:]
+			if len(words) > 0 && words[0] == "--" {
+				words = words[1:]
+			}
+			rest = append([]string{"//?"}, words...)
 		}
 		if !strings.HasPrefix(rest[0], "//") {
 			return 2, usageError("unknown command %s; requests start with //, see `ush help`", pyRepr(rest[0]))
@@ -235,6 +243,12 @@ func realMain(argv []string, term *ui.Terminal) (int, error) {
 	request := ""
 	if len(rest) > 0 {
 		request = strings.TrimSpace(strings.Join(rest, " ")[2:])
+	}
+	if strings.HasPrefix(request, "?") { // `//? TEXT`: research only (TODO 2.38)
+		options.Research, request = true, strings.TrimSpace(request[1:])
+		if request == "" {
+			return 2, usageError("usage: ush research TEXT..., or //? TEXT")
+		}
 	}
 	continuing := len(rest) > 0 && request == "" // `ush //`: continue after a proposal
 	piped := ""
@@ -274,7 +288,11 @@ func realMain(argv []string, term *ui.Terminal) (int, error) {
 		session(a, term, factory, false, stop)
 		return 0, nil
 	}
-	entry := a.Ask(stop.begin(), request, nil, true)
+	ask := a.Ask
+	if options.Research {
+		ask = a.Research
+	}
+	entry := ask(stop.begin(), request, nil, true)
 	stop.end()
 	if !options.Once && term.CanPrompt() {
 		session(a, term, factory, true, stop)

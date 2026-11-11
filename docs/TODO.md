@@ -381,12 +381,18 @@ Done in Python, and in Go through the port (section 4).
   drops the thinking and progress lines; the request, the saved conversation and the history are
   the same. Test: `test_thinking_can_be_hidden_without_changing_the_request` (both
   implementations).
-- [ ] 2.38 *py – go –* Research available options without executing tasks (user, 2026-11-08):
+- [x] 2.38 *py ✓ go ✓* Research available options without executing tasks (user, 2026-11-08):
   provide a research-only path for comparing available approaches. It must not execute commands
   or scripts, stage a proposal for shell execution, or perform the requested task; research results
   are information for the user to act on. Acceptance: tests with command-like and task-like model
   output prove that neither implementation starts a process, creates a handoff proposal, or
   otherwise performs the task.
+  Done (the user chose "Both"): `//? TEXT` and `ush research TEXT`, in the plugin (quoted like
+  `ush explain`), the session and without it, in propose and agent mode. A research system prompt;
+  no tools on a new conversation, and an error result for any tool call; nothing reaches the
+  executor or the handoff. Tests: `test_research_proposes_and_runs_nothing`,
+  `test_research_over_a_proposal_answers_it_as_not_run`, `test_research_gets_its_text_verbatim`
+  (both implementations).
 - [x] 2.39 *py ✓ go ✓* Confirm every proposed command before execution (user, 2026-11-08,
   possible propose-mode bug): audit every propose-mode path and require explicit, per-command
   user confirmation before any proposed command executes. A proposal or pre-filled command line

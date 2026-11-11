@@ -124,6 +124,21 @@ class ZshPluginTest(TempDirTest):
         self.assertFalse(os.path.exists(marker), "a command after ; ran")
         self.assertFalse(os.path.exists(os.path.join(self.tmp, "out")), "the explanation was redirected")
 
+    def test_research_gets_its_text_verbatim(self):
+        results = self.run_lines([
+            "ush research which tool don't I need? *",
+            "ush research -- what's best > out",
+            "ush research 'quoted already'",
+            "ush research",
+            "//? what's best for $HOME",
+        ])
+        self.assertEqual(results[0], ["ush", "research", "--", "which tool don't I need? *"])
+        self.assertEqual(results[1], ["ush", "research", "--", "what's best > out"])
+        self.assertEqual(results[2], ["ush", "research", "quoted already"])
+        self.assertEqual(results[3], ["ush", "research"])
+        self.assertEqual(results[4], ["ush", "//? what's best for $HOME"])
+        self.assertFalse(os.path.exists(os.path.join(self.tmp, "out")), "the request was redirected")
+
     def test_bare_slash_can_be_disabled(self):
         results = self.run_lines(["// hello"], env={"USH_BARE_SLASH": "0"})
         self.assertIsInstance(results[0], str)  # zsh ran "//" as a path, not ush

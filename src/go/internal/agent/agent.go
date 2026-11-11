@@ -36,6 +36,7 @@ var Control = regexp.MustCompile(`[\x00-\x08\x0b-\x1f\x7f-\x{9f}\x{200b}-\x{200f
 // Options of a request.
 type Options struct {
 	DryRun, ConfirmAll, Verbose, Once, Propose bool
+	Research                                   bool // `//? TEXT`, `ush research`: the model only answers (TODO 2.38)
 }
 
 // Agent holds the conversation.
@@ -58,6 +59,7 @@ type Agent struct {
 	Unanswered   []block // results due with the next request
 	Ran          *handoff.Ran
 	system       string
+	research     string // the system prompt of a research request
 	tools        []block
 }
 
@@ -80,8 +82,9 @@ func New(p provider.Provider, t *ui.Terminal, s config.Settings, id config.Ident
 	if o.Propose {
 		prompt, a.tools = systemPropose, []block{ProposeTool}
 	}
-	a.system = strings.NewReplacer("{os}", OSName(), "{user}", id.Name, "{root}", root, "{cwd}", cwd,
-		"{shell}", shell).Replace(prompt)
+	replacer := strings.NewReplacer("{os}", OSName(), "{user}", id.Name, "{root}", root, "{cwd}", cwd,
+		"{shell}", shell)
+	a.system, a.research = replacer.Replace(prompt), replacer.Replace(systemResearch)
 	return a
 }
 
@@ -148,8 +151,20 @@ func exitText(code *int) string {
 // Ask sends a request, or with an empty one continues after a proposal. ran is what the user ran
 // since the proposal; tracked is false when ush can't know (no shell integration).
 func (a *Agent) Ask(ctx context.Context, request string, ran *handoff.Ran, tracked bool) *history.Entry {
+	return a.ask(ctx, request, ran, tracked, false)
+}
+
+// Research sends a research request (TODO 2.38): the model only answers; ush runs and proposes
+// nothing for it. A pending proposal is answered as for any request.
+func (a *Agent) Research(ctx context.Context, request string, ran *handoff.Ran, tracked bool) *history.Entry {
+	return a.ask(ctx, request, ran, tracked, true)
+}
+
+func (a *Agent) ask(ctx context.Context, request string, ran *handoff.Ran, tracked, research bool) *history.Entry {
 	label := request
-	if label == "" {
+	if research {
+		label = "? " + request
+	} else if label == "" {
 		label = "(continue)"
 	}
 	entry := a.History.NewEntry(label, a.Provider.Model(), a.ID.Name)
@@ -175,7 +190,7 @@ func (a *Agent) Ask(ctx context.Context, request string, ran *handoff.Ran, track
 	a.Messages = append(a.Messages, block{"role": "user", "content": content})
 	a.pending = nil
 	a.steps = 0
-	outcome, answer, err := a.loop(ctx, entry)
+	outcome, answer, err := a.loop(ctx, entry, research)
 	switch {
 	case err == nil:
 	case errors.Is(err, context.Canceled), errors.Is(err, errAbort):
@@ -198,10 +213,20 @@ func (a *Agent) Ask(ctx context.Context, request string, ran *handoff.Ran, track
 // would otherwise loop.
 const maxRefusedTurns = 3
 
-func (a *Agent) loop(ctx context.Context, entry *history.Entry) (string, string, error) {
+func (a *Agent) loop(ctx context.Context, entry *history.Entry, research bool) (string, string, error) {
 	refused := 0
+	system := a.system
+	if research {
+		system = a.research
+	}
 	for {
-		turn, err := a.Provider.Turn(ctx, a.system, a.tools, a.Messages, a.UI.Answer, a.UI.Progress)
+		tools := a.tools
+		if research && !hasToolUse(a.Messages) {
+			// No tools, unless the conversation has tool calls: a request with tool_use blocks
+			// must define them. Any call the model makes is refused below.
+			tools = []block{}
+		}
+		turn, err := a.Provider.Turn(ctx, system, tools, a.Messages, a.UI.Answer, a.UI.Progress)
 		if err != nil {
 			if ctx.Err() != nil {
 				return "aborted", "", context.Canceled
@@ -241,6 +266,17 @@ func (a *Agent) loop(ctx context.Context, entry *history.Entry) (string, string,
 			}
 			return "answered", text.String(), nil
 		}
+		if research {
+			var results []block
+			for _, b := range uses {
+				results = append(results, result(b, notResearch, true))
+			}
+			a.Messages = append(a.Messages, block{"role": "user", "content": results})
+			if refused++; refused >= maxRefusedTurns {
+				return a.stopRefused(), text.String(), nil
+			}
+			continue
+		}
 		if a.Options.Propose {
 			results := a.propose(ctx, uses, entry)
 			if a.Proposal != nil {
@@ -276,6 +312,25 @@ func (a *Agent) loop(ctx context.Context, entry *history.Entry) (string, string,
 			return a.stopRefused(), text.String(), nil
 		}
 	}
+}
+
+// hasToolUse: whether a conversation has a tool call.
+func hasToolUse(messages []block) bool {
+	for _, m := range messages {
+		content, _ := m["content"].([]any)
+		blocks, _ := m["content"].([]block)
+		for _, c := range content {
+			if b, ok := c.(block); ok {
+				blocks = append(blocks, b)
+			}
+		}
+		for _, b := range blocks {
+			if b["type"] == "tool_use" {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // countRefused continues the count of turns whose tool results were all errors, or restarts it.

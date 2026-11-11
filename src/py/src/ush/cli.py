@@ -38,6 +38,8 @@ usage:
                                notes on files or piped input with the model, e.g.
                                ush notes 'any errors?' app.log (with the plugin:
                                Ctrl-N, also on a command's output)
+  ush research TEXT...         research only: the model compares the options and
+                               proposes and runs nothing (also: //? TEXT)
   ush [OPTIONS]                start a session
   ush ai configure [--file]    set the provider (Anthropic or a local Ollama), API key
                                (keychain on macOS), model, and effort
@@ -219,11 +221,18 @@ def _main(argv: list[str], ui: Terminal) -> int:
         return _notes(rest[1:], ui, ident, settings, keys, options)
     if rest and rest[0] == "replay":
         return _replay(rest[1:], ui, history, settings, options)
+    if rest and rest[0] == "research":
+        words = rest[1:][1:] if rest[1:2] == ["--"] else rest[1:]
+        rest = ["//?", *words]
     if rest and not rest[0].startswith("//"):
         ui.error(f"unknown command {rest[0]!r}; requests start with //, see `ush help`")
         return 2
 
     request = " ".join(rest)[2:].strip() if rest else ""
+    if request.startswith("?"):   # `//? TEXT`: research only (TODO 2.38)
+        options.research, request = True, request[1:].strip()
+        if not request:
+            raise ConfigError("usage: ush research TEXT..., or //? TEXT")
     continuing = bool(rest) and not request     # `ush //`: continue after a proposal
     piped = None
     if not sys.stdin.isatty() and (request or continuing):
@@ -261,7 +270,7 @@ def _main(argv: list[str], ui: Terminal) -> int:
             return 2
         _session(agent, ui, factory, follow_up=False)
         return 0
-    entry = agent.ask(request)
+    entry = agent.ask(request, research=options.research)
     if not options.once and ui.can_prompt:
         _session(agent, ui, factory, follow_up=True)
     return {"answered": 0, "dry-run": 0, "aborted": 130}.get(entry.outcome, 1)
@@ -277,7 +286,7 @@ def _propose(agent: Agent, ui: Terminal, ident: Identity, settings: Settings, op
     ran = None
     if handoff and agent.proposal is not None:
         ran = take_ran(handoff, settings.output_limit)
-    entry = agent.ask(request, ran, tracked=handoff is not None)
+    entry = agent.ask(request, ran, tracked=handoff is not None, research=options.research)
     try:
         sessions.save(agent.state())
     except OSError as exc:
@@ -552,7 +561,9 @@ def _parse_options(argv: list[str]) -> tuple[Options, dict, list[str]]:
 
 def _banner(ui: Terminal, ident: Identity, settings: Settings, options: Options) -> None:
     parts = [f"ush · {settings.active_model}"]
-    if options.propose:
+    if options.research:
+        parts.append("research, runs and proposes nothing")
+    elif options.propose:
         parts.append("proposes, you run")
     if ident.is_root:
         parts.append("as root" + (f" (for {ident.owner_name})" if ident.via_sudo else ""))
@@ -616,14 +627,17 @@ def _session(agent: Agent, ui: Terminal, factory: ProviderFactory, follow_up: bo
             break
         if line.startswith("//"):
             request = line[2:].strip()
-            if not request and agent.proposal is None:
+            research = request.startswith("?")   # `//? TEXT` (TODO 2.38)
+            if research:
+                request = request[1:].strip()
+            if not request and (research or agent.proposal is None):
                 continue
             try:
                 agent.secrets = factory.secrets()
             except ConfigError as exc:
                 ui.error(str(exc))
                 continue
-            agent.ask(request)
+            agent.ask(request, research=research)
             if agent.proposal is not None:
                 offer = agent.proposal["command"]
         else:

@@ -54,6 +54,7 @@ read-only commands itself and asks before anything else ([Agent mode](#agent-mod
 | `// REQUEST` (with the plugin) | ush proposes a command on your command line, or answers |
 | `//` | continue: ush gets what you ran (command, exit status, output) and proposes the next one |
 | `// TEXT` after a proposal | continue with a remark or a new question, e.g. `// that's the wrong disk` |
+| `//? TEXT`, or `ush research TEXT` | research only: the model compares the options, e.g. `//? which backup tool fits a Mac`; ush proposes and runs nothing for it, and a proposal on your line counts as not run |
 | `ush //REQUEST` | the same as `// REQUEST`, without the plugin's `//` shortcut |
 | `ush --new //REQUEST` | start over instead of continuing this shell's conversation |
 | `ush --run //REQUEST` | [agent mode](#agent-mode): ush runs the commands itself, then offers follow-up questions |
@@ -67,7 +68,11 @@ Without the plugin, quote requests (`ush '//why is my disk full?'`): otherwise z
 `ush explain find . -name "*.log" | xargs rm` explains the whole pipeline and runs none of it. A
 command line in one pair of quotes (`ush explain 'ls -la'`) is passed as it is. Without the plugin,
 quote any command line with `|`, `;`, `>`, `&`, `*`, `$` or quotes in it, or zsh acts on them
-first.
+first. `ush research TEXT` gets its text the same way.
+
+Research (`//?`) is part of the conversation: the next `// do the second one` can build on it. The
+model answers from what it knows, without running anything to look; commands in its answer are
+examples for you to read, not proposals.
 
 ## Proposals
 
