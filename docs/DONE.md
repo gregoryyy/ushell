@@ -14,6 +14,61 @@ implementation kept its own log: [ushpy](archive/DONE-ushpy.md), [ushgo](archive
 
 ---
 
+## 2026-11-11 09:13 — Next steps: `//1`…`//3`, and `//` goes on (TODO 2.41)
+
+TODO items: 2.41 (done). PR: not yet opened (branch `feat/ush-2.35-interaction`).
+
+Agent: Opus 5.5, reasoning: not exposed, subagents: none.
+
+### Implementation notes
+
+- **The user's choice:** "`//1`…`//3`, `//` goes on (Recommended)".
+- **`offer_next`** (`steps`: one to three phrases), in both modes after `ask_user`. Both system
+  prompts say to offer the next steps with it when the task has more.
+  - Sent alone with the answer: ush lists `//1 …`, `//2 …` and a hint line (`show_next` /
+    `ShowNext`), and the request ends as answered. The offer is saved (`next`) and answered by the
+    next request: "The user chose step N: …", "go on with the next step", or "asked something
+    else instead" (then with the request as text).
+  - Sent with a proposal or a command to run: answered "Not shown". An invalid offer gets its
+    validation error (empty or more than three steps, not a list, control characters).
+  - In both implementations, a question that reaches the propose path is validated as a question,
+    and any other tool there as a proposal. Before, the propose path validated against all
+    tools.
+- **`//N`** (`STEP`, one digit): picks an offered step. For one that wasn't offered, ush prints
+  "no step N was offered" (with a hint) and exits 2 without a request; in `ush>` it continues.
+- **`//` alone** now goes on whenever this shell has a conversation: it answers what's pending,
+  or sends "Go on.". Only without a conversation does it open a session, as before; the session's
+  own `//` follows the same rule.
+- **Usage** (`ush //` and `ush //N`), identical in both: `diff <(ushgo help) <(ushpy help)` is
+  empty. Also USER, the man page, ARCH, SEC and ushpy's README.
+- **Tests** (both implementations unless noted):
+  - `test_next_steps_are_picked_with_a_number_or_gone_on_with`: the listing, nothing handed
+    off, `//4` refused, `//2`, another request, `//` going on, and `//` with nothing offered
+    sending "Go on."; five requests in all.
+  - `test_next_steps_with_a_proposal_are_not_shown`.
+  - `test_next_steps_are_picked_in_the_session` (`ush>`): `//5` refused without a request, then
+    `//2` and `//`.
+  - ushpy's `test_bad_next_steps_are_refused`.
+  - The tool lists asserted in three earlier tests now include `offer_next`.
+- **Test timing:** the 2.35 and 2.39 session tests and this one waited 20 s per step for a prompt
+  the step before had already read. Each step now waits for its text and the prompt at once; the
+  session test went from 84 s to 4 s.
+- **Validation:** `./scripts/test.sh -p 'test_[apc]*.py'`: 144 tests OK. Against the Go binary,
+  `test_cli`: 29 tests OK. `-k next_steps` in `test_zsh_plugin`: OK in both. `go vet`,
+  `go test ./...`: ok. `just links`, `mandoc -T lint -W warning`, `test_docs`: clean.
+
+### Deviations
+
+- **`//` alone no longer opens a session after an answer:** as the user chose. `ush` alone still
+  does, and so does `//` in a shell without a conversation.
+
+### Insights
+
+- An offer, a question and a proposal are each a pending tool call with a result due. Keeping one
+  of them open at a time kept the conversation valid in every combination the tests try.
+
+---
+
 ## 2026-11-11 09:01 — Asking back at the `//` level (TODO 2.35)
 
 TODO items: 2.35 (done). PR: not yet opened (branch `feat/ush-2.35-interaction`).

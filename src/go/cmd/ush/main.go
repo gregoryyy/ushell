@@ -37,7 +37,9 @@ var usage = `ush, the you shell: ask in natural language, get the commands that 
 
 usage:
   ush [OPTIONS] //REQUEST...   propose a command for your command line, or answer
-  ush [OPTIONS] //             continue: send what you ran, get the next proposal
+  ush [OPTIONS] //             continue: send what you ran, get the next proposal;
+                               after an answer, go on with the next step
+  ush [OPTIONS] //N            pick next step N that the model offered (1 to 3)
   ush explain COMMAND...       explain a command line with the model, without running it
                                (with the plugin: Down on a proposal)
   ush notes [INSTRUCTION] FILE...
@@ -275,7 +277,7 @@ func realMain(argv []string, term *ui.Terminal) (int, error) {
 		if done || err != nil {
 			return status, err
 		}
-		// `//` with nothing to continue opens a session, as before.
+		// `//` with no conversation in this shell opens a session, as before.
 	}
 	banner(term, id, settings, options)
 	if piped != "" {

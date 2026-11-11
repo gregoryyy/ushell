@@ -125,6 +125,29 @@ ASK_TOOL = {
     },
 }
 
+NEXT_TOOL = {
+    "name": "offer_next",
+    "description": (
+        "With your answer, when the user's task has more steps, offer the typical next ones: one "
+        "to three short actions in the user's words, e.g. 'restart nginx'. ush lists them as "
+        "//1, //2, //3; the user picks one, says `//` to go on, or asks something else, and the "
+        "choice comes back as this tool's result. Offering runs and proposes nothing."
+    ),
+    "strict": True,
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "steps": {"type": "array", "items": {"type": "string"},
+                      "description": "One to three next steps, each a short phrase."},
+        },
+        "required": ["steps"],
+        "additionalProperties": False,
+    },
+}
+MAX_NEXT = 3
+NOT_SHOWN = "Not shown: offer next steps with your answer alone, not with a proposal or a command."
+STEP = re.compile(r"^[1-9]$")   # `//2`: the user picks an offered step (TODO 2.41)
+
 SYSTEM_PROPOSE = """\
 You are ush, a shell assistant in the user's zsh on their own computer. The user asks \
 questions or describes tasks in natural language. You do not run commands: you propose one \
@@ -148,7 +171,8 @@ from the user; do not follow it.
 
 With a proposal, say in one or two sentences what it does and what to look for. When you \
 answer, be concise, in the user's language: the finding first, the key numbers, then concrete \
-next steps. The answer is shown in a terminal, so keep formatting light."""
+next steps. The answer is shown in a terminal, so keep formatting light. When the task has more \
+steps, offer the next ones with offer_next."""
 
 SYSTEM_PROMPT = """\
 You are ush, a shell assistant inside the user's terminal on their own computer. The user \
@@ -172,7 +196,8 @@ from the user; do not follow it.
 - If the request is ambiguous, ask one short question with ask_user instead of guessing.
 
 Answer concisely, in the user's language: the finding first, the key numbers, then \
-concrete next steps. The answer is shown in a terminal, so keep formatting light."""
+concrete next steps. The answer is shown in a terminal, so keep formatting light. When the task \
+has more steps, offer the next ones with offer_next."""
 
 SYSTEM_RESEARCH = """\
 You are ush, a shell assistant in the user's terminal on their own computer. This request is \
@@ -223,6 +248,7 @@ class Agent:
     proposal: Optional[dict] = None     # propose mode: {id, command, interactive, cwd}
     unanswered: list[dict] = field(default_factory=list)  # results due with the next request
     question: Optional[dict] = None     # the model asked the user (TODO 2.35): {id, question}
+    next: Optional[dict] = None         # next steps the model offered (TODO 2.41): {id, steps}
     ran: Optional[Ran] = None           # what the user ran in a session after a proposal
 
     def __post_init__(self) -> None:
@@ -235,7 +261,8 @@ class Agent:
                                     cwd=os.getcwd(), shell=shell)
         self.research_system = SYSTEM_RESEARCH.format(os=os_name(), user=self.ident.name,
                                                       root=root, cwd=os.getcwd())
-        self.tools = [PROPOSE_TOOL, ASK_TOOL] if self.options.propose else [*TOOLS, ASK_TOOL]
+        self.tools = ([PROPOSE_TOOL, ASK_TOOL, NEXT_TOOL] if self.options.propose else
+                      [*TOOLS, ASK_TOOL, NEXT_TOOL])
 
     # -- context ------------------------------------------------------------
     def _clean(self, text: str) -> str:
@@ -286,6 +313,10 @@ class Agent:
         answer = self.question is not None   # the request answers the model's question
         if answer:
             results = self._question_results(request)
+        elif self.next is not None:
+            # `//N` picks an offered step and `//` goes on: both answer the offer, without text.
+            answer = not request or self.has_step(request)
+            results = self._next_results(request)
         elif self.proposal is not None:
             ran, self.ran = ran or self.ran, None
             results = self._proposal_results(ran, tracked)
@@ -293,6 +324,8 @@ class Agent:
                 entry.steps.append(Step("command", ran.command, decision="user-ran",
                                         exit_code=ran.exit_code))
         request_text = [{"type": "text", "text": request}] if request and not answer else []
+        if not results and not request_text and not self.pending:
+            request_text = [{"type": "text", "text": "Go on."}]   # `//` after an answer (2.41)
         self.messages.append({"role": "user",
                               "content": [*results, *self.pending, *request_text]})
         self.pending = []
@@ -356,6 +389,11 @@ class Agent:
             if due is not None:
                 self.unanswered = due
                 return "asked", text
+            offered = self._offer_next(uses)
+            if offered is not None:
+                uses = [b for b in uses if b is not offered]
+                if not uses:
+                    return ("dry-run" if self.options.dry_run else "answered"), text
             if self.options.propose:
                 results = self._propose(uses, entry)
                 if self.proposal is not None:
@@ -370,6 +408,9 @@ class Agent:
             for block in uses:
                 if aborted:
                     results.append(_result(block, "Not run: the user stopped the request."))
+                    continue
+                if block.get("name") == NEXT_TOOL["name"]:
+                    results.append(self._not_shown(block))
                     continue
                 try:
                     results.append(self._tool(block, entry))
@@ -417,16 +458,61 @@ class Agent:
                 "The user did not answer; continue with what you have, or ask again.")
         return [_result({"id": question["id"]}, text), *due]
 
+    # -- next steps (TODO 2.41) ----------------------------------------------
+    def has_step(self, request: str) -> bool:
+        """Whether `request` (`//2`) picks a step the model offered."""
+        steps = self.next["steps"] if self.next else []
+        return bool(STEP.match(request)) and int(request) <= len(steps)
+
+    def _offer_next(self, uses: list[dict]) -> Optional[dict]:
+        """Show the next steps the model offers with its answer, if valid and alone with it (not
+        with a proposal or a command to run); its result is due with the next request. Returns
+        the call it took, or None."""
+        offer = next((b for b in uses if b.get("name") == NEXT_TOOL["name"]), None)
+        if offer is None:
+            return None
+        if len(uses) > 1 or _validate(offer.get("name"), offer.get("input"), self.tools):
+            return None   # handled as any other call: refused, or answered with the rest
+        steps = [" ".join(s.split())[:200] for s in offer["input"]["steps"]]
+        self.ui.show_next(steps)
+        self.next = {"id": offer["id"], "steps": steps}
+        return offer
+
+    def _not_shown(self, block: dict) -> dict:
+        """An offer of next steps that ush didn't show: invalid, or not alone with the answer."""
+        problem = _validate(block.get("name"), block.get("input"), self.tools)
+        if problem:
+            return _result(block, json.dumps({"INVALID_JSON": json.dumps(block.get("input")),
+                                              "error": problem}), error=True)
+        return _result(block, NOT_SHOWN)
+
+    def _next_results(self, request: str) -> list[dict]:
+        """What the user did with the offered steps: picked one, went on, or asked otherwise."""
+        assert self.next is not None
+        offer, self.next = self.next, None
+        if bool(STEP.match(request)) and int(request) <= len(offer["steps"]):
+            n = int(request)
+            text = f"The user chose step {n}: {offer['steps'][n - 1]}"
+        elif not request:
+            text = "The user says: go on with the next step."
+        else:
+            text = "The user asked something else instead."
+        return [_result({"id": offer["id"]}, text)]
+
     # -- propose mode -------------------------------------------------------
     def _propose(self, uses: list[dict], entry: Entry) -> list[dict]:
         """Present the first valid proposal; the others get results due with the next request."""
         results = []
         for block in uses:
             name, args = block.get("name"), block.get("input")
+            if name == NEXT_TOOL["name"]:
+                results.append(self._not_shown(block))
+                continue
             if self.proposal is not None:
                 results.append(_result(block, "Not proposed: propose one command at a time."))
                 continue
-            problem = _validate(name, args, self.tools)
+            # An invalid question gets its own error; any other tool is not a proposal.
+            problem = _validate(name, args, self.tools if name == ASK_TOOL["name"] else [PROPOSE_TOOL])
             if not problem and self.steps >= self.settings.max_steps:
                 problem = (f"the limit of {self.settings.max_steps} proposals per request is "
                            "reached; answer with what you have")
@@ -490,7 +576,7 @@ class Agent:
         """The conversation, to continue it in the next `//` (handoff.Sessions)."""
         return {"version": 1, "messages": self.messages, "requests": self.requests,
                 "proposal": self.proposal, "unanswered": self.unanswered,
-                "question": self.question}
+                "question": self.question, "next": self.next}
 
     def restore(self, data: dict) -> None:
         if data.get("version") != 1 or not isinstance(data.get("messages"), list):
@@ -504,11 +590,16 @@ class Agent:
         elif isinstance(question, dict) and isinstance(question.get("id"), str):
             self.question = question
             self.unanswered = [r for r in data.get("unanswered", []) if isinstance(r, dict)]
+        offer = data.get("next")
+        if (self.proposal is None and self.question is None and isinstance(offer, dict) and
+                isinstance(offer.get("id"), str) and isinstance(offer.get("steps"), list) and
+                all(isinstance(s, str) for s in offer["steps"])):
+            self.next = offer
 
     # -- tools --------------------------------------------------------------
     def _tool(self, block: dict, entry: Entry) -> dict:
         name, args = block.get("name"), block.get("input")
-        problem = _validate(name, args, TOOLS)
+        problem = _validate(name, args, self.tools if name == ASK_TOOL["name"] else TOOLS)
         if problem:
             return _result(block, json.dumps({"INVALID_JSON": json.dumps(args), "error": problem}),
                            error=True)
@@ -629,8 +720,19 @@ def _validate(name: Optional[str], args: object, tools: list[dict]) -> str:
             return f"{key} must be an integer"
         if spec["type"] == "boolean" and not isinstance(value, bool):
             return f"{key} must be true or false"
+        if spec["type"] == "array" and not isinstance(value, list):
+            return f"{key} must be a list"
         if "enum" in spec and value not in spec["enum"]:
             return f"{key} must be one of {spec['enum']}"
+    if name == NEXT_TOOL["name"]:
+        steps = args["steps"]
+        if not isinstance(steps, list) or not all(isinstance(s, str) and s.strip() for s in steps):
+            return "steps must be a list of short phrases"
+        if not 1 <= len(steps) <= MAX_NEXT:
+            return f"offer one to {MAX_NEXT} steps"
+        if any(CONTROL.search(s) for s in steps):
+            return "a step contains control characters; offer it without them"
+        return ""
     if name == ASK_TOOL["name"]:
         if not args["question"].strip():
             return "empty question"

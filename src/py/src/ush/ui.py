@@ -119,6 +119,13 @@ class Terminal:
         """The model asks the user (TODO 2.35): a `//` line, the level the answer goes at."""
         self._emit(self._style("36", "// ") + self.bold(visible(question)))
 
+    def show_next(self, steps: list[str]) -> None:
+        """The next steps the model offers (TODO 2.41): `//N` picks one, `//` goes on."""
+        for n, step in enumerate(steps, 1):
+            self._emit(self._style("36", f"//{n} ") + visible(step))
+        self._emit(self.dim(f"// goes on · //1…//{len(steps)} picks a step" if len(steps) > 1
+                            else "// goes on"))
+
     def show_script(self, language: str, source: str, purpose: str, note: str) -> None:
         self._emit(self._style("36", f"$ {language} script") +
                    (self.dim(f"   # {visible(purpose)}") if purpose else ""))

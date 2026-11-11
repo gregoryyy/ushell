@@ -145,6 +145,18 @@ func (t *Terminal) ShowQuestion(question string) {
 	t.emit(t.style("36", "// ") + t.bold(Visible(question)))
 }
 
+// ShowNext: the next steps the model offers (TODO 2.41); `//N` picks one, `//` goes on.
+func (t *Terminal) ShowNext(steps []string) {
+	for n, step := range steps {
+		t.emit(t.style("36", fmt.Sprintf("//%d ", n+1)) + Visible(step))
+	}
+	if len(steps) > 1 {
+		t.emit(t.dim(fmt.Sprintf("// goes on · //1…//%d picks a step", len(steps))))
+	} else {
+		t.emit(t.dim("// goes on"))
+	}
+}
+
 // ShowScript shows a script with line numbers.
 func (t *Terminal) ShowScript(language, source, purpose, note string) {
 	line := t.style("36", "$ "+language+" script")

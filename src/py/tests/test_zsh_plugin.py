@@ -720,6 +720,48 @@ class SessionExplainTest(TempDirTest):
         self.assertEqual(len(api.requests), 3, explained)
         self.assertIn("echo kept-one x", json.dumps(explained[-1]))
 
+    def test_next_steps_are_picked_in_the_session(self):
+        # TODO 2.41: in `ush>`, `//N` picks an offered step, an unoffered one is refused without
+        # a request, and `//` alone goes on.
+        src = SRC
+        replies = [
+            ([{"type": "text", "text": "Found it."},
+              {"type": "tool_use", "id": "n1", "name": "offer_next",
+               "input": {"steps": ["show the log", "restart it"]}}], "tool_use"),
+            ([{"type": "text", "text": "STEP-TWO-DONE"}], "end_turn"),
+            ([{"type": "text", "text": "WENT-ON"}], "end_turn"),
+        ]
+        with MockAPI(replies) as api:
+            pid, fd = pty.fork()
+            if pid == 0:
+                os.environ.update({"PYTHONPATH": src, "HOME": self.tmp, "NO_COLOR": "1",
+                                   "TERM": "xterm-256color",
+                                   "XDG_CONFIG_HOME": os.path.join(self.tmp, "config"),
+                                   "XDG_STATE_HOME": os.path.join(self.tmp, "state"),
+                                   "ANTHROPIC_API_KEY": SYNTHETIC_KEY, "USH_BASE_URL": api.url})
+                os.environ.pop("USH_HANDOFF", None)
+                os.chdir(self.tmp)
+                argv = ush_argv()
+                os.execv(argv[0], argv)
+            try:
+                read = ZshPluginTest._read
+                read(fd, "ush> ", timeout=20)
+                outputs = []
+                for keys, until in [("// why is it down\r", "//2 restart it"),
+                                    ("//5\r", "no step 5 was offered"),
+                                    ("//2\r", "STEP-TWO-DONE"), ("//\r", "WENT-ON"), ("\x04", "")]:
+                    os.write(fd, keys.encode())
+                    then_prompt = re.compile(re.escape(until) + r"[\s\S]*ush> ") if until else ""
+                    outputs.append(read(fd, then_prompt, timeout=20))
+            finally:
+                os.close(fd)
+                os.waitpid(pid, 0)
+        self.assertIn("//1 show the log", outputs[0])
+        self.assertEqual(len(api.requests), 3)
+        sent = [r["body"]["messages"][-1]["content"] for r in api.requests[1:]]
+        self.assertEqual(sent[0][0]["content"], "The user chose step 2: restart it")
+        self.assertEqual(sent[1], [{"type": "text", "text": "Go on."}])
+
     def test_a_question_prefills_slashes_for_the_answer(self):
         # TODO 2.35: in `ush>`, the model's question is a `//` line and `// ` is pre-filled.
         src = SRC
@@ -744,10 +786,10 @@ class SessionExplainTest(TempDirTest):
                 read = ZshPluginTest._read
                 read(fd, "ush> ", timeout=20)
                 outputs = []
-                for keys, until in [("// clean up\r", "ush> // "), ("build\r", "TAKING-BUILD"),
-                                    ("", "ush> "), ("\x04", "")]:
-                    if keys:
-                        os.write(fd, keys.encode())
+                for keys, until in [("// clean up\r", "ush> // "),
+                                    ("build\r", re.compile(r"TAKING-BUILD[\s\S]*ush> ")),
+                                    ("\x04", "")]:
+                    os.write(fd, keys.encode())
                     outputs.append(read(fd, until, timeout=20))
             finally:
                 os.close(fd)
@@ -790,11 +832,10 @@ class SessionExplainTest(TempDirTest):
                     ("// make it\r", "touch mark"),
                     ("\x1b[B", "EXPLAINED-HERE"),             # Down explains it
                     ("\x1b", ANY_OUTPUT),                     # Esc closes the explanation
-                    ("\x15// never mind\r", "ANSWERED-INSTEAD"),  # a new request over it
-                    ("", "ush> "),
+                    # a new request over it
+                    ("\x15// never mind\r", re.compile(r"ANSWERED-INSTEAD[\s\S]*ush> ")),
                 ]:
-                    if keys:
-                        os.write(fd, keys.encode())
+                    os.write(fd, keys.encode())
                     before.append(read(fd, until, timeout=20))
                 existed = os.path.exists(mark)
                 for keys, until in [("// make it again\r", "touch mark"), ("\r", "ush> "),

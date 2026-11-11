@@ -58,6 +58,7 @@ type Agent struct {
 	Proposal     block   // propose mode: id, command, purpose, verbose, interactive, cwd
 	Unanswered   []block // results due with the next request
 	Question     block   // the model asked the user (TODO 2.35): id, question
+	Next         block   // next steps the model offered (TODO 2.41): id, steps
 	Ran          *handoff.Ran
 	system       string
 	research     string // the system prompt of a research request
@@ -79,9 +80,9 @@ func New(p provider.Provider, t *ui.Terminal, s config.Settings, id config.Ident
 	shell := strings.Join(execute.FindShell()[:len(execute.FindShell())-1], " ")
 	cwd, _ := os.Getwd()
 	prompt := systemRun
-	a.tools = append(append([]block{}, Tools...), AskTool)
+	a.tools = append(append([]block{}, Tools...), AskTool, NextTool)
 	if o.Propose {
-		prompt, a.tools = systemPropose, []block{ProposeTool, AskTool}
+		prompt, a.tools = systemPropose, []block{ProposeTool, AskTool, NextTool}
 	}
 	replacer := strings.NewReplacer("{os}", OSName(), "{user}", id.Name, "{root}", root, "{cwd}", cwd,
 		"{shell}", shell)
@@ -175,6 +176,10 @@ func (a *Agent) ask(ctx context.Context, request string, ran *handoff.Ran, track
 	answering := a.Question != nil // the request answers the model's question
 	if answering {
 		results = a.questionResults(request)
+	} else if a.Next != nil {
+		// `//N` picks an offered step and `//` goes on: both answer the offer, without text.
+		answering = request == "" || a.HasStep(request)
+		results = a.nextResults(request)
 	} else if a.Proposal != nil {
 		if ran == nil {
 			ran = a.Ran
@@ -192,6 +197,9 @@ func (a *Agent) ask(ctx context.Context, request string, ran *handoff.Ran, track
 			content = append(content, block{"type": "text", "text": request})
 		}
 		a.Requests = append(a.Requests, request)
+	}
+	if len(content) == 0 {
+		content = append(content, block{"type": "text", "text": "Go on."}) // `//` after an answer (2.41)
 	}
 	a.Messages = append(a.Messages, block{"role": "user", "content": content})
 	a.pending = nil
@@ -287,6 +295,12 @@ func (a *Agent) loop(ctx context.Context, entry *history.Entry, research bool) (
 			a.Unanswered = due
 			return "asked", text.String(), nil
 		}
+		if a.offerNext(uses) {
+			if a.Options.DryRun {
+				return "dry-run", text.String(), nil
+			}
+			return "answered", text.String(), nil
+		}
 		if a.Options.Propose {
 			results := a.propose(ctx, uses, entry)
 			if a.Proposal != nil {
@@ -304,6 +318,10 @@ func (a *Agent) loop(ctx context.Context, entry *history.Entry, research bool) (
 		for _, b := range uses {
 			if aborted {
 				results = append(results, result(b, "Not run: the user stopped the request.", false))
+				continue
+			}
+			if str(b["name"]) == str(NextTool["name"]) {
+				results = append(results, a.notShown(b))
 				continue
 			}
 			r, err := a.tool(ctx, b, entry)
@@ -412,16 +430,84 @@ func (a *Agent) questionResults(request string) []block {
 	return append([]block{result(block{"id": q["id"]}, text, false)}, due...)
 }
 
+// HasStep: whether request (`//2`) picks a step the model offered.
+func (a *Agent) HasStep(request string) bool {
+	return Step.MatchString(request) && a.Next != nil && int(request[0]-'0') <= len(steps(a.Next))
+}
+
+// Offered is how many next steps are on offer.
+func (a *Agent) Offered() int { return len(steps(a.Next)) }
+
+func steps(offer block) []string {
+	var out []string
+	raw, _ := offer["steps"].([]any)
+	for _, s := range raw {
+		out = append(out, str(s))
+	}
+	if typed, ok := offer["steps"].([]string); ok {
+		out = typed
+	}
+	return out
+}
+
+// offerNext shows the next steps the model offers with its answer, if valid and alone with it;
+// their result is due with the next request.
+func (a *Agent) offerNext(uses []block) bool {
+	if len(uses) != 1 || str(uses[0]["name"]) != str(NextTool["name"]) ||
+		validate(str(uses[0]["name"]), uses[0]["input"], a.tools) != "" {
+		return false
+	}
+	var shown []string
+	for _, s := range uses[0]["input"].(block)["steps"].([]any) {
+		shown = append(shown, truncate(strings.Join(strings.Fields(str(s)), " "), 200))
+	}
+	a.UI.ShowNext(shown)
+	a.Next = block{"id": uses[0]["id"], "steps": shown}
+	return true
+}
+
+// notShown answers an offer of next steps that ush didn't show: invalid, or not alone.
+func (a *Agent) notShown(b block) block {
+	if problem := validate(str(b["name"]), b["input"], a.tools); problem != "" {
+		return result(b, invalid(b["input"], problem), true)
+	}
+	return result(b, notShown, false)
+}
+
+// nextResults: what the user did with the offered steps: picked one, went on, or asked otherwise.
+func (a *Agent) nextResults(request string) []block {
+	offer, offered := a.Next, steps(a.Next)
+	a.Next = nil
+	text := "The user asked something else instead."
+	switch {
+	case Step.MatchString(request) && int(request[0]-'0') <= len(offered):
+		n := int(request[0] - '0')
+		text = fmt.Sprintf("The user chose step %d: %s", n, offered[n-1])
+	case request == "":
+		text = "The user says: go on with the next step."
+	}
+	return []block{result(block{"id": offer["id"]}, text, false)}
+}
+
 // propose presents the first valid proposal; the others get results due with the next request.
 func (a *Agent) propose(ctx context.Context, uses []block, entry *history.Entry) []block {
 	var results []block
 	for _, b := range uses {
 		name, args := str(b["name"]), b["input"]
+		if name == str(NextTool["name"]) {
+			results = append(results, a.notShown(b))
+			continue
+		}
 		if a.Proposal != nil {
 			results = append(results, result(b, "Not proposed: propose one command at a time.", false))
 			continue
 		}
-		problem := validate(name, args, a.tools)
+		// An invalid question gets its own error; any other tool is not a proposal.
+		tools := []block{ProposeTool}
+		if name == str(AskTool["name"]) {
+			tools = a.tools
+		}
+		problem := validate(name, args, tools)
 		if problem == "" && a.steps >= a.Settings.MaxSteps {
 			problem = fmt.Sprintf("the limit of %d proposals per request is reached; answer with what you have", a.Settings.MaxSteps)
 		}
@@ -508,12 +594,15 @@ func (a *Agent) State() block {
 	if a.Proposal != nil {
 		proposal = a.Proposal
 	}
-	var question any
+	var question, next any
 	if a.Question != nil {
 		question = a.Question
 	}
+	if a.Next != nil {
+		next = a.Next
+	}
 	return block{"version": 1, "messages": nonNil(a.Messages), "requests": nonNilS(a.Requests),
-		"proposal": proposal, "unanswered": nonNil(a.Unanswered), "question": question}
+		"proposal": proposal, "unanswered": nonNil(a.Unanswered), "question": question, "next": next}
 }
 
 // Restore continues a saved conversation; anything unknown is ignored.
@@ -547,6 +636,19 @@ func (a *Agent) Restore(data block) {
 			}
 		}
 	}
+	if offer, ok := data["next"].(block); ok && a.Proposal == nil && a.Question == nil {
+		_, hasID := offer["id"].(string)
+		list, isList := offer["steps"].([]any)
+		allText := isList
+		for _, s := range list {
+			if _, ok := s.(string); !ok {
+				allText = false
+			}
+		}
+		if hasID && allText {
+			a.Next = offer
+		}
+	}
 }
 
 func (a *Agent) cleanAll(texts []string) []string {
@@ -560,7 +662,11 @@ func (a *Agent) cleanAll(texts []string) []string {
 // tool handles one tool call in agent mode.
 func (a *Agent) tool(ctx context.Context, b block, entry *history.Entry) (block, error) {
 	name, args := str(b["name"]), b["input"]
-	if problem := validate(name, args, Tools); problem != "" {
+	tools := Tools
+	if name == str(AskTool["name"]) {
+		tools = a.tools // an invalid question gets its own error
+	}
+	if problem := validate(name, args, tools); problem != "" {
 		return result(b, invalid(args, problem), true), nil
 	}
 	in := args.(block)
@@ -771,6 +877,26 @@ func validate(name string, args any, tools []block) string {
 				return fmt.Sprintf("%s must be one of %s", key, pyList(enum))
 			}
 		}
+	}
+	if name == str(NextTool["name"]) {
+		list, ok := in["steps"].([]any)
+		if !ok {
+			return "steps must be a list"
+		}
+		for _, s := range list {
+			if text, ok := s.(string); !ok || strings.TrimSpace(text) == "" {
+				return "steps must be a list of short phrases"
+			}
+		}
+		if len(list) < 1 || len(list) > MaxNext {
+			return fmt.Sprintf("offer one to %d steps", MaxNext)
+		}
+		for _, s := range list {
+			if Control.MatchString(s.(string)) {
+				return "a step contains control characters; offer it without them"
+			}
+		}
+		return ""
 	}
 	if name == str(AskTool["name"]) {
 		if strings.TrimSpace(str(in["question"])) == "" {

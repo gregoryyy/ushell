@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -17,7 +18,7 @@ import (
 func newHistory(id config.Identity) *history.History { return history.New(id.StateDir()) }
 
 // proposeStep is one step of propose mode: send the request (or what ran), then hand over the
-// proposal. done is false when `//` has nothing to continue, which opens a session instead.
+// proposal. done is false when `//` has no conversation to continue, which opens a session instead.
 func proposeStep(a *agent.Agent, term *ui.Terminal, id config.Identity, settings config.Settings,
 	options agent.Options, ov overrides, request, piped string, stop *interrupts) (int, bool, error) {
 	dir := handoff.Dir(id.UID, id.IsRoot(), os.Getenv)
@@ -30,8 +31,11 @@ func proposeStep(a *agent.Agent, term *ui.Terminal, id config.Identity, settings
 	} else if saved := sessions.Load(); saved != nil {
 		a.Restore(saved)
 	}
-	if request == "" && piped == "" && a.Proposal == nil && a.Question == nil {
-		return 0, false, nil
+	if status, bad := noSuchStep(a, request, term); bad {
+		return status, true, nil
+	}
+	if request == "" && piped == "" && a.Proposal == nil && a.Question == nil && len(a.Messages) == 0 {
+		return 0, false, nil // nothing to continue or go on with (TODO 2.41)
 	}
 	banner(term, id, settings, options)
 	if piped != "" {
@@ -92,6 +96,22 @@ func proposeStep(a *agent.Agent, term *ui.Terminal, id config.Identity, settings
 	}
 	term.Info("to get it on your command line, add the zsh plugin to ~/.zshrc and open a new terminal" + where)
 	return 0, true, nil
+}
+
+// noSuchStep: `//N` names a step the model didn't offer (TODO 2.41); say so instead of sending it.
+func noSuchStep(a *agent.Agent, request string, term *ui.Terminal) (int, bool) {
+	if !agent.Step.MatchString(request) || a.HasStep(request) {
+		return 0, false
+	}
+	hint := "; // TEXT asks"
+	switch offered := a.Offered(); {
+	case offered > 1:
+		hint = fmt.Sprintf("; //1…//%d picks one", offered)
+	case offered == 1:
+		hint = "; //1 picks it"
+	}
+	term.Error("no step " + request + " was offered" + hint)
+	return 2, true
 }
 
 // pluginPath is the installed zsh plugin: PREFIX/lib/ush, or ~/.local/share/ush for a user install.
@@ -222,7 +242,10 @@ func session(a *agent.Agent, term *ui.Terminal, factory *providerFactory, follow
 			if research {
 				request, ask = strings.TrimSpace(request[1:]), a.Research
 			}
-			if request == "" && (research || (a.Proposal == nil && a.Question == nil)) {
+			if request == "" && (research || len(a.Messages) == 0) {
+				continue
+			}
+			if _, bad := noSuchStep(a, request, term); bad {
 				continue
 			}
 			secrets, err := factory.secrets()

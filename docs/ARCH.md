@@ -116,6 +116,15 @@ sent as the question's tool result (`The user answers: …`); `//` alone answers
 answer. The saved conversation keeps the open question (`question`). On a proposal, the hint
 line says that `// TEXT` instead asks: a new request over the proposal answers it as not run.
 
+**Next steps** (TODO 2.41): `offer_next` (`steps`, one to three short phrases) is offered in both
+modes. Sent alone with the answer, ush lists the steps as `//1 …`, `//2 …` and ends the request as
+answered; its result is due with the next request: "The user chose step 2: …" for `//2`, "go on
+with the next step" for `//` alone, or "asked something else instead" with any other request.
+`//N` for a step that wasn't offered is an error (exit 2) and sends nothing. Sent with a proposal
+or a command to run, the offer is answered "Not shown". `//` alone goes on whenever the shell has a
+conversation, with "Go on." if nothing is pending; it opens a session only without one. The saved
+conversation keeps the offer (`next`). Offering runs and proposes nothing.
+
 **Research** (`//? TEXT`, `ush research TEXT`, TODO 2.38) is a request in the same conversation,
 in either mode, with its own system prompt: compare the options, carry out nothing. On a new
 conversation it is sent without tools. Once the conversation has tool calls, a request has to

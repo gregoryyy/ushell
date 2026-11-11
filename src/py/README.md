@@ -157,7 +157,8 @@ what was measured. `ush replay` runs no checker, as it uses no AI.
 
 ```text
 ush [OPTIONS] //REQUEST...   propose a command for your command line, or answer
-ush [OPTIONS] //             continue with what you ran
+ush [OPTIONS] //             continue with what you ran, or go on with the next step
+ush [OPTIONS] //N            pick next step N the model offered
 ush explain COMMAND...       explain a command line with the model (Down on a proposal)
 ush research TEXT...         research only: compare the options, propose and run nothing (//? TEXT)
 ush [OPTIONS]                start a session

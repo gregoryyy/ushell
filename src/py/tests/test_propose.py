@@ -7,7 +7,7 @@ from unittest import mock
 
 from helpers import SYNTHETIC_KEY, TempDirTest, fake_identity, text
 from test_agent import assert_every_tool_use_answered
-from ush.agent import ASK_TOOL, PROPOSE_TOOL
+from ush.agent import ASK_TOOL, NEXT_TOOL, PROPOSE_TOOL
 from ush.handoff import (EXPLANATIONS_KEPT, SESSION_TTL, Explanations, Ran, Sessions,
                          handoff_dir, last_ran, session_key, take_ran, write_proposal)
 
@@ -64,6 +64,18 @@ class ProposeAgentTest(TempDirTest):
             self.assertEqual(bad.ask("x").outcome, "answered")
             self.assertIn(problem, prov.requests[1][-1]["content"][0]["content"])
 
+    def test_bad_next_steps_are_refused(self):
+        for steps, problem in (([], "one to 3"), (["a", "b", "c", "d"], "one to 3"), (["  "], "short phrases"),
+                               (["ok\x1b[2J"], "control characters"), ("restart", "must be a list")):
+            agent, provider, ui, _ = self.make([
+                [{"type": "tool_use", "id": "n1", "name": "offer_next", "input": {"steps": steps}}],
+                [text("fine")],
+            ])
+            self.assertEqual(agent.ask("x").outcome, "answered")
+            self.assertIsNone(agent.next)
+            self.assertIn(problem, provider.requests[1][-1]["content"][0]["content"], steps)
+            self.assertNotIn("//1", ui.err.getvalue())
+
     def test_propose_mode_never_starts_a_process(self):
         # TODO 2.39 (GAPS Q18): in propose mode the user runs every command, with Enter on their
         # own command line; ush starts nothing, whatever the model sends or the user does next.
@@ -108,7 +120,7 @@ class ProposeAgentTest(TempDirTest):
         original = provider.turn
         provider.turn = lambda system, t, *a, **k: (tools.append(t), original(system, t, *a, **k))[1]
         agent.ask("hello")
-        self.assertEqual(tools, [[PROPOSE_TOOL, ASK_TOOL]])
+        self.assertEqual(tools, [[PROPOSE_TOOL, ASK_TOOL, NEXT_TOOL]])
         self.assertIn("You do not run commands", agent.system)
 
     def test_unverified_read_is_marked(self):

@@ -412,13 +412,20 @@ Done in Python, and in Go through the port (section 4).
   `ush>` session (Down, Esc, a new request over it), both run against ushgo by the conformance
   suite; `test_propose_mode_never_starts_a_process` (ushpy's agent, with every way to start a
   process patched to fail).
-- [ ] 2.41 *py – go –* Contextual "go on" actions for larger plans (user, 2026-11-08): when a
+- [x] 2.41 *py ✓ go ✓* Contextual "go on" actions for larger plans (user, 2026-11-08): when a
   request spans multiple steps, offer the typical next actions and a shortcut to choose "go on"
   and continue to the next step without retyping the request. This asks ush/model to continue the
   interaction; it must not itself execute a proposed command or bypass the review and confirmation
   flow. Acceptance: session and plugin tests cover showing relevant next actions, invoking the
   shortcut, continuing the same conversation, and ensuring commands remain proposals pending the
   usual user action.
+  Done (the user chose "`//1`…`//3`, `//` goes on"): `offer_next` (one to three steps, both modes),
+  listed as `//1 …`; `//N` picks one, `//` alone goes on, another request leaves them, each sent as
+  the offer's result; `//N` not offered is exit 2 and sends nothing; `//` with a conversation goes
+  on ("Go on."), without one it opens a session as before. Nothing runs or is proposed by it.
+  Tests: `test_next_steps_are_picked_with_a_number_or_gone_on_with`,
+  `test_next_steps_with_a_proposal_are_not_shown`, `test_next_steps_are_picked_in_the_session`
+  (both implementations), ushpy's `test_bad_next_steps_are_refused`.
 - [x] 2.42 *py ✓ go ✓* Bug (user, 2026-11-10): "cd does not move away from the initial
   directory". In the `ush>` session every line, typed or an accepted proposal, ran in a fresh
   `zsh -c`, so `cd` was lost when it ended. A session line now reports its final `$PWD` through

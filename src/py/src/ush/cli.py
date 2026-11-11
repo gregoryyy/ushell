@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from typing import Callable, Optional
 
 from . import __version__, execute, notes
-from .agent import Agent, Options, os_name
+from .agent import STEP, Agent, Options, os_name
 from .check import Checker
 from .config import (EFFORTS, PROVIDERS, THINKING, ConfigError, Identity, KeyStore, Settings, path_risks,
                      apply_environment, check_ollama_url, identity, load_settings, mask,
@@ -31,7 +31,9 @@ ush, the you shell: ask in natural language, get the commands that answer it.
 
 usage:
   ush [OPTIONS] //REQUEST...   propose a command for your command line, or answer
-  ush [OPTIONS] //             continue: send what you ran, get the next proposal
+  ush [OPTIONS] //             continue: send what you ran, get the next proposal;
+                               after an answer, go on with the next step
+  ush [OPTIONS] //N            pick next step N that the model offered (1 to 3)
   ush explain COMMAND...       explain a command line with the model, without running it
                                (with the plugin: Down on a proposal)
   ush notes [INSTRUCTION] FILE...
@@ -257,10 +259,13 @@ def _main(argv: list[str], ui: Terminal) -> int:
             saved = sessions.load()
             if saved:
                 agent.restore(saved)
-        if request or piped or agent.proposal is not None or agent.question is not None:
+        if _no_such_step(agent, request, ui):
+            return 2
+        if (request or piped or agent.proposal is not None or agent.question is not None or
+                agent.messages):   # `//` alone goes on (TODO 2.41)
             return _propose(agent, ui, ident, settings, options, request, piped, handoff,
                             sessions)
-        # `//` with nothing to continue opens a session, as before.
+        # `//` with no conversation in this shell opens a session, as before.
     _banner(ui, ident, settings, options)
     if piped:
         agent.add_context("Input piped to ush on stdin:", piped)
@@ -319,6 +324,17 @@ def _propose(agent: Agent, ui: Terminal, ident: Identity, settings: Settings, op
     ui.info("to get it on your command line, add the zsh plugin to ~/.zshrc and open a new "
             "terminal" + (f":\n  source '{plugin}'" if plugin else " (see `ush help`)"))
     return 0
+
+
+def _no_such_step(agent: Agent, request: str, ui: Terminal) -> bool:
+    """`//N` names a step the model didn't offer (TODO 2.41): say so instead of sending it."""
+    if not STEP.match(request) or agent.has_step(request):
+        return False
+    offered = len(agent.next["steps"]) if agent.next else 0
+    ui.error(f"no step {request} was offered" +
+             (f"; //1…//{offered} picks one" if offered > 1 else "; //1 picks it" if offered else
+              "; // TEXT asks"))
+    return True
 
 
 def _plugin_path() -> str:
@@ -641,7 +657,9 @@ def _session(agent: Agent, ui: Terminal, factory: ProviderFactory, follow_up: bo
             research = request.startswith("?")   # `//? TEXT` (TODO 2.38)
             if research:
                 request = request[1:].strip()
-            if not request and (research or (agent.proposal is None and agent.question is None)):
+            if not request and (research or not agent.messages):
+                continue
+            if _no_such_step(agent, request, ui):
                 continue
             try:
                 agent.secrets = factory.secrets()

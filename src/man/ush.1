@@ -83,6 +83,17 @@ and quotes first.
 .TP
 .B ush //
 Continue: send what you ran, its exit status and output, and get the next proposal.
+After an answer,
+.B //
+goes on with the next step.
+.TP
+.BI "ush //" N
+Pick next step
+.I N
+(1 to 3): with its answer, the model may offer up to three, listed as
+.BR //1 ,
+.BR //2 ,
+.BR //3 .
 .BI "// " text
 after a proposal asks instead of running it, with a remark or a new question; the proposal
 counts as not run.
