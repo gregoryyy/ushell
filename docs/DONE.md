@@ -14,6 +14,32 @@ implementation kept its own log: [ushpy](archive/DONE-ushpy.md), [ushgo](archive
 
 ---
 
+## 2026-11-11 21:40 — OpenAI documented as a preview; supported later (2.51)
+
+TODO items: 2.51 (new, open); 2.29.6 (note). PR: #64 (branch `docs/ush-openai-future`).
+
+Agent: Opus 5.5, reasoning: not exposed, subagents: none.
+
+### Implementation notes
+
+- **The request** (user, 2026-11-11): "skip openai for now", then "adjust the documentation and
+  add openai as a future feature". The key in `.env` is rejected by OpenAI (DONE 20:02), and paid
+  providers get a smoke test only, OpenAI at most $1 in total.
+- **Documents:** USER's first steps and the man page's description call OpenAI a preview, tested
+  only against a local stand-in of its API; ROAD's platforms track has OpenAI's Responses adapter
+  (2.29.6) as a preview that becomes a supported provider after a live smoke test; TODO 2.51 is
+  that step (the smoke test once, low effort, cost estimated first, at most $1; 2.50 fixed), after
+  which the documents drop "preview". `.env.template` marks its OpenAI section.
+- **Unchanged:** the code. `ush help` and `ush ai configure` still offer OpenAI next to Anthropic
+  and Ollama; ADMIN's network table, SEC and ARCH describe what the code does.
+- **Validation:** `mandoc -T lint -W warning src/man/ush.1`: clean. `test_help_docs`: OK. `just
+  links`: OK.
+
+### Deviations
+
+- **A preview, not a removal:** the request names the documents only, and documents that left
+  OpenAI out would contradict `ush help` and `ush ai configure`, which offer it.
+
 ## 2026-11-11 20:16 — Next steps only with an answer in text
 
 TODO items: 2.49 (done). PR: #63 (branch `chore/ush-smoke-openai`, with the release checks of

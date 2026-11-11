@@ -301,7 +301,8 @@ Done in Python, and in Go through the port (section 4).
     errors and retries, in both implementations; `test_cli` end to end (proposal handed over,
     key redacted, banner names OpenAI, its own key), run against ushgo by the conformance suite;
     per-provider keys and URL checks in `test_config`; SEC, ADMIN, ARCH, USER and the man page.
-    Not released before 2.23 (GAPS Q17); no live run on a paid key.
+    Not released before 2.23 (GAPS Q17); no live run on a paid key. The documents call it a
+    preview until 2.51.
   - [ ] 2.29.5 The remaining presets: `huggingface` (the Inference Providers router), `gemini`
     (Google's OpenAI-compatible endpoint), `groq`, `openrouter`, `together`, `deepseek`, `azure`
     (the user's resource URL).
@@ -531,6 +532,12 @@ Done in Python, and in Go through the port (section 4).
   smoke test): with `openai_url` / `USH_OPENAI_URL` set to another host, the banner and `ai
   status` still say "go to OpenAI". They should name the host when it isn't api.openai.com, as
   for an Ollama cloud model. Acceptance: `test_cli` (shared) for the default and another host.
+- [ ] 2.51 *docs* OpenAI as a supported provider (user, 2026-11-11: "skip openai for now", then
+  "adjust the documentation and add openai as a future feature"). 2.29.6 is in the code, tested
+  against `mock_openai` only; USER and the man page call it a preview. Supported once the live
+  smoke test passes: `tests/smoke/smoke.sh --provider openai --paid` once, at low effort, with the
+  cost estimated beforehand and at most $1 in total (user, 2026-11-11), and 2.50 is fixed. Then
+  the documents drop "preview".
 - [ ] 3.1 Release 0.1 gate per [AGENTS.md](../AGENTS.md): fresh suite on the exact
   candidate on each supported OS/Python, dependency audit, release notes, human merge.
   Overtaken: releases ship the Go binary (5.2), and each release runs the gate of 5.3; 0.1 was

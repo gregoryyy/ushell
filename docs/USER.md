@@ -39,8 +39,10 @@ read-only commands itself and asks before anything else ([Agent mode](#agent-mod
 2. **Choose a model:** `ush ai configure` asks for the provider, then the key or the local model,
    then lists the provider's models to choose from: answer with a number, or type a name.
    - **Anthropic:** an API key from console.anthropic.com.
-   - **OpenAI:** an API key from platform.openai.com. ush uses OpenAI's Responses API, so all its
-     current models work, `gpt-6-astra` (the default) included.
+   - **OpenAI (preview):** an API key from platform.openai.com. ush talks to OpenAI's Responses
+     API (`gpt-6-astra` is the default model), but so far only against a local stand-in of that
+     API, never OpenAI itself: try it, don't rely on it yet. OpenAI as a supported provider is
+     planned ([ROAD](ROAD.md), TODO 2.51).
    - Each provider's key is stored in the macOS keychain (or in `~/.config/ush/credentials`, mode
      0600, with `ush ai configure --file`); `ANTHROPIC_API_KEY` or `OPENAI_API_KEY` set one for a
      shell.
