@@ -499,6 +499,9 @@ Until 2026-10-29: ushgo TODO 2.1–2.7.
   commit, the tag `v0.2.3`, the GitHub release with the four archives and `SHA256SUMS`, and the
   formula in the tap. Acceptance: the gate's results recorded in DONE; the published checksums
   verified after download. Done 2026-11-11 on 50257ee (DONE).
+  Follow-up 2026-11-11: Homebrew's Go is 1.27.4, so `brew upgrade go && brew reinstall ush`
+  builds 0.2.3 without GO-2026-6859, and the Homebrew limitation in the release notes is gone.
+  No 0.2.4: what main has since 0.2.3 (#53, #54) doesn't change what ships (DONE).
 - [ ] 5.11 0.3.0 (user, 2026-10-30: "for the next version 0.3.0, expand to bash, sh and other commonly
   used shells"; the agent's proposal, accepted with "write to pr as proposed" and adjusted to the
   answers to GAPS Q15–Q17). Contents:

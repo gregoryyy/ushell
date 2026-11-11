@@ -14,6 +14,35 @@ implementation kept its own log: [ushpy](archive/DONE-ushpy.md), [ushgo](archive
 
 ---
 
+## 2026-11-11 07:44 — No 0.2.4: Homebrew's Go is now 1.27.4
+
+TODO items: 5.12 (follow-up). PR: #53 (branch `chore/aux-layout`).
+
+Agent: Opus 5.5, reasoning: not exposed, subagents: none.
+
+### Implementation notes
+
+- **The request** (user, 2026-11-11, after merging #54): "let's release these". The agent pointed
+  out that #53 and #54 change no shipped file (binary, plugin, man page), so a 0.2.4 would differ
+  from 0.2.3 only in its version, and that Homebrew now has Go 1.27.4. The user chose "No release;
+  note Go 1.27.4".
+- **Checked on macOS:** `brew upgrade go` (1.27.3 → 1.27.4), `brew reinstall ush`:
+  `go version -m /opt/homebrew/bin/ush` reports go1.27.4, `ush --version` "ush 0.2.3 (go)",
+  `govulncheck -mode=binary /opt/homebrew/bin/ush` (v1.1.4): "No vulnerabilities found".
+- **Recorded** in TODO 5.12. [docs/releases/0.2.3.md](releases/0.2.3.md) and the GitHub release
+  are left as published: the limitation was true when 0.2.3 was released.
+
+### Deviations
+
+- None.
+
+### Insights
+
+- The tap builds from source, so a fixed Go toolchain reaches Homebrew users by
+  `brew upgrade go && brew reinstall ush`, without a new ush version.
+
+---
+
 ## 2026-11-11 06:17 — Flaky test: the key after Esc waits for zsh
 
 TODO items: 2.44 (new, done); test code only, run against both implementations. PR: not yet
