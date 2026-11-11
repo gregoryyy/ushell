@@ -505,10 +505,10 @@ class ExplainTest(TempDirTest):
 
 def run_ush(home, *args, stdin="", env=None):
     base = {k: v for k, v in os.environ.items()
-            if not k.startswith(("ANTHROPIC_", "USH_", "XDG_"))}
+            if not k.startswith(("ANTHROPIC_", "OPENAI_", "USH_", "XDG_"))}
     base.update({"PYTHONPATH": SRC, "XDG_CONFIG_HOME": os.path.join(home, "config"),
                  "XDG_STATE_HOME": os.path.join(home, "state"), "NO_COLOR": "1",
-                 "USH_BASE_URL": DEAD_URL, "USH_OLLAMA_URL": DEAD_URL, **(env or {})})
+                 "USH_BASE_URL": DEAD_URL, "USH_OLLAMA_URL": DEAD_URL, "USH_OPENAI_URL": DEAD_URL, **(env or {})})
     return subprocess.run([*ush_argv(), *args], input=stdin, text=True,
                           capture_output=True, env=base, cwd=home, timeout=60,
                           start_new_session=True)

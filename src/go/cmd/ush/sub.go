@@ -4,10 +4,13 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -60,6 +63,7 @@ func aiCommand(args []string, term *ui.Terminal, id config.Identity, settings co
 	}
 	switch action {
 	case "configure":
+		withEnv := settings                         // with the environment's endpoints (USH_OPENAI_URL, ...)
 		s, err := config.Load(id, policy.ParseRule) // environment overrides are not saved
 		if err != nil {
 			return 2, err
@@ -67,7 +71,7 @@ func aiCommand(args []string, term *ui.Terminal, id config.Identity, settings co
 		ask(term, fmt.Sprintf("mode: propose (you run the commands) or run (ush runs them) [%s]: ", s.Mode), s.SetMode)
 		ask(term, fmt.Sprintf("provider %s [%s]: ", strings.Join(config.Providers, "/"), s.Provider), s.SetProvider)
 		spec := providers.MustGet(s.Provider)
-		if spec.URLSetting != "" {
+		if spec.URLSetting != "" && spec.Loopback {
 			ask(term, fmt.Sprintf("%s URL [%s]: ", spec.Label, s.Endpoint(spec.Name)), func(v string) error {
 				u, err := config.CheckOllamaURL(v)
 				if err == nil {
@@ -76,21 +80,46 @@ func aiCommand(args []string, term *ui.Terminal, id config.Identity, settings co
 				return err
 			})
 		}
-		if spec.ListsModels {
-			if pulled := ollamaModels(s.Endpoint(spec.Name)); len(pulled) > 0 {
-				term.Info("pulled models: " + strings.Join(pulled, ", "))
-			}
-		}
 		if spec.KeyStore {
-			if key := strings.TrimSpace(term.Secret("API key (hidden; Enter keeps the current key): ")); key != "" {
-				where, err := keys.Store(key, !contains(args, "--file"))
+			if key := strings.TrimSpace(term.Secret(spec.Label + " API key (hidden; Enter keeps the current key): ")); key != "" {
+				where, err := keys.Store(key, !contains(args, "--file"), spec.Name)
 				if err != nil {
 					return 2, err
 				}
 				term.Info("key stored in " + where)
 			}
 		}
-		ask(term, fmt.Sprintf("model [%s]: ", s.ActiveModel()), s.SetModel)
+		endpoints := s
+		endpoints.OpenAIURL = withEnv.OpenAIURL
+		models, live := availableModels(id, endpoints, spec.Name, keys)
+		if len(models) > 0 {
+			source := ""
+			if !live {
+				source = " (ush's list: the provider's could not be fetched)"
+			}
+			term.Info(spec.Label + " models" + source + ":")
+			for n, name := range models {
+				term.Info(fmt.Sprintf("  %2d  %s", n+1, name))
+			}
+		}
+		choice := ""
+		if len(models) > 0 {
+			choice = " (a number or a name)"
+		}
+		shown := s.ActiveModel()
+		if shown == "" {
+			shown = "none"
+		}
+		ask(term, fmt.Sprintf("model%s [%s]: ", choice, shown), func(answer string) error {
+			if len(models) > 0 && isDigits(answer) {
+				n, err := strconv.Atoi(answer)
+				if err != nil || n < 1 || n > len(models) {
+					return config.Errorf("model number %s is not in the list (1 to %d)", answer, len(models))
+				}
+				answer = models[n-1]
+			}
+			return s.SetModel(answer)
+		})
 		if providers.ProfileOf(s.Provider, s.ActiveModel()).Effort {
 			ask(term, fmt.Sprintf("effort %s [%s]: ", strings.Join(config.Efforts, "/"), s.Effort), func(v string) error {
 				if !contains(config.Efforts, v) {
@@ -141,7 +170,7 @@ func aiCommand(args []string, term *ui.Terminal, id config.Identity, settings co
 			fmt.Fprintf(out, "data:      %s\n", disclosure(settings))
 		}
 		if spec.KeyStore {
-			key, source, err := keys.Resolve()
+			key, source, err := keys.Resolve(spec.Name)
 			if err != nil {
 				return 2, err
 			}
@@ -189,15 +218,128 @@ func aiCommand(args []string, term *ui.Terminal, id config.Identity, settings co
 			fmt.Fprintln(out, "PATH:      no relative or writable entries")
 		}
 		return 0, nil
+	case "models":
+		spec := providers.MustGet(settings.Provider)
+		models, live := availableModels(id, settings, spec.Name, keys)
+		if !live {
+			term.Warn("could not list " + spec.Label + "'s models; ush's list:")
+		}
+		for _, name := range models {
+			fmt.Fprintln(term.Out, name)
+		}
+		return 0, nil
 	case "clear-key":
-		if removed := keys.Clear(); len(removed) > 0 {
-			term.Info("removed key from " + strings.Join(removed, ", "))
+		name := settings.Provider
+		if len(args) > 1 {
+			name = args[1]
+		}
+		spec, ok := providers.Get(name)
+		if !ok || !spec.KeyStore {
+			var withKeys []string
+			for _, p := range providers.Table {
+				if p.KeyStore {
+					withKeys = append(withKeys, p.Name)
+				}
+			}
+			return 2, config.Errorf("usage: ush ai clear-key [%s]", strings.Join(withKeys, "|"))
+		}
+		if removed := keys.Clear(name); len(removed) > 0 {
+			term.Info("removed the " + spec.Label + " key from " + strings.Join(removed, ", "))
 		} else {
-			term.Info("no stored key found")
+			term.Info("no stored " + spec.Label + " key found")
 		}
 		return 0, nil
 	}
-	return 2, config.Errorf("unknown ai command %s; use configure, status, or clear-key", pyRepr(action))
+	return 2, config.Errorf("unknown ai command %s; use configure, status, models, or clear-key", pyRepr(action))
+}
+
+func isDigits(s string) bool {
+	if s == "" {
+		return false
+	}
+	for _, r := range s {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return true
+}
+
+// availableModels are the models to offer for a provider (TODO 2.47): its own list, or ush's when
+// that can't be fetched (no key yet, offline); and whether the list is the provider's.
+func availableModels(id config.Identity, s config.Settings, name string, keys *config.KeyStore) ([]string, bool) {
+	spec := providers.MustGet(name)
+	var live []string
+	switch {
+	case spec.ListsModels:
+		live = ollamaModels(s.Endpoint(name))
+	case spec.KeyStore:
+		key, _, _ := keys.Resolve(name)
+
+		if key != "" && spec.API == "responses" {
+			live = provider.ListModels(context.Background(), s.Endpoint(name), key, 5*time.Second)
+		} else if key != "" {
+			live = anthropicModels(id, key)
+		}
+	}
+	// Names come from the provider (or a gateway): only those its name pattern allows reach the
+	// terminal, so none can carry control characters or escape sequences.
+	var named []string
+	for _, name := range live {
+		if spec.ModelPattern.MatchString(name) {
+			named = append(named, name)
+		}
+	}
+	if len(named) > 0 {
+		return named, true
+	}
+	return append([]string(nil), spec.Models...), false
+}
+
+// anthropicModels are Anthropic's models (GET /v1/models), newest first; nil if they can't be
+// listed. As root, USH_BASE_URL is not used.
+func anthropicModels(id config.Identity, key string) []string {
+	base := provider.APIURL
+	if env := os.Getenv("USH_BASE_URL"); !id.IsRoot() && env != "" {
+		base = env
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, "GET", strings.TrimRight(base, "/")+"/v1/models?limit=100", nil)
+	if err != nil {
+		return nil
+	}
+	req.Header.Set("x-api-key", key)
+	req.Header.Set("anthropic-version", "2023-06-01")
+	req.Header.Set("user-agent", "ush-go")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode/100 != 2 {
+		return nil
+	}
+	var list struct {
+		Data []map[string]any `json:"data"`
+	}
+	if json.NewDecoder(resp.Body).Decode(&list) != nil {
+		return nil
+	}
+	type model struct{ id, created string }
+	var models []model
+	for _, m := range list.Data {
+		if name, ok := m["id"].(string); ok && strings.HasPrefix(name, "claude-") {
+			created, _ := m["created_at"].(string)
+			models = append(models, model{name, created})
+		}
+	}
+	sort.SliceStable(models, func(i, j int) bool { return models[i].created > models[j].created })
+	var names []string
+	for _, m := range models {
+		names = append(names, m.id)
+	}
+	return names
 }
 
 // allowCommand edits the allowlist in the settings file (environment overrides are not saved).

@@ -54,7 +54,7 @@ class SmokeTest(TempDirTest):
         return self.launcher(f'PYTHONPATH="{SRC}" exec "{sys.executable}" -m ush "$@"\n')
 
     def smoke(self, *args, env=None):
-        base = {k: v for k, v in os.environ.items() if not k.startswith(("ANTHROPIC_", "USH_"))}
+        base = {k: v for k, v in os.environ.items() if not k.startswith(("ANTHROPIC_", "OPENAI_", "USH_"))}
         base.update(env or {})
         return subprocess.run(["bash", SMOKE, *args], capture_output=True, text=True, env=base,
                               cwd=self.tmp, timeout=300)

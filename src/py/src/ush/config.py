@@ -20,16 +20,16 @@ import urllib.parse
 from dataclasses import dataclass, field
 from typing import Callable, Optional
 
-from .providers import ANTHROPIC_MODEL, KEY_ENV, NAMES, OLLAMA_MODEL, OLLAMA_URL
+from .providers import ANTHROPIC_MODEL, NAMES, OLLAMA_MODEL, OLLAMA_URL, OPENAI_MODEL, OPENAI_URL
 from .providers import PROVIDERS as TABLE
 
 DEFAULT_MODEL = "claude-opus-5-5"
+DEFAULT_OPENAI_MODEL = "gpt-6-astra"   # OpenAI's choice "when unsure" (2026-11-11)
 EFFORTS = ("low", "medium", "high", "xhigh", "max")
 PROVIDERS = NAMES               # providers.PROVIDERS: the table
 MODES = ("propose", "run")      # ARCH: propose mode (default) and agent mode
 THINKING = ("show", "hide")     # the model's thinking and progress in the terminal (TODO 2.37)
 KEYCHAIN_SERVICE = "ush"
-KEYCHAIN_ACCOUNT = "anthropic"
 SECURITY = "/usr/bin/security"
 KEY_PATTERN = re.compile(r"^[A-Za-z0-9_\-]{20,300}$")
 
@@ -90,6 +90,8 @@ class Settings:
     effort: str = "medium"
     ollama_url: str = OLLAMA_URL
     ollama_model: str = ""         # no default: it must be a model the user has pulled
+    openai_url: str = OPENAI_URL   # another OpenAI endpoint, e.g. a company gateway
+    openai_model: str = DEFAULT_OPENAI_MODEL
     checker: str = ""              # "provider:model" of the checker model (check.py); "" is off
     thinking: str = "show"         # show or hide the model's thinking; what is sent is the same
     allow: list = field(default_factory=list)   # the user's allow rules (policy.parse_rule)
@@ -115,6 +117,10 @@ class Settings:
             s.ollama_url = check_ollama_url(data["ollama_url"])
         if isinstance(data.get("ollama_model"), str) and OLLAMA_MODEL.match(data["ollama_model"]):
             s.ollama_model = data["ollama_model"]
+        if isinstance(data.get("openai_url"), str):
+            s.openai_url = check_openai_url(data["openai_url"])
+        if isinstance(data.get("openai_model"), str) and OPENAI_MODEL.match(data["openai_model"]):
+            s.openai_model = data["openai_model"]
         if isinstance(data.get("checker"), str):
             s.set_checker(data["checker"])
         if data.get("thinking") in THINKING:
@@ -135,6 +141,7 @@ class Settings:
     def to_dict(self) -> dict:
         return {"mode": self.mode, "provider": self.provider, "model": self.model, "effort": self.effort,
                 "ollama_url": self.ollama_url, "ollama_model": self.ollama_model,
+                "openai_url": self.openai_url, "openai_model": self.openai_model,
                 "checker": self.checker, "thinking": self.thinking, "allow": list(self.allow), "max_steps": self.max_steps,
                 "command_timeout": self.command_timeout, "max_timeout": self.max_timeout,
                 "output_limit": self.output_limit, "show_lines": self.show_lines}
@@ -170,8 +177,9 @@ class Settings:
 
     def set_checker(self, value: str) -> None:
         """Set the checker as `provider:model` (`ollama:qwen3:4b`) or a bare model name, which is
-        Anthropic's if it starts with `claude-` and Ollama's otherwise; empty or `off` turns it
-        off. It is stored as `provider:model`."""
+        Anthropic's if it starts with `claude-` and Ollama's otherwise (an OpenAI checker needs
+        `openai:`, since Ollama has models named gpt-…); empty or `off` turns it off. It is stored
+        as `provider:model`."""
         value = value.strip()
         if value in ("", "off"):
             self.checker = ""
@@ -239,8 +247,31 @@ def check_ollama_url(url: str) -> str:
     return f"{parts.scheme}://{parts.netloc}"
 
 
+def check_openai_url(url: str) -> str:
+    """Another OpenAI endpoint (a company gateway): https, or http only to this machine, with no
+    user, path, query or fragment. As root it comes only from the settings file."""
+    parts = urllib.parse.urlsplit(url.strip())
+    host = parts.hostname or ""
+    try:
+        loopback = host == "localhost" or ipaddress.ip_address(host).is_loopback
+    except ValueError:
+        loopback = False
+    try:
+        parts.port  # noqa: B018 - raises ValueError for an invalid port
+        valid_port = True
+    except ValueError:
+        valid_port = False
+    if (not host or not valid_port or parts.scheme not in ("https", "http")
+            or (parts.scheme == "http" and not loopback) or parts.username is not None
+            or parts.password is not None or parts.path not in ("", "/") or parts.query
+            or parts.fragment):
+        raise ConfigError(f"OpenAI URL {url!r} must be https://HOST, e.g. {OPENAI_URL}")
+    return f"{parts.scheme}://{parts.netloc}"
+
+
 def apply_environment(settings: Settings, ident: Identity, environ: Optional[dict] = None) -> None:
-    """USH_PROVIDER, USH_OLLAMA_URL, USH_MODEL, USH_CHECKER, and USH_THINKING override the settings file,
+    """USH_PROVIDER, USH_OLLAMA_URL, USH_OPENAI_URL, USH_MODEL, USH_CHECKER, and USH_THINKING override
+    the settings file,
     except as root: a root session uses only the invoking user's settings file (as for
     USH_BASE_URL)."""
     if ident.is_root:
@@ -250,6 +281,8 @@ def apply_environment(settings: Settings, ident: Identity, environ: Optional[dic
         settings.set_provider(env["USH_PROVIDER"].strip())
     if env.get("USH_OLLAMA_URL"):
         settings.ollama_url = check_ollama_url(env["USH_OLLAMA_URL"])
+    if env.get("USH_OPENAI_URL"):
+        settings.openai_url = check_openai_url(env["USH_OPENAI_URL"])
     if env.get("USH_MODEL"):
         settings.set_model(env["USH_MODEL"].strip())
     if env.get("USH_CHECKER"):
@@ -396,62 +429,83 @@ class KeyStore:
         return self.runner([SECURITY, *args], input=stdin, capture_output=True, text=True,
                            timeout=20, **kwargs)
 
-    def resolve(self) -> tuple[Optional[str], str]:
-        """Return (key, source). A missing key returns (None, "none")."""
-        for name in KEY_ENV:
+    def resolve(self, provider: str = "anthropic") -> tuple[Optional[str], str]:
+        """Return (key, source) of a provider's key: from its variables, the keychain (account =
+        provider), or the credentials file (`<provider>_api_key`). A missing key returns
+        (None, "none")."""
+        for name in TABLE[provider].key_env:
             value = self.environ.get(name, "").strip()
             if value:
                 return value, f"environment ({name})"
         if self._keychain_available():
             try:
                 result = self._security(["find-generic-password", "-s", KEYCHAIN_SERVICE,
-                                         "-a", KEYCHAIN_ACCOUNT, "-w"])
+                                         "-a", provider, "-w"])
                 if result.returncode == 0 and result.stdout.strip():
                     return result.stdout.strip(), "macOS keychain"
             except (OSError, subprocess.SubprocessError):
                 pass
-        text = read_private(self.credentials_path, {self.ident.owner_uid, 0})
-        if text:
-            try:
-                key = json.loads(text).get("anthropic_api_key", "")
-            except (ValueError, AttributeError):
-                raise ConfigError(f"{self.credentials_path} is not valid JSON") from None
-            if key:
-                return key, f"file ({self.credentials_path})"
+        key = self._file_keys().get(f"{provider}_api_key", "")
+        if isinstance(key, str) and key:
+            return key, f"file ({self.credentials_path})"
         return None, "none"
 
-    def store(self, key: str, prefer_keychain: bool = True) -> str:
+    def _file_keys(self) -> dict:
+        text = read_private(self.credentials_path, {self.ident.owner_uid, 0})
+        if not text:
+            return {}
+        try:
+            keys = json.loads(text)
+        except ValueError:
+            raise ConfigError(f"{self.credentials_path} is not valid JSON") from None
+        if not isinstance(keys, dict):
+            raise ConfigError(f"{self.credentials_path} is not valid JSON")
+        return keys
+
+    def store(self, key: str, prefer_keychain: bool = True, provider: str = "anthropic") -> str:
         if not KEY_PATTERN.match(key):
             raise ConfigError("that does not look like an API key")
         if prefer_keychain and self._keychain_available():
-            command = (f'add-generic-password -U -s {KEYCHAIN_SERVICE} -a {KEYCHAIN_ACCOUNT} '
-                       f'-l "ush API key" -w "{key}"\n')
+            command = (f'add-generic-password -U -s {KEYCHAIN_SERVICE} -a {provider} '
+                       f'-l "ush API key ({TABLE[provider].label})" -w "{key}"\n')
             result = self._security(["-i"], stdin=command)  # stdin keeps the key out of argv
             if result.returncode == 0:
-                self._remove_file()
+                self._remove_file_key(provider)
                 return "macOS keychain"
+        keys = self._file_keys()
+        keys[f"{provider}_api_key"] = key
         _private_dir(self.ident.config_dir(), self.ident)
-        _write_private(self.credentials_path, json.dumps({"anthropic_api_key": key}) + "\n",
-                       self.ident)
+        _write_private(self.credentials_path, json.dumps(keys) + "\n", self.ident)
         return f"file ({self.credentials_path})"
 
-    def clear(self) -> list[str]:
+    def clear(self, provider: str = "anthropic") -> list[str]:
         removed = []
         if self._keychain_available():
             result = self._security(["delete-generic-password", "-s", KEYCHAIN_SERVICE,
-                                     "-a", KEYCHAIN_ACCOUNT])
+                                     "-a", provider])
             if result.returncode == 0:
                 removed.append("macOS keychain")
-        if self._remove_file():
+        if self._remove_file_key(provider):
             removed.append(self.credentials_path)
         return removed
 
-    def _remove_file(self) -> bool:
+    def _remove_file_key(self, provider: str) -> bool:
+        """Removes one provider's key from the credentials file; the file goes with the last."""
         try:
-            os.unlink(self.credentials_path)
-            return True
-        except FileNotFoundError:
+            keys = self._file_keys()
+        except ConfigError:
+            keys = {}
+        if f"{provider}_api_key" not in keys:
             return False
+        del keys[f"{provider}_api_key"]
+        if keys:
+            _write_private(self.credentials_path, json.dumps(keys) + "\n", self.ident)
+        else:
+            try:
+                os.unlink(self.credentials_path)
+            except FileNotFoundError:
+                pass
+        return True
 
 
 def mask(key: str) -> str:

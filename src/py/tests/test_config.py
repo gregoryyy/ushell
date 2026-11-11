@@ -7,7 +7,7 @@ from unittest import mock
 
 from helpers import SYNTHETIC_KEY, TempDirTest, fake_identity
 from ush.config import (ConfigError, Identity, KeyStore, Settings, apply_environment,
-                        check_ollama_url, identity, load_settings, mask, read_private,
+                        check_ollama_url, check_openai_url, identity, load_settings, mask, read_private,
                         save_settings)
 
 
@@ -99,6 +99,50 @@ class KeyStoreTest(TempDirTest):
         with self.assertRaisesRegex(ConfigError, "owned by"):
             read_private(keys.credentials_path, {12345})
 
+    def test_each_provider_has_its_own_key(self):
+        # TODO 2.29.6: the credentials file holds one key per provider; storing or clearing one
+        # leaves the other; each provider's variable is read for it only.
+        openai_key = "sk-proj-test-000000000000000000000000000000SYNTHETIC"
+        keys = self.store(environ={"ANTHROPIC_API_KEY": SYNTHETIC_KEY})
+        self.assertEqual(keys.resolve("openai"), (None, "none"))
+        keys.store(openai_key, provider="openai")
+        keys.store(SYNTHETIC_KEY, provider="anthropic")
+        with open(keys.credentials_path) as f:
+            self.assertEqual(json.load(f), {"openai_api_key": openai_key,
+                                            "anthropic_api_key": SYNTHETIC_KEY})
+        self.assertEqual(keys.resolve("openai")[0], openai_key)
+        self.assertEqual(keys.clear("anthropic"), [keys.credentials_path])
+        self.assertEqual(keys.resolve("openai")[0], openai_key)
+        self.assertEqual(keys.clear("openai"), [keys.credentials_path])
+        self.assertFalse(os.path.exists(keys.credentials_path))
+        variable = self.store(environ={"OPENAI_API_KEY": openai_key})
+        self.assertEqual(variable.resolve("openai"),
+                         (openai_key, "environment (OPENAI_API_KEY)"))
+        self.assertEqual(variable.resolve("anthropic"), (None, "none"))
+
+    def test_the_keychain_account_is_the_provider(self):
+        security = FakeSecurity()
+        keys = self.store(platform="darwin", runner=security)
+        with mock.patch("os.access", return_value=True):
+            keys.store(SYNTHETIC_KEY, provider="openai")
+            keys.resolve("openai")
+            keys.clear("openai")
+        stored = security.calls[0][1]
+        self.assertIn("-a openai ", stored)
+        self.assertIn('"ush API key (OpenAI)"', stored)
+        self.assertEqual([argv[argv.index("-a") + 1] for argv, _, _ in security.calls[1:]],
+                         ["openai", "openai"])
+
+    def test_openai_urls(self):
+        self.assertEqual(check_openai_url("https://gateway.example.com/"),
+                         "https://gateway.example.com")
+        self.assertEqual(check_openai_url("http://127.0.0.1:8080"), "http://127.0.0.1:8080")
+        for bad in ("http://gateway.example.com", "https://user:pw@api.openai.com",
+                    "https://api.openai.com/v1", "https://api.openai.com/?x=1", "ftp://x",
+                    "https://", "https://api.openai.com:99999"):
+            with self.assertRaises(ConfigError, msg=bad):
+                check_openai_url(bad)
+
     def test_keychain_store_keeps_key_out_of_argv(self):
         security = FakeSecurity()
         keys = self.store(platform="darwin", runner=security)
@@ -173,7 +217,7 @@ class OllamaSettingsTest(TempDirTest):
         again = Settings.from_dict(s.to_dict())
         self.assertEqual((again.provider, again.ollama_model, again.active_model),
                          ("ollama", "qwen3:8b", "qwen3:8b"))
-        self.assertEqual(Settings.from_dict({"provider": "openai"}).provider, "anthropic")
+        self.assertEqual(Settings.from_dict({"provider": "mistral"}).provider, "anthropic")
         self.assertEqual(Settings.from_dict({"ollama_model": "bad name!"}).ollama_model, "")
         with self.assertRaises(ConfigError):
             Settings.from_dict({"ollama_url": "http://10.0.0.8:11434"})
@@ -189,7 +233,7 @@ class OllamaSettingsTest(TempDirTest):
         with self.assertRaises(ConfigError):
             s.set_model("x; rm -rf /")
         with self.assertRaises(ConfigError):
-            s.set_provider("openai")
+            s.set_provider("mistral")
 
     def test_environment_overrides_apply_to_users_but_not_to_root(self):
         env = {"USH_PROVIDER": "ollama", "USH_MODEL": "llama3.2:3b",

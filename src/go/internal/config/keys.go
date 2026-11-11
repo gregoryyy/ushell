@@ -16,20 +16,14 @@ import (
 	"github.com/gregoryyy/ushell/src/go/internal/providers"
 )
 
-const (
-	keychainService = "ush"
-	keychainAccount = "anthropic"
-)
+const keychainService = "ush"
 
 // Security is macOS's keychain tool; a variable so tests can point it elsewhere.
 var Security = "/usr/bin/security"
 
-var (
-	keyEnv     = providers.KeyEnv
-	keyPattern = regexp.MustCompile(`^[A-Za-z0-9_\-]{20,300}$`)
-)
+var keyPattern = regexp.MustCompile(`^[A-Za-z0-9_\-]{20,300}$`)
 
-// KeyStore finds and stores the Anthropic API key: environment, macOS keychain, 0600 file.
+// KeyStore finds and stores the API keys, one per provider: environment, macOS keychain, 0600 file.
 type KeyStore struct {
 	ID     Identity
 	Getenv func(string) string
@@ -75,73 +69,111 @@ func ownerGID(id Identity) int {
 	return 20 // staff
 }
 
-// Resolve returns the key and where it came from; "" and "none" if there is none.
-func (k *KeyStore) Resolve() (string, string, error) {
-	for _, name := range keyEnv {
+// Resolve returns a provider's key and where it came from: its variables, the keychain (account =
+// provider), or the credentials file ("<provider>_api_key"); "" and "none" if there is none.
+func (k *KeyStore) Resolve(provider string) (string, string, error) {
+	for _, name := range providers.MustGet(provider).KeyEnv {
 		if v := strings.TrimSpace(k.Getenv(name)); v != "" {
 			return v, fmt.Sprintf("environment (%s)", name), nil
 		}
 	}
 	if k.keychainAvailable() {
-		if out, err := k.security("", "find-generic-password", "-s", keychainService, "-a", keychainAccount, "-w"); err == nil && strings.TrimSpace(out) != "" {
+		if out, err := k.security("", "find-generic-password", "-s", keychainService, "-a", provider, "-w"); err == nil && strings.TrimSpace(out) != "" {
 			return strings.TrimSpace(out), "macOS keychain", nil
 		}
 	}
-	text, err := ReadPrivate(k.CredentialsPath(), k.ID.OwnerUID, 0)
+	data, err := k.fileKeys()
 	if err != nil {
 		return "", "none", err
 	}
-	if text != "" {
-		var data map[string]any
-		if json.Unmarshal([]byte(text), &data) != nil {
-			return "", "none", Errorf("%s is not valid JSON", k.CredentialsPath())
-		}
-		if key, _ := data["anthropic_api_key"].(string); key != "" {
-			return key, fmt.Sprintf("file (%s)", k.CredentialsPath()), nil
-		}
+	if key, _ := data[provider+"_api_key"].(string); key != "" {
+		return key, fmt.Sprintf("file (%s)", k.CredentialsPath()), nil
 	}
 	return "", "none", nil
 }
 
-// Store saves the key in the keychain (preferred, on macOS) or the 0600 file; returns where.
-func (k *KeyStore) Store(key string, preferKeychain bool) (string, error) {
+// fileKeys reads the credentials file: one "<provider>_api_key" entry per provider.
+func (k *KeyStore) fileKeys() (map[string]any, error) {
+	text, err := ReadPrivate(k.CredentialsPath(), k.ID.OwnerUID, 0)
+	if err != nil {
+		return nil, err
+	}
+	data := map[string]any{}
+	if text == "" {
+		return data, nil
+	}
+	if json.Unmarshal([]byte(text), &data) != nil || data == nil {
+		return nil, Errorf("%s is not valid JSON", k.CredentialsPath())
+	}
+	return data, nil
+}
+
+// Store saves a provider's key in the keychain (preferred, on macOS) or the 0600 file, which
+// keeps the other providers' keys; returns where.
+func (k *KeyStore) Store(key string, preferKeychain bool, provider string) (string, error) {
 	if !keyPattern.MatchString(key) {
 		return "", Errorf("that does not look like an API key")
 	}
 	if preferKeychain && k.keychainAvailable() {
-		command := fmt.Sprintf("add-generic-password -U -s %s -a %s -l \"ush API key\" -w \"%s\"\n",
-			keychainService, keychainAccount, key)
+		command := fmt.Sprintf("add-generic-password -U -s %s -a %s -l \"ush API key (%s)\" -w \"%s\"\n",
+			keychainService, provider, providers.MustGet(provider).Label, key)
 		if _, err := k.security(command, "-i"); err == nil { // stdin keeps the key out of argv
-			k.removeFile()
+			k.removeFileKey(provider)
 			return "macOS keychain", nil
 		}
 	}
+	keys, err := k.fileKeys()
+	if err != nil {
+		return "", err
+	}
+	keys[provider+"_api_key"] = key
 	if _, err := privateDir(k.ID.ConfigDir(), k.ID); err != nil {
 		return "", err
 	}
-	data, _ := json.Marshal(map[string]string{"anthropic_api_key": key})
-	if err := WritePrivate(k.CredentialsPath(), append(data, '\n'), k.ID); err != nil {
+	if err := k.writeKeys(keys); err != nil {
 		return "", err
 	}
 	return fmt.Sprintf("file (%s)", k.CredentialsPath()), nil
 }
 
-// Clear removes the key from the keychain and the file; returns what was removed.
-func (k *KeyStore) Clear() []string {
+func (k *KeyStore) writeKeys(keys map[string]any) error {
+	data, err := json.Marshal(keys)
+	if err != nil {
+		return err
+	}
+	return WritePrivate(k.CredentialsPath(), append(data, '\n'), k.ID)
+}
+
+// Clear removes a provider's key from the keychain and the file; returns what was removed.
+func (k *KeyStore) Clear(provider string) []string {
 	var removed []string
 	if k.keychainAvailable() {
-		if _, err := k.security("", "delete-generic-password", "-s", keychainService, "-a", keychainAccount); err == nil {
+		if _, err := k.security("", "delete-generic-password", "-s", keychainService, "-a", provider); err == nil {
 			removed = append(removed, "macOS keychain")
 		}
 	}
-	if k.removeFile() {
+	if k.removeFileKey(provider) {
 		removed = append(removed, k.CredentialsPath())
 	}
 	return removed
 }
 
-func (k *KeyStore) removeFile() bool {
-	return os.Remove(k.CredentialsPath()) == nil
+// removeFileKey removes one provider's key from the credentials file; the file goes with the last.
+func (k *KeyStore) removeFileKey(provider string) bool {
+	keys, err := k.fileKeys()
+	if err != nil {
+		keys = map[string]any{}
+	}
+	if _, ok := keys[provider+"_api_key"]; !ok {
+		return false
+	}
+	delete(keys, provider+"_api_key")
+	if len(keys) > 0 {
+		_ = k.writeKeys(keys)
+	} else {
+		_ = os.Remove(k.CredentialsPath())
+	}
+	return true
 }
 
 // Mask shows the start and end of a key only.

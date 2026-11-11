@@ -159,6 +159,8 @@ As root via `sudo`, ush:
 | --- | --- | --- |
 | `api.anthropic.com` | provider or checker `anthropic` | 443 |
 | the `USH_BASE_URL` host | if set (not as root) | as given |
+| `api.openai.com` | provider or checker `openai`; `ush ai configure` and `ush ai models` list its models there | 443 |
+| the `openai_url` host | if set in the settings, or by `USH_OPENAI_URL` (not as root) | as given (https; http only on this machine) |
 | Ollama on loopback | provider or checker `ollama` | 11434 by default |
 | `ollama.com`, through Ollama | Ollama *cloud* models (`…:cloud`) | Ollama's own connection |
 

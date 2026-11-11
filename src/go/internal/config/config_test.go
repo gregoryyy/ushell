@@ -99,7 +99,7 @@ func TestModelsAndCheckers(t *testing.T) {
 	if err := s.SetModel("hf.co/org/Model:Q4"); err != nil || s.Model != DefaultModel {
 		t.Error(err, s.Model)
 	}
-	if s.SetProvider("openai") == nil || s.SetModel("x; rm -rf /") == nil {
+	if s.SetProvider("mistral") == nil || s.SetModel("x; rm -rf /") == nil {
 		t.Error("bad values accepted")
 	}
 	for in, want := range map[string]string{"ollama:qwen3.5:2b": "ollama:qwen3.5:2b",
@@ -151,24 +151,24 @@ func TestRootIgnoresXDG(t *testing.T) {
 func TestFileStoreIsPrivateAndRoundTrips(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	k := &KeyStore{ID: me(t.TempDir()), Getenv: env(nil), GOOS: "linux"}
-	where, err := k.Store(syntheticKey, true)
+	where, err := k.Store(syntheticKey, true, "anthropic")
 	if err != nil || !strings.HasPrefix(where, "file (") {
 		t.Fatal(where, err)
 	}
 	if info, _ := os.Stat(k.CredentialsPath()); info.Mode().Perm() != 0o600 {
 		t.Error(info.Mode())
 	}
-	if key, source, err := k.Resolve(); key != syntheticKey || !strings.HasPrefix(source, "file") || err != nil {
+	if key, source, err := k.Resolve("anthropic"); key != syntheticKey || !strings.HasPrefix(source, "file") || err != nil {
 		t.Error(key, source, err)
 	}
 	k.Getenv = env(map[string]string{"ANTHROPIC_API_KEY": "from-env"})
-	if key, source, _ := k.Resolve(); key != "from-env" || source != "environment (ANTHROPIC_API_KEY)" {
+	if key, source, _ := k.Resolve("anthropic"); key != "from-env" || source != "environment (ANTHROPIC_API_KEY)" {
 		t.Error(key, source)
 	}
-	if _, err := k.Store("not a key", false); err == nil {
+	if _, err := k.Store("not a key", false, "anthropic"); err == nil {
 		t.Error("malformed key stored")
 	}
-	if got := k.Clear(); len(got) != 1 {
+	if got := k.Clear("anthropic"); len(got) != 1 {
 		t.Error(got)
 	}
 }
@@ -178,14 +178,14 @@ func TestInsecureOrLinkedCredentialsAreRefused(t *testing.T) {
 	k := &KeyStore{ID: me(t.TempDir()), Getenv: env(nil), GOOS: "linux"}
 	os.MkdirAll(filepath.Dir(k.CredentialsPath()), 0o700)
 	os.WriteFile(k.CredentialsPath(), []byte(`{"anthropic_api_key": "x"}`), 0o644)
-	if _, _, err := k.Resolve(); err == nil || !strings.Contains(err.Error(), "accessible by other users") {
+	if _, _, err := k.Resolve("anthropic"); err == nil || !strings.Contains(err.Error(), "accessible by other users") {
 		t.Error(err)
 	}
 	os.Remove(k.CredentialsPath())
 	target := filepath.Join(t.TempDir(), "elsewhere")
 	os.WriteFile(target, []byte(`{"anthropic_api_key": "x"}`), 0o600)
 	os.Symlink(target, k.CredentialsPath())
-	if _, _, err := k.Resolve(); err == nil || !strings.Contains(err.Error(), "cannot open") {
+	if _, _, err := k.Resolve("anthropic"); err == nil || !strings.Contains(err.Error(), "cannot open") {
 		t.Error(err)
 	}
 }
@@ -220,5 +220,125 @@ func TestMaskAndPathRisks(t *testing.T) {
 	risks := PathRisks(".::"+open+":/usr/bin:/nonexistent", os.Getuid())
 	if strings.Join(risks, "|") != ".: relative|(empty): relative|"+open+": writable by everyone" {
 		t.Error(risks)
+	}
+}
+
+const syntheticOpenAIKey = "sk-proj-test-000000000000000000000000000000SYNTHETIC"
+
+// TODO 2.29.6: the credentials file holds one key per provider; storing or clearing one leaves the
+// other; each provider's variable is read for it only.
+func TestEachProviderHasItsOwnKey(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	k := &KeyStore{ID: me(t.TempDir()), Getenv: env(map[string]string{"ANTHROPIC_API_KEY": syntheticKey}), GOOS: "linux"}
+	if key, source, _ := k.Resolve("openai"); key != "" || source != "none" {
+		t.Error(key, source)
+	}
+	if _, err := k.Store(syntheticOpenAIKey, false, "openai"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := k.Store(syntheticKey, false, "anthropic"); err != nil {
+		t.Fatal(err)
+	}
+	raw, _ := os.ReadFile(k.CredentialsPath())
+	var saved map[string]string
+	json.Unmarshal(raw, &saved)
+	if len(saved) != 2 || saved["openai_api_key"] != syntheticOpenAIKey || saved["anthropic_api_key"] != syntheticKey {
+		t.Error(saved)
+	}
+	if key, _, _ := k.Resolve("openai"); key != syntheticOpenAIKey {
+		t.Error(key)
+	}
+	if got := k.Clear("anthropic"); len(got) != 1 || got[0] != k.CredentialsPath() {
+		t.Error(got)
+	}
+	if key, _, _ := k.Resolve("openai"); key != syntheticOpenAIKey {
+		t.Error("clearing one provider's key removed the other's")
+	}
+	if got := k.Clear("openai"); len(got) != 1 {
+		t.Error(got)
+	}
+	if _, err := os.Stat(k.CredentialsPath()); !os.IsNotExist(err) {
+		t.Error("the file stays after its last key")
+	}
+	variable := &KeyStore{ID: k.ID, Getenv: env(map[string]string{"OPENAI_API_KEY": syntheticOpenAIKey}), GOOS: "linux"}
+	if key, source, _ := variable.Resolve("openai"); key != syntheticOpenAIKey || source != "environment (OPENAI_API_KEY)" {
+		t.Error(key, source)
+	}
+	if key, _, _ := variable.Resolve("anthropic"); key != "" {
+		t.Error("OPENAI_API_KEY used for Anthropic")
+	}
+}
+
+func TestTheKeychainAccountIsTheProvider(t *testing.T) {
+	dir := t.TempDir()
+	log := filepath.Join(dir, "calls")
+	script := filepath.Join(dir, "security")
+	os.WriteFile(script, []byte("#!/bin/sh\ncat >> "+log+".in\necho \"$@\" >> "+log+"\nexit 0\n"), 0o755)
+	old := Security
+	Security = script
+	defer func() { Security = old }()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	k := &KeyStore{ID: me(t.TempDir()), Getenv: env(nil), GOOS: "darwin"}
+	if where, err := k.Store(syntheticOpenAIKey, true, "openai"); err != nil || where != "macOS keychain" {
+		t.Fatal(where, err)
+	}
+	k.Resolve("openai")
+	k.Clear("openai")
+	stdin, _ := os.ReadFile(log + ".in")
+	if !strings.Contains(string(stdin), "-a openai ") || !strings.Contains(string(stdin), `"ush API key (OpenAI)"`) {
+		t.Error(string(stdin))
+	}
+	calls, _ := os.ReadFile(log)
+	if strings.Count(string(calls), "-a openai") != 2 {
+		t.Error(string(calls))
+	}
+}
+
+func TestOpenAIURLs(t *testing.T) {
+	for in, want := range map[string]string{"https://gateway.example.com/": "https://gateway.example.com",
+		"http://127.0.0.1:8080": "http://127.0.0.1:8080", "https://api.openai.com": "https://api.openai.com"} {
+		if got, err := CheckOpenAIURL(in); got != want || err != nil {
+			t.Errorf("%s: %s %v", in, got, err)
+		}
+	}
+	for _, bad := range []string{"http://gateway.example.com", "https://user:pw@api.openai.com", "https://api.openai.com/v1",
+		"https://api.openai.com/?x=1", "ftp://x", "https://", "https://api.openai.com:99999", ""} {
+		if _, err := CheckOpenAIURL(bad); err == nil {
+			t.Errorf("%q accepted", bad)
+		}
+	}
+	_, err := CheckOpenAIURL("http://x.example")
+	if err == nil || err.Error() != "OpenAI URL 'http://x.example' must be https://HOST, e.g. https://api.openai.com" {
+		t.Error(err)
+	}
+	if _, err := FromMap(map[string]any{"openai_url": "http://gateway.example.com"}, noRules); err == nil {
+		t.Error("remote http URL in the file accepted")
+	}
+}
+
+func TestOpenAISettings(t *testing.T) {
+	s := Defaults()
+	if s.OpenAIModel != "gpt-6-astra" || s.OpenAIURL != "https://api.openai.com" {
+		t.Error(s)
+	}
+	s.SetProvider("openai")
+	if err := s.SetModel("gpt-6.1-sol"); err != nil || s.ActiveModel() != "gpt-6.1-sol" || s.Model != DefaultModel {
+		t.Error(err, s)
+	}
+	if s.SetModel("a/b") == nil {
+		t.Error("bad OpenAI model accepted")
+	}
+	if err := s.SetChecker("openai:gpt-6-luna"); err != nil || s.Checker != "openai:gpt-6-luna" {
+		t.Error(err, s.Checker)
+	}
+	if err := ApplyEnvironment(&s, me(t.TempDir()), env(map[string]string{"USH_OPENAI_URL": "http://localhost:9"})); err != nil || s.Endpoint("openai") != "http://localhost:9" {
+		t.Error(err, s.OpenAIURL)
+	}
+	if ApplyEnvironment(&s, me(t.TempDir()), env(map[string]string{"USH_OPENAI_URL": "http://evil.example"})) == nil {
+		t.Error("remote http URL from the environment accepted")
+	}
+	got, err := FromMap(map[string]any{"openai_url": "https://gw.example.com", "openai_model": "bad name!"}, noRules)
+	if err != nil || got.OpenAIURL != "https://gw.example.com" || got.OpenAIModel != "gpt-6-astra" {
+		t.Error(got, err)
 	}
 }

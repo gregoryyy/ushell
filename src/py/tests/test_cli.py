@@ -11,6 +11,7 @@ from unittest import mock
 
 from helpers import IMPLEMENTATION, SYNTHETIC_KEY, TempDirTest, ush_argv
 from mock_api import MockAPI
+from mock_openai import SYNTHETIC_OPENAI_KEY, MockOpenAI, call, reasoning, text
 from ush import cli
 
 SRC = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "src")
@@ -28,12 +29,12 @@ except ImportError:
 class CliTest(TempDirTest):
     def ush(self, *args, stdin="", env=None):
         base = {k: v for k, v in os.environ.items()
-                if not k.startswith(("ANTHROPIC_", "USH_", "XDG_"))}
+                if not k.startswith(("ANTHROPIC_", "OPENAI_", "USH_", "XDG_"))}
         base.update({"PYTHONPATH": SRC, "XDG_CONFIG_HOME": os.path.join(self.tmp, "config"),
                      "XDG_STATE_HOME": os.path.join(self.tmp, "state"), "NO_COLOR": "1",
                      # The developer's keychain is not isolated: a key found there must not reach
                      # a real provider. Tests that talk to a provider point these at a mock.
-                     "USH_BASE_URL": DEAD_URL, "USH_OLLAMA_URL": DEAD_URL})
+                     "USH_BASE_URL": DEAD_URL, "USH_OLLAMA_URL": DEAD_URL, "USH_OPENAI_URL": DEAD_URL})
         base.update(env or {})
         # A new session has no controlling terminal, as in CI or a cron job.
         return subprocess.run([*ush_argv(), *args], input=stdin, text=True,
@@ -54,7 +55,7 @@ class CliTest(TempDirTest):
         # In-process, with the keychain out of reach: a key the developer stored there must not
         # stand in for the missing one (it once did, and the request went to Anthropic).
         env = {k: v for k, v in os.environ.items()
-               if not k.startswith(("ANTHROPIC_", "USH_", "XDG_"))}
+               if not k.startswith(("ANTHROPIC_", "OPENAI_", "USH_", "XDG_"))}
         env.update({"XDG_CONFIG_HOME": os.path.join(self.tmp, "config"),
                     "XDG_STATE_HOME": os.path.join(self.tmp, "state"), "NO_COLOR": "1",
                     "USH_BASE_URL": DEAD_URL})
@@ -65,13 +66,13 @@ class CliTest(TempDirTest):
                 mock.patch.object(cli, "Terminal", functools.partial(cli.Terminal, err=err)):
             code = cli.main(["//why is my disk full"])
         self.assertEqual(code, 2)
-        self.assertIn("no API key", err.getvalue())
+        self.assertIn("no Anthropic API key", err.getvalue())
         self.assertEqual(self.ush("history").stdout, "")
 
     def test_configure_asks_again_after_a_bad_answer(self):
         # A bad answer used to end `ai configure` with an error, losing what was entered; now the
         # same question is asked again. Ollama on an unused port: no key prompt, no models listed.
-        answers = ["agent", "run", "openai", "ollama", "http://127.0.0.1:9", "bad name!", "llama3.2:3b",
+        answers = ["agent", "run", "mistral", "ollama", "http://127.0.0.1:9", "bad name!", "llama3.2:3b",
                    "anthropic:", "claude-haiku-5-5", "maybe", "hide"]
         result = self.ush("ai", "configure", stdin="\n".join(answers) + "\n")
         self.assertEqual(result.returncode, 0, result.stderr)
@@ -674,6 +675,85 @@ class CliTest(TempDirTest):
         self.assertIn("key:       not needed", status.stdout)
         self.assertIn("ush · qwen3:8b", self.ush("history").stdout + result.stderr)
 
+    def test_openai_proposes_and_hands_over(self):
+        # TODO 2.29.6: OpenAI through the Responses API, with its own key; the key is redacted
+        # from what is sent and the banner names OpenAI as the destination.
+        handoff = os.path.join(self.tmp, "handoff")
+        os.mkdir(handoff, 0o700)
+        proposal = {"command": "df -h", "purpose": "free space", "effect": "read",
+                    "interactive": False}
+        with MockOpenAI([[reasoning(), text("Checking."), call("propose_command", proposal)]]) as api:
+            env = {"USH_PROVIDER": "openai", "USH_MODEL": "gpt-6-luna", "USH_OPENAI_URL": api.url,
+                   "OPENAI_API_KEY": SYNTHETIC_OPENAI_KEY, "USH_HANDOFF": handoff}
+            result = self.ush("-N", "//how much space is free", env=env,
+                              stdin=f"token {SYNTHETIC_OPENAI_KEY} in the log\n")
+            status = self.ush("ai", "status", env=env)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("ush · gpt-6-luna", result.stderr)
+        self.assertIn("requests and command output go to OpenAI, secrets redacted", result.stderr)
+        with open(os.path.join(handoff, "proposal")) as f:
+            self.assertEqual(f.read(), "capture\ndf -h")
+        (request,) = api.requests
+        self.assertEqual(request["path"], "/v1/responses")
+        self.assertEqual(request["body"]["model"], "gpt-6-luna")
+        self.assertEqual(request["headers"]["Authorization"], f"Bearer {SYNTHETIC_OPENAI_KEY}")
+        self.assertNotIn(SYNTHETIC_OPENAI_KEY, json.dumps(request["body"]))
+        self.assertEqual([t["name"] for t in request["body"]["tools"]],
+                         ["propose_command", "propose_script", "ask_user", "offer_next"])
+        self.assertIn("provider:  OpenAI", status.stdout)
+        self.assertIn("from environment (OPENAI_API_KEY)", status.stdout)
+        self.assertNotIn(SYNTHETIC_OPENAI_KEY, status.stdout)
+
+    def test_openai_needs_its_own_key(self):
+        result = self.ush("//x", env={"USH_PROVIDER": "openai",
+                                      "ANTHROPIC_API_KEY": SYNTHETIC_KEY})
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("no OpenAI API key; run `ush ai configure` or set OPENAI_API_KEY",
+                      result.stderr)
+
+    def test_models_are_listed_by_the_provider(self):
+        # TODO 2.47: `ush ai models` and `ush ai configure` offer the provider's own list, newest
+        # first and only chat models; without a key, ush's list.
+        models = [{"id": "gpt-6-luna", "created": 100}, {"id": "text-embedding-4", "created": 300},
+                  {"id": "gpt-6-astra", "created": 200},
+                  {"id": "gpt-6-\x1b]0;pwned\x07", "created": 400}]  # never printed
+        with MockOpenAI([], models=models) as api:
+            env = {"USH_PROVIDER": "openai", "USH_OPENAI_URL": api.url,
+                   "OPENAI_API_KEY": SYNTHETIC_OPENAI_KEY}
+            listed = self.ush("ai", "models", env=env)
+            unkeyed = self.ush("ai", "models", env={"USH_PROVIDER": "openai",
+                                                    "USH_OPENAI_URL": api.url})
+        self.assertEqual(listed.stdout.split(), ["gpt-6-astra", "gpt-6-luna"])
+        self.assertNotIn("\x1b", listed.stdout + listed.stderr)
+        self.assertEqual(unkeyed.stdout.split(),
+                         ["gpt-6-astra", "gpt-6.1-sol", "gpt-6.1-terra", "gpt-6-luna"])
+        self.assertIn("could not list OpenAI's models", unkeyed.stderr)
+        with MockAPI([], tags=[{"name": "qwen3.8:latest"}, {"name": "llama3.2:3b"}]) as ollama:
+            pulled = self.ush("ai", "models", env={"USH_PROVIDER": "ollama",
+                                                   "USH_OLLAMA_URL": ollama.url})
+        self.assertEqual(pulled.stdout.split(), ["qwen3.8:latest", "llama3.2:3b"])
+
+    def test_configure_openai_with_a_key_and_a_model_from_the_list(self):
+        models = [{"id": "gpt-6-luna", "created": 100}, {"id": "gpt-6-astra", "created": 200}]
+        with MockOpenAI([], models=models) as api:
+            env = {"USH_OPENAI_URL": api.url, "ANTHROPIC_API_KEY": SYNTHETIC_KEY}
+            # mode, provider, key (read from stdin: no terminal), model by number, effort,
+            # checker, thinking.
+            answers = ["", "openai", SYNTHETIC_OPENAI_KEY, "3", "2", "low", "", ""]
+            result = self.ush("ai", "configure", "--file", stdin="\n".join(answers) + "\n",
+                              env=env)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("1  gpt-6-astra", result.stderr)
+        self.assertIn("2  gpt-6-luna", result.stderr)
+        self.assertNotIn(SYNTHETIC_OPENAI_KEY, result.stdout + result.stderr)
+        with open(os.path.join(self.tmp, "config", "ush", "config.json"), encoding="utf-8") as f:
+            saved = json.load(f)
+        self.assertEqual((saved["provider"], saved["openai_model"], saved["effort"]),
+                         ("openai", "gpt-6-luna", "low"))
+        with open(os.path.join(self.tmp, "config", "ush", "credentials"), encoding="utf-8") as f:
+            self.assertEqual(json.load(f), {"openai_api_key": SYNTHETIC_OPENAI_KEY})
+        self.assertIn("model number 3", result.stderr)  # out of range: asked again
+
     @unittest.skipUnless(HAVE_SDK, "anthropic SDK not installed")
     def test_a_local_models_string_boolean_is_a_boolean(self):
         """llama3.1:8b sends `"interactive": "true"`; it was refused 3 times (TODO 2.45)."""
@@ -767,7 +847,7 @@ class CliTest(TempDirTest):
             no_model = self.ush("//x", env={"USH_PROVIDER": "ollama", "USH_OLLAMA_URL": api.url})
             remote = self.ush("//x", env={"USH_PROVIDER": "ollama", "USH_MODEL": "qwen3:8b",
                                           "USH_OLLAMA_URL": "http://203.0.113.7:11434"})
-            unknown = self.ush("//x", env={"USH_PROVIDER": "openai"})
+            unknown = self.ush("//x", env={"USH_PROVIDER": "mistral"})
         self.assertEqual(api.requests, [])
         self.assertEqual((no_model.returncode, remote.returncode, unknown.returncode), (2, 2, 2))
         self.assertIn("no Ollama model", no_model.stderr)
@@ -789,7 +869,7 @@ class CliTest(TempDirTest):
         with MockAPI(replies) as api:
             pid, fd = pty.fork()
             if pid == 0:
-                env = {k: v for k, v in os.environ.items() if not k.startswith(("ANTHROPIC_", "USH_"))}
+                env = {k: v for k, v in os.environ.items() if not k.startswith(("ANTHROPIC_", "OPENAI_", "USH_"))}
                 env.update({"PYTHONPATH": SRC, "ANTHROPIC_API_KEY": SYNTHETIC_KEY,
                             "USH_BASE_URL": api.url, "NO_COLOR": "1",
                             "XDG_CONFIG_HOME": os.path.join(self.tmp, "config"),

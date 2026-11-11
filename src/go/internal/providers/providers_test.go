@@ -6,7 +6,7 @@ import (
 )
 
 func TestTheTable(t *testing.T) {
-	if !reflect.DeepEqual(Names(), []string{"anthropic", "ollama"}) {
+	if !reflect.DeepEqual(Names(), []string{"anthropic", "ollama", "openai"}) {
 		t.Fatal(Names())
 	}
 	for _, s := range Table {
@@ -26,6 +26,12 @@ func TestTheTable(t *testing.T) {
 	}
 	if !a.ModelPattern.MatchString("claude-opus-5-5") || a.ModelPattern.MatchString("qwen3.5:9b") || !o.ModelPattern.MatchString("qwen3.5:9b") {
 		t.Error("model patterns")
+	}
+	oa := MustGet("openai")
+	if oa.Label != "OpenAI" || oa.API != "responses" || oa.URL != "https://api.openai.com" || oa.URLSetting != "openai_url" ||
+		oa.Loopback || !oa.KeyStore || !reflect.DeepEqual(oa.KeyEnv, []string{"OPENAI_API_KEY"}) || oa.ModelSetting != "openai_model" ||
+		!oa.ModelPattern.MatchString("gpt-6.1-sol") || oa.ModelPattern.MatchString("a/b") || len(oa.Models) != 4 || len(a.Models) != 4 || len(o.Models) != 0 {
+		t.Error(oa)
 	}
 	if _, ok := Get("nope"); ok {
 		t.Error("nope")
@@ -52,6 +58,9 @@ func TestProfiles(t *testing.T) {
 		}
 	}
 	if p := ProfileOf("ollama", "llama3.2:3b"); p != (Profile{StrictTools: true, OutputLimit: 64000, TextToolCalls: true}) {
+		t.Errorf("%+v", p)
+	}
+	if p := ProfileOf("openai", "gpt-6-luna"); p != (Profile{Effort: true, StrictTools: true}) {
 		t.Errorf("%+v", p)
 	}
 }

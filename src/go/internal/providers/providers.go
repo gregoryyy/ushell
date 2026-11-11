@@ -14,13 +14,18 @@ import "regexp"
 const (
 	APIURL    = "https://api.anthropic.com"
 	OllamaURL = "http://127.0.0.1:11434"
+	OpenAIURL = "https://api.openai.com"
 	MaxTokens = 64000
 )
 
 var (
 	AnthropicModel = regexp.MustCompile(`^[a-z0-9.\-]{3,64}$`)
 	OllamaModel    = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._:/\-]{0,127}$`)
+	OpenAIModel    = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._:\-]{0,127}$`)
 	KeyEnv         = []string{"USH_API_KEY", "ANTHROPIC_API_KEY"}
+	// Offered by `ush ai configure` when the provider's own list can't be fetched (TODO 2.47).
+	AnthropicModels = []string{"claude-opus-5-5", "claude-sonnet-5-5", "claude-haiku-5-5", "claude-fable-5-1"}
+	OpenAIModels    = []string{"gpt-6-astra", "gpt-6.1-sol", "gpt-6.1-terra", "gpt-6-luna"}
 	// Models that accept server-side refusal fallbacks and between-tool progress notes.
 	FallbackModels = map[string]bool{"claude-opus-5-5": true, "claude-opus-5": true, "claude-sonnet-5-5": true,
 		"claude-fable-5-1": true, "claude-fable-5": true}
@@ -32,7 +37,7 @@ var (
 type Spec struct {
 	Name         string         // as in settings and provider:model
 	Label        string         // as the disclosure and `ush ai status` name it
-	API          string         // "messages": Anthropic's Messages API (Ollama serves it too)
+	API          string         // "messages": Anthropic's Messages API (Ollama serves it too); "responses": OpenAI's
 	URL          string         // the default endpoint
 	URLSetting   string         // the setting that holds the endpoint, or "" for URL
 	Loopback     bool           // must be on this machine: no proxy, no redirect, stays here
@@ -42,14 +47,18 @@ type Spec struct {
 	ModelSetting string         // the setting that holds its model
 	ListsModels  bool           // can say which models it has and which are in a cloud
 	ModelHint    string         // where to find a model name, for the error when none is set
+	Models       []string       // offered by `ush ai configure` when the list can't be fetched
 }
 
 // Table is the provider table, in the order ush offers the providers.
 var Table = []Spec{
 	{Name: "anthropic", Label: "Anthropic", API: "messages", URL: APIURL, KeyEnv: KeyEnv, KeyStore: true,
-		ModelPattern: AnthropicModel, ModelSetting: "model"},
+		ModelPattern: AnthropicModel, ModelSetting: "model", Models: AnthropicModels},
 	{Name: "ollama", Label: "Ollama", API: "messages", URL: OllamaURL, URLSetting: "ollama_url", Loopback: true,
 		ModelPattern: OllamaModel, ModelSetting: "ollama_model", ListsModels: true, ModelHint: "see `ollama list`"},
+	{Name: "openai", Label: "OpenAI", API: "responses", URL: OpenAIURL, URLSetting: "openai_url",
+		KeyEnv: []string{"OPENAI_API_KEY"}, KeyStore: true, ModelPattern: OpenAIModel, ModelSetting: "openai_model",
+		ModelHint: "see `ush ai configure`", Models: OpenAIModels},
 }
 
 // Names are the providers' names, in the table's order.
@@ -101,6 +110,11 @@ func ProfileOf(provider, model string) Profile {
 		}
 		return Profile{Effort: true, Thinking: thinking, ServerFallbacks: FallbackModels[model], StrictTools: true,
 			EagerToolInput: true, PromptCache: true, OutputLimit: MaxTokens}
+	}
+	if provider == "openai" {
+		// The Responses API: reasoning effort, strict tools; no output limit is sent, so each model
+		// keeps its own (TODO 2.29.6).
+		return Profile{Effort: true, StrictTools: true}
 	}
 	// Ollama: only model, limits, system prompt, tools and messages; small models write calls as text.
 	return Profile{StrictTools: true, OutputLimit: MaxTokens, TextToolCalls: true}

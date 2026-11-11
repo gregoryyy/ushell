@@ -36,9 +36,14 @@ read-only commands itself and asks before anything else ([Agent mode](#agent-mod
 ## First steps
 
 1. **Install** it (or have it installed; [ADMIN](ADMIN.md#install)). Check: `ush --version`.
-2. **Choose a model:** `ush ai configure` asks for the provider, then the key or the local model.
-   - **Anthropic:** an API key from console.anthropic.com. It is stored in the macOS keychain (or
-     in `~/.config/ush/credentials`, mode 0600, with `ush ai configure --file`).
+2. **Choose a model:** `ush ai configure` asks for the provider, then the key or the local model,
+   then lists the provider's models to choose from: answer with a number, or type a name.
+   - **Anthropic:** an API key from console.anthropic.com.
+   - **OpenAI:** an API key from platform.openai.com. ush uses OpenAI's Responses API, so all its
+     current models work, `gpt-6-astra` (the default) included.
+   - Each provider's key is stored in the macOS keychain (or in `~/.config/ush/credentials`, mode
+     0600, with `ush ai configure --file`); `ANTHROPIC_API_KEY` or `OPENAI_API_KEY` set one for a
+     shell.
    - **Ollama on this machine:** no key, and nothing leaves the machine. Pull a model that supports
      tools first, e.g. `ollama pull qwen3.5:9b` on a 16 GB machine.
 3. **The zsh plugin** puts proposals on your command line and lets you type requests without
@@ -207,8 +212,9 @@ ush -k llama3.2:3b //why is my disk full?     # for one run, with a local model
 ush ai configure                              # to keep it (last question)
 ```
 
-A model name starting with `claude-` is Anthropic's, any other is Ollama's; `anthropic:…` or
-`ollama:…` in front says so explicitly.
+A model name starting with `claude-` is Anthropic's, any other is Ollama's; `anthropic:…`,
+`openai:…` or `ollama:…` in front says so explicitly. An OpenAI checker needs `openai:`, since
+Ollama has models named `gpt-…` too.
 
 ## Options
 
@@ -221,7 +227,7 @@ A model name starting with `claude-` is Anthropic's, any other is Ollama's; `ant
 | `-1`, `--once` | agent mode: answer, then stop (no follow-ups) |
 | `-v`, `--verbose` | full explanations (summary, parts, notes, ush's verdict); in agent mode, complete command output (default: the first 12 lines) |
 | `-m`, `--model M` | model for this run |
-| `-e`, `--effort L` | Anthropic effort: `low`, `medium`, `high`, `xhigh`, `max` |
+| `-e`, `--effort L` | effort of Anthropic and OpenAI models: `low`, `medium`, `high`, `xhigh`, `max` |
 | `-k`, `--checker MODEL` | checker for this run (`claude-haiku-5-5`, `llama3.2:3b`, `off`) |
 | `--no-thinking`, `--thinking` | hide or show the model's thinking and progress lines (`… `) for this run |
 
@@ -234,9 +240,10 @@ continues as before.
 
 | Command | Effect |
 | --- | --- |
-| `ush ai configure [--file]` | mode (propose or run), provider, key or Ollama URL, model, effort, checker |
+| `ush ai configure [--file]` | mode (propose or run), provider, key or Ollama URL, model from the provider's list, effort, checker |
 | `ush ai status` | what is configured, and where things are |
-| `ush ai clear-key` | remove the stored API key |
+| `ush ai models` | the configured provider's models, as `ush ai configure` lists them |
+| `ush ai clear-key [PROVIDER]` | remove a stored API key: the configured provider's, or `anthropic`'s or `openai`'s |
 | `ush allow [add\|remove RULE]` | your allowlist |
 | `ush explain [-v] COMMAND…` | explain a command line with the model, without running it; with the plugin, no quotes needed |
 | `ush notes [-v] [QUESTION] FILE…` | notes on files or piped input with the model (see [Notes](#notes)) |
@@ -247,7 +254,7 @@ continues as before.
 
 ## What leaves your machine
 
-Before each session ush says where requests go. With Anthropic, each request sends your text, the OS
+Before each session ush says where requests go. With Anthropic or OpenAI, each request sends your text, the OS
 name, your user name, the working directory, the output of the commands that ran (up to 32 KB each;
 in propose mode, of the proposals you ran) and piped input. With a local Ollama model, all of that stays on this machine; with an Ollama
 *cloud* model, Ollama forwards it to ollama.com, and ush says so. A checker gets your requests and
@@ -256,7 +263,7 @@ and your last request, unless that command was explained before. `ush notes` (an
 the files, piped input or recorded output it names when it starts, up to 200 KB in all.
 
 Before sending, ush removes known token formats, private keys, URL credentials, `password=`
-assignments and your API key. That is pattern matching: assume what a command prints may reach the
+assignments and your API keys. That is pattern matching: assume what a command prints may reach the
 provider, and use `--confirm` on sensitive machines.
 
 History (`~/.local/state/ush/history.jsonl`, mode 0600) keeps requests, commands, decisions, exit
@@ -284,7 +291,7 @@ configuration error, 130 stopped.
 
 | Symptom | Fix |
 | --- | --- |
-| "no API key" | `ush ai configure`; under `sudo` the keychain may be locked: `ush ai configure --file` |
+| "no Anthropic API key", "no OpenAI API key" | `ush ai configure`; under `sudo` the keychain may be locked: `ush ai configure --file` |
 | "Ollama has no model …" | `ollama pull MODEL`, or pick one from `ollama list` |
 | "cannot reach Ollama" | start it: `ollama serve` |
 | "Ollama URL … is not on this machine" | ush only uses an Ollama on `127.0.0.1`, `localhost` or `::1` |

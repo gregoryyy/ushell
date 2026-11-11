@@ -276,10 +276,10 @@ Done in Python, and in Go through the port (section 4).
     lookups. Acceptance: the existing suites pass unchanged in both; tests for the mapping of each
     setting per profile. Done 2026-10-30 (DONE): `ush ai` saying that a model ignores a setting
     comes with the first model that does (2.29.2).
-  - [ ] 2.29.2 The Chat Completions adapter, with `openai` and `mistral` (La Plateforme,
-    `api.mistral.ai`) and their keys, the first presets (GAPS Q13), and `openai-compatible` with
-    an explicit URL (`https`, or loopback `http`). Go: a Chat Completions client on `net/http`
-    beside the Messages client, no dependencies.
+  - [ ] 2.29.2 The Chat Completions adapter, with `mistral` (La Plateforme, `api.mistral.ai`) and
+    its key, the first preset after OpenAI (GAPS Q13), and `openai-compatible` with an explicit
+    URL (`https`, or loopback `http`). Go: a Chat Completions client on `net/http` beside the
+    Messages client, no dependencies. (OpenAI itself moved to 2.29.6, 2026-11-11.)
   - [ ] 2.29.3 Presets for local servers beyond Ollama, each with its default loopback port:
     llama.cpp's `llama-server`, LM Studio, vLLM, LocalAI, Jan, llamafile and `mlx_lm.server`
     (GAPS Q13). Local servers get Ollama's loopback rules: no proxies, no redirects, "stays on
@@ -288,6 +288,20 @@ Done in Python, and in Go through the port (section 4).
     to confirm against each one's documentation (GAPS Q13): Scaleway Generative APIs, OVHcloud
     AI Endpoints, IONOS AI Model Hub, STACKIT AI Model Serving, Nebius AI Studio. `ush ai
     configure` and the banner show the platform's country and region.
+  - [x] 2.29.6 *py ✓ go ✓* OpenAI through its Responses API (user, 2026-11-11: "add an openai
+    key option for ush ai configure"). OpenAI's documentation says gpt-6-astra and gpt-6.1-sol
+    call tools only through the Responses API, so OpenAI gets its own adapter instead of 2.29.2's
+    Chat Completions; the user chose it. A provider `openai` in the table (OpenAI, `api.openai.com`,
+    `OPENAI_API_KEY`, default model gpt-6-astra), its key in `ush ai configure` (keychain account
+    `openai`, or `openai_api_key` in the credentials file, next to Anthropic's), `openai:` for the
+    checker, another endpoint as `openai_url` / `USH_OPENAI_URL` (https, or http on loopback; not
+    as root). Stateless requests (`store: false`) with the encrypted reasoning items sent back;
+    effort mapped to `reasoning.effort`. Acceptance: a mock of the Responses API, streamed and
+    not, with tool calls, reasoning replay, refusals, cut-off replies, unreadable arguments,
+    errors and retries, in both implementations; `test_cli` end to end (proposal handed over,
+    key redacted, banner names OpenAI, its own key), run against ushgo by the conformance suite;
+    per-provider keys and URL checks in `test_config`; SEC, ADMIN, ARCH, USER and the man page.
+    Not released before 2.23 (GAPS Q17); no live run on a paid key.
   - [ ] 2.29.5 The remaining presets: `huggingface` (the Inference Providers router), `gemini`
     (Google's OpenAI-compatible endpoint), `groq`, `openrouter`, `together`, `deepseek`, `azure`
     (the user's resource URL).
@@ -487,6 +501,21 @@ Done in Python, and in Go through the port (section 4).
   every case, the failures it is meant to find fail, and a case with nothing to go on from does
   not apply. `test_models` runs in ushpy's suite and, through the conformance suite, against
   ushgo.
+- [x] 2.47 *py ✓ go ✓* A list of models to choose from in `ush ai configure` (user,
+  2026-11-11: "also add allow a list of models to choose from once a provider is selected"; the
+  user chose the provider's own list). After the provider and its key, `ush ai configure` lists
+  the provider's chat models, newest first (Anthropic's and OpenAI's `GET /v1/models` with the
+  key, Ollama's pulled models), or ush's short list when they can't be fetched, numbered; a
+  number or a name answers, and a number outside the list is an error. `ush ai models` prints
+  the list. Names not matching the provider's model pattern are dropped (no escape sequences on
+  the terminal). Acceptance: `test_cli` with a mock model list (filtering, order, the fallback,
+  a hostile name, configure by number), in both implementations.
+- [ ] 2.48 *py* Bug (2026-11-11, found while testing 2.29.6): on Python 3.15 (3.15.2, Homebrew's
+  `python3`), `test_execute`'s `test_interrupt_cancels_and_kills` fails on main and on every branch:
+  after Ctrl-C (`KeyboardInterrupt` during `run_command`), the command's next step (`touch`) still
+  runs, so the process group is not killed. 3.12 passes; CI runs 3.10 and 3.13 only. Find what
+  changed in 3.15 (signal delivery or `subprocess` waiting), fix it, and add 3.15 to the ushpy
+  matrix. ushgo is not affected.
 - [ ] 3.1 Release 0.1 gate per [AGENTS.md](../AGENTS.md): fresh suite on the exact
   candidate on each supported OS/Python, dependency audit, release notes, human merge.
   Overtaken: releases ship the Go binary (5.2), and each release runs the gate of 5.3; 0.1 was
