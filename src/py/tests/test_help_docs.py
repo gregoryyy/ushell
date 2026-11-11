@@ -32,8 +32,8 @@ class HelpIsDocumentedTest(unittest.TestCase):
         for option in options:
             for spelling in option:
                 self.assertIn(f"`{spelling}", guide)
-        for command in ("ai configure", "ai status", "ai clear-key", "allow", "explain", "notes",
-                        "history", "replay"):
+        for command in ("ai configure", "ai status", "ai models", "ai clear-key", "allow",
+                        "explain", "notes", "history", "replay"):
             self.assertIn(f"`ush {command}", guide)
 
     def test_every_option_and_subcommand_is_in_the_manual_page(self):
@@ -42,10 +42,12 @@ class HelpIsDocumentedTest(unittest.TestCase):
         options = re.findall(r"(?m)^  (-\w), (--[\w-]+)", USAGE)
         self.assertGreaterEqual(len(options), 7)
         words = [f"{short}, {long}" for short, long in options]
-        words += [f"ush {command}" for command in ("ai configure", "ai status", "ai clear-key",
+        words += [f"ush {command}" for command in ("ai configure", "ai status", "ai models",
+                                                  "ai clear-key",
                                                   "allow", "explain", "notes", "history",
                                                   "replay", "help")]
-        words += ["USH_PROVIDER", "USH_MODEL", "USH_CHECKER", "USH_OLLAMA_URL", "USH_NOTES_KEY",
+        words += ["USH_PROVIDER", "USH_MODEL", "USH_CHECKER", "USH_OLLAMA_URL", "USH_OPENAI_URL",
+                  "OPENAI_API_KEY", "USH_NOTES_KEY",
                   "USH_BARE_SLASH"]
         for word in words:
             self.assertTrue(word in page, f"{word} is not in src/man/ush.1")

@@ -14,6 +14,86 @@ implementation kept its own log: [ushpy](archive/DONE-ushpy.md), [ushgo](archive
 
 ---
 
+## 2026-11-11 17:36 — OpenAI through its Responses API; a model list in `ush ai configure`
+
+TODO items: 2.29.6, 2.47 (new), 2.48 (new, open). PR: #62 (branch `feat/ush-2.29.6-openai`).
+
+Agent: Opus 5.5, reasoning: not exposed, subagents: one general-purpose agent for the Go port,
+reviewed and checked here.
+
+### Implementation notes
+
+- **The request** (user, 2026-11-11): "add an openai key option for ush ai configure, also add
+  allow a list of models to choose from once a provider is selected". The user chose the
+  Responses API over Chat Completions, and the provider's own model list over a fixed one.
+- **ushpy:** [responses.py](../src/py/src/ush/responses.py) (new, standard library only)
+  translates at the provider's edge, so the agent keeps its Anthropic-shaped messages:
+  - `instructions` for the system prompt, `function_call` / `function_call_output` items for
+    `tool_use` / `tool_result`, flat tools with `strict`;
+  - stateless (`store: false`), with `include: ["reasoning.encrypted_content"]`; a turn's
+    reasoning items are kept as `reasoning` blocks and sent back with the tool result;
+  - the reply is read from `response.completed`/`response.incomplete`, and the text deltas only
+    stream to the terminal; `response.failed` and `error` events become provider errors;
+  - stop reasons: tool use, refusal, `max_output_tokens` → cut off, `content_filter` → refusal;
+  - unreadable tool arguments ask again (three attempts, as for Anthropic); 408/409/429/5xx are
+    retried, waiting what `retry-after` says, at most 20 s; redirects are not followed;
+  - the checker's request is one unstreamed answer with low effort.
+  The Anthropic client drops `reasoning` blocks and `openai_id` keys, so a conversation can go
+  on after a switch of provider.
+- **Keys, per provider:** keychain service `ush`, account = provider (the Anthropic key stays
+  where it was, account `anthropic`); in the 0600 file, one `<provider>_api_key` entry each,
+  and storing one keeps the others. `ush ai clear-key [PROVIDER]`. Each key goes only to its
+  provider's endpoint; `OPENAI_API_KEY` is removed from command environments and redacted.
+- **Settings:** `openai_url` / `USH_OPENAI_URL` (https, http only on loopback; the variable is
+  ignored as root), `openai_model`, `openai:` for the checker. Default model gpt-6-astra.
+- **The model list (2.47):** after the provider and its key, `ush ai configure` lists the
+  provider's chat models, numbered, newest first: `GET /v1/models` with the key for Anthropic
+  (`x-api-key`, `anthropic-version`) and OpenAI (embedding, audio, image, moderation and other
+  non-chat models dropped), Ollama's pulled models, or ush's short list when they can't be
+  fetched. A number or a name answers; a number outside the list is an error. `ush ai models`
+  prints the list. Names not matching the provider's model pattern are dropped, so a hostile
+  list can't put escape sequences on the terminal.
+- **ushgo:** the same in [responses.go](../src/go/internal/provider/responses.go) (new,
+  `net/http`), `config` (URL check, per-provider `KeyStore`), `providers` and `cmd/ush`.
+- **Tests,** against local mocks only; no request reached a real provider:
+  - `test_responses` (12, new) with [mock_openai.py](../src/py/tests/mock_openai.py): translation
+    both ways, streamed and unstreamed replies, reasoning replay, research without tools,
+    refusal and cut-off, unreadable arguments, errors and retries, the checker, model filtering;
+    `responses_test.go` (15) ports them and adds retry waits, no redirects and the Anthropic
+    filter;
+  - `test_cli` (4 new, shared with ushgo): an OpenAI proposal handed over with its key redacted
+    and the banner naming OpenAI; OpenAI needs its own key; the model list (filtering, order,
+    fallback, a hostile name); configure with a key and a model by number;
+  - `test_config` (3 new) and `config_test.go` (4 new): per-provider keys, keychain accounts,
+    OpenAI URLs.
+- **Validation** in the worktree, uncommitted state, then on the commit by local CI (in the PR):
+  - `./scripts/test.sh` (ushpy, Python 3.12.16): 276 tests OK;
+  - `gofmt -l .`: nothing; `go vet ./...`: clean; `go test ./...`: all 13 packages ok;
+  - `USH_TEST_BIN=<ushgo> python -m unittest test_cli test_models test_help_docs`: 42 tests OK;
+  - `diff` of `ush help` from both: identical;
+  - `just ushgo-conform`: 113 tests OK; `just links`: OK.
+- **Documents:** USER, ADMIN, SEC (key leakage, disclosure to OpenAI), ARCH, the man page; `.env.template` gains the provider, its models, the
+  `openai:` checker, `OPENAI_API_KEY` and `USH_OPENAI_URL`, for `just ush` (user, 2026-11-11:
+  "create a .env.template for testing with Claude and OpenAI API keys").
+
+### Deviations
+
+- **No live run:** no request went to OpenAI's API, with or without a paid key; the request
+  shape follows OpenAI's documentation and is checked against the mock only. A first live run
+  needs a user's key and should come before a release.
+- **Not released before 2.23** (GAPS Q17: the injection fix comes first).
+- **Small differences between the implementations,** none visible in a shared test: Go writes
+  tool arguments as compact JSON and the credentials file's keys sorted; Go's model-name check
+  rejects a trailing newline that Python's `re.match` would let through.
+
+### Insights
+
+- **Python 3.15 (2.48):** the first ushpy run used a new venv on Homebrew's `python3` (3.15.2),
+  and `test_interrupt_cancels_and_kills` failed: the command went on after Ctrl-C. main fails
+  the same way on 3.15 and passes on 3.12, so it predates this work; CI runs 3.10 and 3.13 only.
+  The suite above ran on 3.12.
+- **Model lists are untrusted input:** a provider's (or a mock's) model names reach the terminal
+  and the settings, so they go through the same pattern as a typed model name.
 ## 2026-11-11 16:52 — Local CI on Linux in a container; 0.2.4 passes on Linux
 
 TODO items: 6.5 (new, done). PR: #61 (branch `docs/ush-0.2.4-released`, with the 0.2.4 record).

@@ -78,7 +78,7 @@ class AnthropicProvider:
         if p.eager_tool_input:
             tools = [{**t, "eager_input_streaming": True} for t in tools]
         params: dict = {"model": self.model, "max_tokens": p.output_limit, "system": system,
-                        "tools": tools, "messages": messages}
+                        "tools": tools, "messages": for_messages_api(messages)}
         if not tools:   # a research request (TODO 2.38): no tool list at all
             del params["tools"]
         if p.prompt_cache:
@@ -233,6 +233,23 @@ class OllamaProvider(AnthropicProvider):
             return ProviderError(f"Ollama error {exc.status_code}: "
                                  f"{error.get('message') or exc.message}")
         return super()._error(exc)
+
+
+def for_messages_api(messages: list[dict]) -> list[dict]:
+    """The conversation without what only OpenAI reads: its reasoning blocks and the item ids
+    kept on text and tool_use blocks (TODO 2.29.6), so that a conversation can change provider."""
+    if not any(isinstance(m.get("content"), list) and any(
+            b.get("type") == "reasoning" or "openai_id" in b for b in m["content"])
+            for m in messages):
+        return messages
+    out = []
+    for m in messages:
+        content = m.get("content")
+        if isinstance(content, list):
+            content = [{k: v for k, v in b.items() if k != "openai_id"}
+                       for b in content if b.get("type") != "reasoning"]
+        out.append({**m, "content": content})
+    return out
 
 
 def _transport(exc: Exception) -> bool:

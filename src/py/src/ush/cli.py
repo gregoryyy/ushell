@@ -43,10 +43,11 @@ usage:
   ush research TEXT...         research only: the model compares the options and
                                proposes and runs nothing (also: //? TEXT)
   ush [OPTIONS]                start a session
-  ush ai configure [--file]    set the provider (Anthropic or a local Ollama), API key
-                               (keychain on macOS), model, and effort
+  ush ai configure [--file]    set the provider (Anthropic, OpenAI, or a local Ollama),
+                               its API key (keychain on macOS), model from a list, effort
   ush ai status                show provider, model, key source, and paths
-  ush ai clear-key             remove the stored API key
+  ush ai models                list the provider's models
+  ush ai clear-key [PROVIDER]  remove a stored API key (default: the provider's)
   ush allow [add|remove RULE]  list, add, or remove commands that may run without
                                approval, e.g. ush allow add kubectl get
   ush history [-n N]           list recent requests and the commands they ran
@@ -111,7 +112,7 @@ class ProviderFactory:
     def __init__(self, ident: Identity, settings: Settings, keys: KeyStore):
         self.ident, self.settings, self.keys = ident, settings, keys
         self.model = settings.active_model
-        self.key: Optional[str] = None
+        self.keys_of: dict[str, str] = {}
 
     def secrets(self) -> tuple[str, ...]:
         """Check that the provider and the checker can be used and return the secrets to
@@ -124,27 +125,33 @@ class ProviderFactory:
                               f"{hint}")
         if self.settings.checker_provider:
             used.append(self.settings.checker_provider)
-        if any(TABLE[p].key_store for p in used):
-            return (self.resolve_key(),)
+        needed = dict.fromkeys(p for p in used if TABLE[p].key_store)
+        if needed:
+            return tuple(self.resolve_key(p) for p in needed)
         return ()
 
-    def resolve_key(self) -> str:
-        if self.key is None:
-            key, _ = self.keys.resolve()
+    def resolve_key(self, provider: str = "anthropic") -> str:
+        if provider not in self.keys_of:
+            key, _ = self.keys.resolve(provider)
             if not key:
+                spec = TABLE[provider]
                 who = f" for {self.ident.owner_name}" if self.ident.via_sudo else ""
-                raise ConfigError(f"no API key{who}; run `ush ai configure` or set "
-                                  "ANTHROPIC_API_KEY")
-            self.key = key
-        return self.key
+                raise ConfigError(f"no {spec.label} API key{who}; run `ush ai configure` or set "
+                                  f"{spec.key_env[-1]}")
+            self.keys_of[provider] = key
+        return self.keys_of[provider]
 
     def create(self, provider: str, model: str, effort: str = "") -> Provider:
         spec = TABLE[provider]
         if spec.loopback:
             return OllamaProvider(model, getattr(self.settings, spec.url_setting))
+        if spec.api == "responses":
+            from .responses import OpenAIProvider
+            return OpenAIProvider(self.resolve_key(provider), model, effort,
+                                  base_url=endpoint(self.settings, provider))
         # As root, ignore environment overrides of the endpoint (sudo -E).
         base_url = API_URL if self.ident.is_root else os.environ.get("USH_BASE_URL") or None
-        return AnthropicProvider(self.resolve_key(), model, effort, base_url=base_url)
+        return AnthropicProvider(self.resolve_key(provider), model, effort, base_url=base_url)
 
     def __call__(self) -> Provider:
         return self.create(self.settings.provider, self.settings.active_model,
@@ -699,26 +706,43 @@ def _ai(args: list[str], ui: Terminal, ident: Identity, settings: Settings,
         keys: KeyStore) -> int:
     action = args[0] if args else "status"
     if action == "configure":
+        current = settings              # with the environment's endpoints (USH_OPENAI_URL, …)
         settings = load_settings(ident)  # environment overrides are not saved
         _ask(ui, f"mode: propose (you run the commands) or run (ush runs them) "
                  f"[{settings.mode}]: ", settings.set_mode)
         _ask(ui, f"provider {'/'.join(PROVIDERS)} [{settings.provider}]: ", settings.set_provider)
         spec = TABLE[settings.provider]
-        if spec.url_setting:
+        if spec.url_setting and spec.loopback:
             def set_url(url: str) -> None:
                 setattr(settings, spec.url_setting, check_ollama_url(url))
             _ask(ui, f"{spec.label} URL [{endpoint(settings, spec.name)}]: ", set_url)
-        if spec.lists_models:
-            pulled = _ollama_models(endpoint(settings, spec.name))
-            if pulled:
-                ui.info("pulled models: " + ", ".join(pulled))
         if spec.key_store:
             prefer_keychain = "--file" not in args
-            key = getpass.getpass("API key (hidden; Enter keeps the current key): ").strip()
+            try:
+                key = getpass.getpass(f"{spec.label} API key (hidden; Enter keeps the current "
+                                      "key): ").strip()
+            except EOFError:
+                key = ""
             if key:
-                where = keys.store(key, prefer_keychain=prefer_keychain)
+                where = keys.store(key, prefer_keychain=prefer_keychain, provider=spec.name)
                 ui.info(f"key stored in {where}")
-        _ask(ui, f"model [{settings.active_model}]: ", settings.set_model)
+        endpoints = Settings.from_dict({**settings.to_dict(), "openai_url": current.openai_url})
+        models, live = available_models(endpoints, spec.name, keys)
+        if models:
+            source = "" if live else " (ush's list: the provider's could not be fetched)"
+            ui.info(f"{spec.label} models{source}:")
+            for n, name in enumerate(models, 1):
+                ui.info(f"  {n:2}  {name}")
+
+        def set_model(answer: str) -> None:
+            if answer.isdigit() and models:
+                if not 1 <= int(answer) <= len(models):
+                    raise ConfigError(f"model number {answer} is not in the list "
+                                      f"(1 to {len(models)})")
+                answer = models[int(answer) - 1]
+            settings.set_model(answer)
+        choice = " (a number or a name)" if models else ""
+        _ask(ui, f"model{choice} [{settings.active_model or 'none'}]: ", set_model)
         if profile(settings.provider, settings.active_model).effort:
             def set_effort(effort: str) -> None:
                 if effort not in EFFORTS:
@@ -740,6 +764,14 @@ def _ai(args: list[str], ui: Terminal, ident: Identity, settings: Settings,
              settings.set_thinking)
         ui.info(f"settings saved to {save_settings(ident, settings)}")
         return 0
+    if action == "models":
+        spec = TABLE[settings.provider]
+        models, live = available_models(settings, spec.name, keys)
+        if not live:
+            ui.warn(f"could not list {spec.label}'s models; ush's list:")
+        for name in models:
+            print(name)
+        return 0
     if action == "status":
         spec = TABLE[settings.provider]
         model = settings.active_model or "not configured"
@@ -750,7 +782,7 @@ def _ai(args: list[str], ui: Terminal, ident: Identity, settings: Settings,
         if spec.loopback:
             print(f"data:      {disclosure(settings)}")
         if spec.key_store:
-            key, source = keys.resolve()
+            key, source = keys.resolve(spec.name)
             print(f"key:       {mask(key) + ' from ' + source if key else 'not configured'}")
         else:
             print("key:       not needed")
@@ -771,10 +803,17 @@ def _ai(args: list[str], ui: Terminal, ident: Identity, settings: Settings,
                                 "listed one)" if risks else "no relative or writable entries"))
         return 0
     if action == "clear-key":
-        removed = keys.clear()
-        ui.info("removed key from " + ", ".join(removed) if removed else "no stored key found")
+        provider = args[1] if len(args) > 1 else settings.provider
+        if provider not in TABLE or not TABLE[provider].key_store:
+            raise ConfigError("usage: ush ai clear-key [" + "|".join(
+                n for n, spec in TABLE.items() if spec.key_store) + "]")
+        removed = keys.clear(provider)
+        label = TABLE[provider].label
+        ui.info(f"removed the {label} key from " + ", ".join(removed) if removed
+                else f"no stored {label} key found")
         return 0
-    raise ConfigError(f"unknown ai command {action!r}; use configure, status, or clear-key")
+    raise ConfigError(f"unknown ai command {action!r}; use configure, status, models, or "
+                      "clear-key")
 
 
 def _allow(args: list[str], ui: Terminal, ident: Identity) -> int:
@@ -799,6 +838,48 @@ def _allow(args: list[str], ui: Terminal, ident: Identity) -> int:
         raise ConfigError(f"no allow rule {rule!r}; see `ush allow`")
     save_settings(ident, settings)
     return 0
+
+
+def available_models(settings: Settings, provider: str, keys: KeyStore) -> tuple[list[str], bool]:
+    """The models to offer for `provider` (TODO 2.47): the provider's own list, or ush's when it
+    can't be fetched (no key yet, offline); and whether the list is the provider's."""
+    spec = TABLE[provider]
+    live: list[str] = []
+    if spec.lists_models:
+        live = _ollama_models(endpoint(settings, provider))
+    elif spec.key_store:
+        try:
+            key, _ = keys.resolve(provider)
+        except ConfigError:
+            key = None
+        if key and spec.api == "responses":
+            from .responses import list_models
+            live = list_models(endpoint(settings, provider), key)
+        elif key:
+            live = _anthropic_models(key)
+    # Names come from the provider (or a gateway): only those its name pattern allows reach the
+    # terminal, so none can carry control characters or escape sequences.
+    live = [name for name in live if spec.model_pattern.match(name)]
+    return (live, True) if live else (list(spec.models), False)
+
+
+def _anthropic_models(key: str) -> list[str]:
+    """Anthropic's models (`GET /v1/models`), newest first; empty if they can't be listed. As
+    root, USH_BASE_URL is not used."""
+    import json
+    import urllib.request
+    base = API_URL if identity().is_root else os.environ.get("USH_BASE_URL") or API_URL
+    request = urllib.request.Request(f"{base.rstrip('/')}/v1/models?limit=100", headers={
+        "x-api-key": key, "anthropic-version": "2023-06-01"})
+    try:
+        with urllib.request.urlopen(request, timeout=5) as response:
+            data = json.load(response).get("data") or []
+    except (OSError, ValueError, AttributeError):
+        return []
+    models = [m for m in data if isinstance(m, dict) and isinstance(m.get("id"), str)
+              and m["id"].startswith("claude-")]
+    models.sort(key=lambda m: str(m.get("created_at") or ""), reverse=True)
+    return [m["id"] for m in models]
 
 
 def _ollama_models(url: str) -> list[str]:

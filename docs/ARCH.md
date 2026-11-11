@@ -288,6 +288,24 @@ can only add friction (always ask, or never run, even when approved) is safe and
   detected through `remote_host` in `/api/tags` and disclosed. Settings select the
   provider; `USH_PROVIDER`, `USH_MODEL`, and `USH_OLLAMA_URL` override them except as
   root. ush never reads `.env` files itself; `just ush` passes `.env` for development.
+- **OpenAI through its Responses API** (TODO 2.29.6, 2026-11-11), not Chat Completions as
+  2.29 planned: OpenAI's documentation (2026-11-11) says that gpt-6-astra and gpt-6.1-sol call
+  tools only through the Responses API, and ush works through tool calls. The user chose it; Chat
+  Completions stays the plan for Mistral and OpenAI-compatible servers (2.29.2). The adapter
+  (`responses.py`, Go `internal/provider`) uses the standard library only and translates at its
+  edge: the system prompt becomes `instructions`, `tool_use` a `function_call` item, `tool_result`
+  a `function_call_output`. Requests are stateless (`store: false`), so nothing of the
+  conversation is kept at OpenAI by ush's request; the reasoning items OpenAI returns, encrypted,
+  are kept in the conversation as `reasoning` blocks and sent back with the next request, as
+  OpenAI asks for tool calls. The finished reply is read from the stream's `response.completed`
+  event; the text deltas only reach the terminal. The Anthropic adapter drops those blocks and
+  the item ids, so a conversation can change provider. Reasoning summaries are not requested:
+  some organisations need verification for them, and a refused request would fail every turn.
+- **Model lists from the provider** (TODO 2.47, 2026-11-11, the user's choice): `ush ai
+  configure` and `ush ai models` ask the provider (`GET /v1/models` of Anthropic and OpenAI with
+  the key, Ollama's `/api/tags`) and offer chat models only, newest first; ush's own short list
+  when the provider can't be asked (no key yet, offline). Names that don't match the provider's
+  model pattern are dropped, so a gateway can't put escape sequences on the terminal.
 - **An independent checker model** (TODO 2.13, 2026-10-27). The user asked for "an
   adversarial model to check the proposed implementation that takes independent sources; it can be
   a small model" (interpretation in [GAPS](GAPS.md) A5). A second model judges each proposed command

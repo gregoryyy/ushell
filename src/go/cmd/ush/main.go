@@ -49,10 +49,11 @@ usage:
   ush research TEXT...         research only: the model compares the options and
                                proposes and runs nothing (also: //? TEXT)
   ush [OPTIONS]                start a session
-  ush ai configure [--file]    set the provider (Anthropic or a local Ollama), API key
-                               (keychain on macOS), model, and effort
+  ush ai configure [--file]    set the provider (Anthropic, OpenAI, or a local Ollama),
+                               its API key (keychain on macOS), model from a list, effort
   ush ai status                show provider, model, key source, and paths
-  ush ai clear-key             remove the stored API key
+  ush ai models                list the provider's models
+  ush ai clear-key [PROVIDER]  remove a stored API key (default: the provider's)
   ush allow [add|remove RULE]  list, add, or remove commands that may run without
                                approval, e.g. ush allow add kubectl get
   ush history [-n N]           list recent requests and the commands they ran
@@ -345,7 +346,7 @@ type providerFactory struct {
 	id       config.Identity
 	settings config.Settings
 	keys     *config.KeyStore
-	key      string
+	keysOf   map[string]string
 }
 
 // secrets checks that the provider and the checker can be used and returns the secrets to redact.
@@ -362,34 +363,42 @@ func (f *providerFactory) secrets() ([]string, error) {
 	if p := f.settings.CheckerProvider(); p != "" {
 		used = append(used, p)
 	}
+	var secrets []string
+	seen := map[string]bool{}
 	for _, p := range used {
-		if providers.MustGet(p).KeyStore {
-			key, err := f.resolveKey()
+		if providers.MustGet(p).KeyStore && !seen[p] {
+			seen[p] = true
+			key, err := f.resolveKey(p)
 			if err != nil {
 				return nil, err
 			}
-			return []string{key}, nil
+			secrets = append(secrets, key)
 		}
 	}
-	return nil, nil
+	return secrets, nil
 }
 
-func (f *providerFactory) resolveKey() (string, error) {
-	if f.key == "" {
-		key, _, err := f.keys.Resolve()
-		if err != nil {
-			return "", err
-		}
-		if key == "" {
-			who := ""
-			if f.id.ViaSudo() {
-				who = " for " + f.id.OwnerName
-			}
-			return "", usageError("no API key%s; run `ush ai configure` or set ANTHROPIC_API_KEY", who)
-		}
-		f.key = key
+func (f *providerFactory) resolveKey(provider string) (string, error) {
+	if key, ok := f.keysOf[provider]; ok {
+		return key, nil
 	}
-	return f.key, nil
+	key, _, err := f.keys.Resolve(provider)
+	if err != nil {
+		return "", err
+	}
+	if key == "" {
+		spec := providers.MustGet(provider)
+		who := ""
+		if f.id.ViaSudo() {
+			who = " for " + f.id.OwnerName
+		}
+		return "", usageError("no %s API key%s; run `ush ai configure` or set %s", spec.Label, who, spec.KeyEnv[len(spec.KeyEnv)-1])
+	}
+	if f.keysOf == nil {
+		f.keysOf = map[string]string{}
+	}
+	f.keysOf[provider] = key
+	return key, nil
 }
 
 // baseURL: as root, environment overrides of the endpoint are ignored (sudo -E).
@@ -404,14 +413,19 @@ func (f *providerFactory) create() (provider.Provider, error) {
 	return f.client(f.settings.Provider, f.settings.ActiveModel(), f.settings.Effort)
 }
 
-// client is the adapter for a provider's row: Ollama's for one on this machine, else Anthropic's.
-func (f *providerFactory) client(name, model, effort string) (*provider.Client, error) {
-	if providers.MustGet(name).Loopback {
+// client is the adapter for a provider's row: Ollama's for one on this machine, OpenAI's for the
+// Responses API, else Anthropic's.
+func (f *providerFactory) client(name, model, effort string) (provider.Provider, error) {
+	spec := providers.MustGet(name)
+	if spec.Loopback {
 		return provider.NewOllama(model, f.settings.Endpoint(name)), nil
 	}
-	key, err := f.resolveKey()
+	key, err := f.resolveKey(name)
 	if err != nil {
 		return nil, err
+	}
+	if spec.API == "responses" {
+		return provider.NewOpenAI(key, model, effort, f.settings.Endpoint(name)), nil
 	}
 	return provider.NewAnthropic(key, model, effort, f.baseURL()), nil
 }

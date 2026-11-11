@@ -14,21 +14,28 @@ from dataclasses import dataclass
 
 API_URL = "https://api.anthropic.com"
 OLLAMA_URL = "http://127.0.0.1:11434"
+OPENAI_URL = "https://api.openai.com"
 ANTHROPIC_MODEL = re.compile(r"^[a-z0-9.\-]{3,64}$")
 OLLAMA_MODEL = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/\-]{0,127}$")
+OPENAI_MODEL = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:\-]{0,127}$")
 KEY_ENV = ("USH_API_KEY", "ANTHROPIC_API_KEY")
 MAX_TOKENS = 64000
 # Models that accept server-side refusal fallbacks and between-tool progress notes.
 FALLBACK_MODELS = {"claude-opus-5-5", "claude-opus-5", "claude-sonnet-5-5", "claude-fable-5-1",
                    "claude-fable-5"}
 UPDATES_MODELS = {"claude-opus-5-5", "claude-sonnet-5-5", "claude-fable-5-1", "claude-fable-5"}
+# Offered by `ush ai configure` when the provider's own list can't be fetched (TODO 2.47).
+ANTHROPIC_MODELS = ("claude-opus-5-5", "claude-sonnet-5-5", "claude-haiku-5-5", "claude-fable-5-1")
+# OpenAI's models page, 2026-11-11: those with function calling and reasoning.
+OPENAI_MODELS = ("gpt-6-astra", "gpt-6.1-sol", "gpt-6.1-terra", "gpt-6-luna")
 
 
 @dataclass(frozen=True)
 class ProviderSpec:
     name: str                  # as in settings and `provider:model`
     label: str                 # as the disclosure and `ush ai status` name it
-    api: str                   # "messages": Anthropic's Messages API (Ollama serves it too)
+    api: str                   # "messages": Anthropic's Messages API (Ollama serves it too);
+                               # "responses": OpenAI's Responses API (TODO 2.29.6)
     url: str                   # the default endpoint
     url_setting: str           # the setting that holds the endpoint, or "" for `url`
     loopback: bool             # must be on this machine: no proxy, no redirect, stays here
@@ -38,13 +45,17 @@ class ProviderSpec:
     model_setting: str         # the setting that holds its model
     lists_models: bool         # can say which models it has and which are in a cloud
     model_hint: str = ""       # where to find a model name, for the error when none is set
+    models: tuple = ()         # offered by `ush ai configure` when the list can't be fetched
 
 
 PROVIDERS = {
     "anthropic": ProviderSpec("anthropic", "Anthropic", "messages", API_URL, "", False, KEY_ENV,
-                              True, ANTHROPIC_MODEL, "model", False),
+                              True, ANTHROPIC_MODEL, "model", False, "", ANTHROPIC_MODELS),
     "ollama": ProviderSpec("ollama", "Ollama", "messages", OLLAMA_URL, "ollama_url", True, (),
                            False, OLLAMA_MODEL, "ollama_model", True, "see `ollama list`"),
+    "openai": ProviderSpec("openai", "OpenAI", "responses", OPENAI_URL, "openai_url", False,
+                           ("OPENAI_API_KEY",), True, OPENAI_MODEL, "openai_model", False,
+                           "see `ush ai configure`", OPENAI_MODELS),
 }
 NAMES = tuple(PROVIDERS)
 
@@ -69,6 +80,12 @@ def profile(provider: str, model: str) -> ModelProfile:
             thinking="adaptive-updates" if model in UPDATES_MODELS else "adaptive",
             server_fallbacks=model in FALLBACK_MODELS, strict_tools=True, eager_tool_input=True,
             prompt_cache=True, output_limit=MAX_TOKENS, text_tool_calls=False)
+    if provider == "openai":
+        # The Responses API: reasoning effort, strict tools; no output limit is sent, so each
+        # model keeps its own (TODO 2.29.6).
+        return ModelProfile(effort=True, thinking="", server_fallbacks=False, strict_tools=True,
+                            eager_tool_input=False, prompt_cache=False, output_limit=0,
+                            text_tool_calls=False)
     # Ollama: only model, limits, system prompt, tools and messages; small models write calls
     # as text.
     return ModelProfile(effort=False, thinking="", server_fallbacks=False, strict_tools=True,

@@ -27,8 +27,10 @@ import (
 )
 
 const (
-	DefaultModel = "claude-opus-5-5"
-	OllamaURL    = providers.OllamaURL
+	DefaultModel       = "claude-opus-5-5"
+	DefaultOpenAIModel = "gpt-6-astra" // OpenAI's choice "when unsure" (2026-11-11)
+	OllamaURL          = providers.OllamaURL
+	OpenAIURL          = providers.OpenAIURL
 )
 
 var (
@@ -38,6 +40,7 @@ var (
 	Thinking       = []string{"show", "hide"}   // the model's thinking in the terminal (TODO 2.37)
 	anthropicModel = providers.AnthropicModel
 	ollamaModel    = providers.OllamaModel
+	openaiModel    = providers.OpenAIModel
 )
 
 // Error is a configuration problem: ush reports it and exits with status 2.
@@ -107,9 +110,11 @@ type Settings struct {
 	Effort         string   `json:"effort"`
 	OllamaURL      string   `json:"ollama_url"`
 	OllamaModel    string   `json:"ollama_model"` // no default: a model the user has pulled
-	Checker        string   `json:"checker"`      // "provider:model" of the checker; "" is off
-	Thinking       string   `json:"thinking"`     // show or hide the model's thinking; what is sent is the same
-	Allow          []string `json:"allow"`        // the user's allow rules
+	OpenAIURL      string   `json:"openai_url"`   // another OpenAI endpoint, e.g. a company gateway
+	OpenAIModel    string   `json:"openai_model"`
+	Checker        string   `json:"checker"`  // "provider:model" of the checker; "" is off
+	Thinking       string   `json:"thinking"` // show or hide the model's thinking; what is sent is the same
+	Allow          []string `json:"allow"`    // the user's allow rules
 	MaxSteps       int      `json:"max_steps"`
 	CommandTimeout int      `json:"command_timeout"` // default seconds per command
 	MaxTimeout     int      `json:"max_timeout"`     // upper bound a request may ask for
@@ -120,7 +125,7 @@ type Settings struct {
 // Defaults are ushpy's.
 func Defaults() Settings {
 	return Settings{Mode: "propose", Provider: "anthropic", Model: DefaultModel, Effort: "medium",
-		Thinking: "show", OllamaURL: OllamaURL, Allow: []string{}, MaxSteps: 30, CommandTimeout: 120,
+		Thinking: "show", OllamaURL: OllamaURL, OpenAIURL: OpenAIURL, OpenAIModel: DefaultOpenAIModel, Allow: []string{}, MaxSteps: 30, CommandTimeout: 120,
 		MaxTimeout: 900, OutputLimit: 32_000, ShowLines: 12}
 }
 
@@ -150,6 +155,16 @@ func FromMap(data map[string]any, parseRule func(string) ([]string, error)) (Set
 	}
 	if v, ok := str("ollama_model"); ok && ollamaModel.MatchString(v) {
 		s.OllamaModel = v
+	}
+	if v, ok := str("openai_url"); ok {
+		u, err := CheckOpenAIURL(v)
+		if err != nil {
+			return s, err
+		}
+		s.OpenAIURL = u
+	}
+	if v, ok := str("openai_model"); ok && openaiModel.MatchString(v) {
+		s.OpenAIModel = v
 	}
 	if v, ok := str("checker"); ok {
 		if err := s.SetChecker(v); err != nil {
@@ -192,8 +207,11 @@ func (s *Settings) ActiveModel() string { return s.ModelOf(s.Provider) }
 func (s *Settings) ModelOf(provider string) string { return *s.modelField(providers.MustGet(provider)) }
 
 func (s *Settings) modelField(spec providers.Spec) *string {
-	if spec.ModelSetting == "ollama_model" {
+	switch spec.ModelSetting {
+	case "ollama_model":
 		return &s.OllamaModel
+	case "openai_model":
+		return &s.OpenAIModel
 	}
 	return &s.Model
 }
@@ -201,8 +219,11 @@ func (s *Settings) modelField(spec providers.Spec) *string {
 // Endpoint is the URL of a provider: the setting its row names, or the row's own.
 func (s *Settings) Endpoint(provider string) string {
 	spec := providers.MustGet(provider)
-	if spec.URLSetting == "ollama_url" {
+	switch spec.URLSetting {
+	case "ollama_url":
 		return s.OllamaURL
+	case "openai_url":
+		return s.OpenAIURL
 	}
 	return spec.URL
 }
@@ -243,7 +264,8 @@ func (s *Settings) SetModel(model string) error {
 }
 
 // SetChecker sets the checker as provider:model or a bare model name, Anthropic's if it starts
-// with claude- and Ollama's otherwise; empty or off turns it off. Stored as provider:model.
+// with claude- and Ollama's otherwise (an OpenAI checker needs "openai:", since Ollama has models
+// named gpt-...); empty or off turns it off. Stored as provider:model.
 func (s *Settings) SetChecker(value string) error {
 	value = strings.TrimSpace(value)
 	if value == "" || value == "off" {
@@ -330,7 +352,35 @@ func CheckOllamaURL(raw string) (string, error) {
 	return u.Scheme + "://" + u.Host, nil
 }
 
-// ApplyEnvironment: USH_PROVIDER, USH_OLLAMA_URL, USH_MODEL, USH_CHECKER and USH_THINKING override the
+// CheckOpenAIURL: another OpenAI endpoint (a company gateway): https, or http only to this machine,
+// with no user, path, query or fragment. As root it comes only from the settings file.
+func CheckOpenAIURL(raw string) (string, error) {
+	bad := Errorf("OpenAI URL %s must be https://HOST, e.g. %s", pyRepr(raw), OpenAIURL)
+	text := strings.TrimSpace(raw)
+	u, err := url.Parse(text)
+	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.User != nil || u.Opaque != "" ||
+		(u.Path != "" && u.Path != "/") || u.RawQuery != "" || u.Fragment != "" ||
+		strings.Contains(text, "?") || strings.Contains(text, "#") || strings.Contains(text, "@") {
+		return "", bad
+	}
+	host := u.Hostname()
+	if host == "" {
+		return "", bad
+	}
+	if port := u.Port(); port != "" {
+		if n, err := strconv.Atoi(port); err != nil || n < 0 || n > 65535 {
+			return "", bad
+		}
+	}
+	if u.Scheme == "http" {
+		if ip := net.ParseIP(host); host != "localhost" && (ip == nil || !ip.IsLoopback()) {
+			return "", bad
+		}
+	}
+	return u.Scheme + "://" + u.Host, nil
+}
+
+// ApplyEnvironment: USH_PROVIDER, USH_OLLAMA_URL, USH_OPENAI_URL, USH_MODEL, USH_CHECKER and USH_THINKING override the
 // settings file, except as root.
 func ApplyEnvironment(s *Settings, id Identity, getenv func(string) string) error {
 	if id.IsRoot() {
@@ -347,6 +397,13 @@ func ApplyEnvironment(s *Settings, id Identity, getenv func(string) string) erro
 			return err
 		}
 		s.OllamaURL = u
+	}
+	if v := getenv("USH_OPENAI_URL"); v != "" {
+		u, err := CheckOpenAIURL(v)
+		if err != nil {
+			return err
+		}
+		s.OpenAIURL = u
 	}
 	if v := getenv("USH_MODEL"); v != "" {
 		if err := s.SetModel(strings.TrimSpace(v)); err != nil {

@@ -92,7 +92,7 @@ class Trial:
             with open(os.path.join(self.work, name), "w") as f:
                 f.write(text)
         self.env = {k: v for k, v in os.environ.items()
-                    if not k.startswith(("ANTHROPIC_", "USH_", "XDG_"))}
+                    if not k.startswith(("ANTHROPIC_", "OPENAI_", "USH_", "XDG_"))}
         self.env.update(XDG_CONFIG_HOME=os.path.join(self.home, "config"),
                         XDG_STATE_HOME=os.path.join(self.home, "state"), USH_HANDOFF=self.handoff,
                         NO_COLOR="1", USH_PROVIDER="ollama", USH_MODEL=model,

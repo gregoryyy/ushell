@@ -112,7 +112,7 @@ func (c *Client) params(system string, tools []Block, messages []Block) (Block, 
 		sent = append(sent, copied)
 	}
 	params := Block{"model": c.model, "max_tokens": p.OutputLimit, "system": system, "tools": sent,
-		"messages": messages}
+		"messages": forMessagesAPI(messages)}
 	if len(sent) == 0 { // a research request (TODO 2.38): no tool list at all
 		delete(params, "tools")
 	}
@@ -488,6 +488,47 @@ func OllamaTags(base string, timeout time.Duration) ([]Tag, error) {
 		return nil, err
 	}
 	return list.Models, nil
+}
+
+// forMessagesAPI is the conversation without what only OpenAI reads: its reasoning blocks and the
+// item ids kept on text and tool_use blocks (TODO 2.29.6), so a conversation can change provider.
+func forMessagesAPI(messages []Block) []Block {
+	needed := false
+	for _, m := range messages {
+		for _, b := range blocksOf(m["content"]) {
+			if _, has := b["openai_id"]; has || b["type"] == "reasoning" {
+				needed = true
+			}
+		}
+	}
+	if !needed {
+		return messages
+	}
+	out := make([]Block, 0, len(messages))
+	for _, m := range messages {
+		copied := Block{}
+		for k, v := range m {
+			copied[k] = v
+		}
+		if _, isString := m["content"].(string); !isString && m["content"] != nil {
+			blocks := []Block{}
+			for _, b := range blocksOf(m["content"]) {
+				if b["type"] == "reasoning" {
+					continue
+				}
+				kept := Block{}
+				for k, v := range b {
+					if k != "openai_id" {
+						kept[k] = v
+					}
+				}
+				blocks = append(blocks, kept)
+			}
+			copied["content"] = blocks
+		}
+		out = append(out, copied)
+	}
+	return out
 }
 
 // EchoContent prepares an assistant turn for the next request: after a mid-output fallback,
