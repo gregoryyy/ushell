@@ -227,13 +227,13 @@ their environment.
 The [user guide](../../docs/USER.md) covers asking, approving, the allowlist, the checker, and
 troubleshooting; the [admin guide](../../docs/ADMIN.md) covers installing (also root-owned for `sudo`),
 settings and files, the network, upgrades, and removal. Both implementations share them, and
-`test_docs` checks that every option and subcommand of `ush help` is in the user guide.
+`test_help_docs` checks that every option and subcommand of `ush help` is in the user guide.
 
 ## Smoke test
 
 To check an installed `ush` (either implementation) on your machine, run
-`scripts/smoke.sh`: offline first, then `--provider ollama --model …` on a local model. It keeps
-your settings and history out and writes a report. [SMOKE.md](../../docs/SMOKE.md) has the checks and the
+`tests/smoke/smoke.sh` from the repository root: offline first, then `--provider ollama --model …`
+on a local model. It keeps your settings and history out and writes a report. [SMOKE.md](../../docs/SMOKE.md) has the checks and the
 manual steps that need a terminal, sudo, or the plugin.
 
 ## Development

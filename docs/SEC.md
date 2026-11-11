@@ -134,7 +134,7 @@ the test classes with their status, open findings, and the release gate.
 
 The Go binary has the threat model above unchanged: the same assets, trust boundaries, threats and
 controls, and the same findings in [SECTEST](SECTEST.md). ushpy's security tests that run ush pass
-against it (`src/go/scripts/conform.sh`). This section records only what a compiled implementation
+against it (`tests/conform/run.sh`). This section records only what a compiled implementation
 changes; until 2026-10-29 it was ushgo's own SEC.
 
 ### What gets better

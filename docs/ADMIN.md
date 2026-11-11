@@ -61,8 +61,7 @@ binary is not quarantined. Signing and notarization are not planned for now ([GA
 ### Go: from source
 
 ```sh
-cd src/go
-scripts/release.sh 0.2.0     # all four platforms into dist/, with SHA256SUMS (Go 1.27)
+tools/release/release.sh 0.2.0   # all four platforms into dist/, with SHA256SUMS (Go 1.27)
 ```
 
 The build is deterministic: the same commit and version give the same checksums on any machine, so
@@ -173,8 +172,8 @@ can't leak data through DNS names unasked ([SECTEST](SECTEST.md) F2, fixed 2026-
 ```sh
 ush --version                                       # ush X.Y.Z (go) or (python)
 ush ai status                                       # provider, model, key source, paths
-src/py/scripts/smoke.sh --bin "$(command -v ush)"    # offline checks, from a checkout
-src/py/scripts/smoke.sh --provider ollama --model qwen3.5:9b   # with a local model, no cost
+tests/smoke/smoke.sh --bin "$(command -v ush)"       # offline checks, from a checkout
+tests/smoke/smoke.sh --provider ollama --model qwen3.5:9b      # with a local model, no cost
 ```
 
 The smoke test keeps the user's settings and history out and writes `smoke-report.md`

@@ -46,8 +46,11 @@ def test_the_repository_workflow_maps_completely() -> None:
     assert [s.kind for s in by_key["secrets"].steps] == ["checkout", "secrets"]
     ushgo = by_key["ushgo-macos-latest"]
     assert ushgo.name == "ushgo (macos-latest)"
-    assert [s.kind for s in ushgo.steps] == ["checkout", "setup-go", "shell", "shell"]
+    assert [s.kind for s in ushgo.steps] == ["checkout", "setup-go", "shell", "shell", "shell"]
     assert ushgo.steps[1].go == "1.27" and ushgo.steps[3].cwd == "src/go"
+    assert ushgo.steps[4].cwd == "tools/release"
+    links = by_key["links"]
+    assert [s.kind for s in links.steps] == ["checkout", "setup-python", "shell", "shell", "shell"]
     tools = by_key["tools"]
     assert tools.steps[1].kind == "setup-uv" and tools.steps[1].python == "3.13"
     assert all(s.cwd == "tools/ci" for s in tools.steps if s.kind == "shell")

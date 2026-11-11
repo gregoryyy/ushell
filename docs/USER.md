@@ -113,6 +113,10 @@ proposal. Your terminal stays the script's input, and ush records its output for
 - **Esc** closes the explanation, or else removes the proposal, so you can start from scratch;
   ush then knows you didn't run it. Esc does this only while a proposal is on the line; otherwise
   it keeps its usual meaning. (In vi mode, use Ctrl-U.) Typing a new `// …` over it also tells ush you didn't run it.
+- **Delete, Home and End** edit the proposal as anywhere else. On a Mac keyboard these are
+  Fn-Backspace, Fn-Left and Fn-Right. Page Up and Down (Fn-Up, Fn-Down) leave it alone. Where
+  your zsh binds none of these keys, the plugin binds them while a proposal is on the line. In
+  the `ush>` session they always work.
 
 While a proposed command runs, ush records its output through a pipe, so colours and pagers are off
 for that one command. Commands that need the terminal (`less`, `top`, editors) are proposed as
@@ -291,6 +295,6 @@ configuration error, 130 stopped.
 | The proposal doesn't appear on the command line | add the zsh plugin and open a new terminal; `echo $USH_HANDOFF` should print a directory |
 | `//` says nothing about what you ran | the plugin records only the line run right after the proposal appeared |
 
-To check a whole install, run the smoke test: `src/py/scripts/smoke.sh --bin "$(command -v ush)"`
+To check a whole install, run the smoke test: `tests/smoke/smoke.sh --bin "$(command -v ush)"`
 ([SMOKE](SMOKE.md)).
 

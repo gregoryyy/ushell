@@ -3,8 +3,11 @@
 // The output depends only on the source, the version and -epoch: no build IDs, no paths, fixed
 // timestamps, owners and order, so the same tag gives the same bytes on any machine (TODO 2.1).
 //
-//	go run ./tools/release -version 0.1.0 -epoch "$(git log -1 --format=%ct)" -out dist
-//	go run ./tools/release -version 0.1.0 -check     builds twice and compares
+//	go run . -version 0.1.0 -epoch "$(git log -1 --format=%ct)" -out ../../dist
+//	go run . -version 0.1.0 -check     builds twice and compares
+//
+// It lives in tools/release/, a module of its own, and builds the ush module in src/go/; release.sh
+// runs it.
 package main
 
 import (
@@ -84,7 +87,7 @@ func Build(version string, epoch int64, out string) (string, error) {
 	if err := os.MkdirAll(out, 0o755); err != nil {
 		return "", err
 	}
-	root, err := moduleRoot()
+	root, err := ushModule()
 	if err != nil {
 		return "", err
 	}
@@ -158,19 +161,21 @@ func compile(root, version, goos, goarch string) ([]byte, error) {
 	return os.ReadFile(bin)
 }
 
-// moduleRoot is src/go/, the directory with go.mod at or above the working directory.
-func moduleRoot() (string, error) {
+// ushModule is src/go/, the ush module: found from the working directory or one above it, so the
+// tool runs from tools/release/ (release.sh, go test) or from the repository root.
+func ushModule() (string, error) {
 	dir, err := os.Getwd()
 	if err != nil {
 		return "", err
 	}
 	for {
-		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
-			return dir, nil
+		root := filepath.Join(dir, "src", "go")
+		if _, err := os.Stat(filepath.Join(root, "go.mod")); err == nil {
+			return root, nil
 		}
 		parent := filepath.Dir(dir)
 		if parent == dir {
-			return "", errors.New("no go.mod above the working directory; run from src/go/")
+			return "", errors.New("no src/go/go.mod above the working directory; run from the repository")
 		}
 		dir = parent
 	}

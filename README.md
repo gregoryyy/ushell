@@ -17,7 +17,7 @@ any command line, and `-v` gives the full explanation.
 | [src/py/](src/py/README.md) | ush in Python: the experimental implementation, where features are tried first | At parity with Go |
 | [src/shell/](src/shell/) | The zsh plugin and the installers' `~/.zshrc` step, used by both | |
 | [src/man/](src/man/ush.1) | The manual page, for both | |
-| [tests/conform/](tests/conform/) | `policy.json`: the policy verdicts both implementations must give | |
+| [tests/](tests/) | For both: `conform/` (the policy verdicts both must give, and the runner of the black-box tests against Go), `smoke/` (the user smoke test), `security/` (the injection eval) | |
 | [docs/](docs/) | The documents, for both | |
 
 `ush` is one command with two implementations that must behave the same. `ush --version` says
@@ -33,7 +33,7 @@ ush ai configure                 # mode, provider, model, key (macOS keychain or
 ```
 
 To check an installed `ush` of either implementation, run the user smoke test
-([SMOKE](docs/SMOKE.md)): `src/py/scripts/smoke.sh` offline, then with
+([SMOKE](docs/SMOKE.md)): `tests/smoke/smoke.sh` offline, then with
 `--provider ollama --model …` on a local model, or `--bin PATH` for another binary.
 
 ## Documents
@@ -79,8 +79,11 @@ src/go/                   ush in Go, the deliverable: README, cmd/ush/, internal
 src/py/                   ush in Python, experimental: README, src/, tests/, scripts/, install.sh
 src/shell/                the zsh plugin and the installers' ~/.zshrc step, shared by both
 src/man/                  the manual page, ush.1
-tests/conform/            policy.json, the verdicts both implementations must give
-tools/                    the Markdown link checker, PDF build scripts (pdf/), local CI (ci/)
+tests/                    for both implementations: conform/ (policy.json, the verdicts both must
+                          give; run.sh, ushpy's black-box tests against Go), smoke/ (smoke.sh, the
+                          user smoke test), security/ (injection_eval.py)
+tools/                    docs/ (link checker, document tests), pdf/ (PDF build), ci/ (local CI),
+                          release/ (release archives, Homebrew formula)
 .github/                  CI workflow (ci.yml), PR template
 ```
 
@@ -91,7 +94,7 @@ just                      # list recipes
 just ush-test             # both implementations, and ushpy's black-box tests against Go
 just ushpy-test           # Python: unit, integration, and zsh tests (Python 3.10 or newer)
 just ushgo-test           # Go: gofmt, go vet, go test (Go 1.27)
-just links                # check relative links in all Markdown files
+just links                # check the documents: relative links, tools/docs' tests
 just ci                   # the CI workflow, locally, on a clean checkout of HEAD
 just ush '//…'            # the Python ush from source with the settings in .env (.env.template)
 ```

@@ -117,6 +117,16 @@ _ush() {
 typeset -g _ush_dir= _ush_state= _ush_mode= _ush_line= _ush_tee= _ush_out= _ush_err=
 typeset -ga _ush_saved=()   # the key bindings a proposal replaced, as `bindkey -L` prints them
 typeset -gA _ush_orig=()    # key sequence -> the widget it had
+# Delete, Home, End, Page Up and Down (Fn-Backspace and the Fn-arrows on a Mac), with what they do
+# during a proposal where the user's zsh leaves them undefined: the proposal's Esc would take
+# them otherwise (TODO 2.40). The ones bound for a proposal are in _ush_fn_bound.
+typeset -gA _ush_fn_keys=(
+  $'\e[3~' delete-char
+  $'\e[H' beginning-of-line $'\eOH' beginning-of-line $'\e[1~' beginning-of-line
+  $'\e[F' end-of-line $'\eOF' end-of-line $'\e[4~' end-of-line
+  $'\e[5~' beep $'\e[6~' beep
+)
+typeset -ga _ush_fn_bound=()
 typeset -gi _ush_explained=0  # an explanation is shown above the proposal
 typeset -g _ush_kept_line= _ush_kept_text=  # the last explanation and the line it explains
 typeset -gi _ush_noting=0     # Ctrl-N ran the command: notes on it before the next prompt
@@ -284,6 +294,12 @@ _ush_keys_bind() {
   local key line
   _ush_saved=("$(bindkey -M emacs -L $'\e')")
   bindkey -M emacs $'\e' _ush_discard
+  for key in ${(k)_ush_fn_keys}; do
+    if [[ $(bindkey -M emacs -- $key) == *' undefined-key' ]]; then
+      bindkey -M emacs -- $key $_ush_fn_keys[$key]
+      _ush_fn_bound+=($key)
+    fi
+  done
   for key in $'\e[B' $'\eOB' $'\e[A' $'\eOA'; do
     line=$(bindkey -M main -L $key)
     _ush_saved+=("$line")
@@ -299,8 +315,12 @@ _ush_keys_bind() {
 _ush_keys_restore() {
   _ush_explained=0 _ush_kept_line= _ush_kept_text=
   (( ${#_ush_saved} )) || return 0
-  local line
+  local key line
   bindkey -M emacs -r $'\e'
+  for key in $_ush_fn_bound; do
+    bindkey -M emacs -r -- $key
+  done
+  _ush_fn_bound=()
   bindkey -M main -r $'\e[B'
   bindkey -M main -r $'\eOB'
   bindkey -M main -r $'\e[A'

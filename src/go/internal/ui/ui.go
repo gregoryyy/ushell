@@ -374,6 +374,17 @@ bindkey $'\e[A' _ush_up
 bindkey $'\eOA' _ush_up
 bindkey $'\e[B' _ush_down
 bindkey $'\eOB' _ush_down
+# Fn-Backspace, Fn-Left/Right and Fn-Up/Down on a Mac: Delete, Home, End, Page Up and Down. zsh
+# binds none of them, and without a binding the bare Esc above would take them (TODO 2.40).
+bindkey $'\e[3~' delete-char
+bindkey $'\e[H' beginning-of-line
+bindkey $'\eOH' beginning-of-line
+bindkey $'\e[1~' beginning-of-line
+bindkey $'\e[F' end-of-line
+bindkey $'\eOF' end-of-line
+bindkey $'\e[4~' end-of-line
+bindkey $'\e[5~' beep
+bindkey $'\e[6~' beep
 vared -h -e -p '' line || exit 1
 print -rn -- "$line" >&$out
 `

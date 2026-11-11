@@ -21,22 +21,24 @@ ush-test: ushpy-test ushgo-test ushgo-conform
 ushpy-test:
     @cd src/py && ./scripts/test.sh
 
-# Format-check, vet and test ushgo (Go 1.27: brew install go)
+# Format-check, vet and test ushgo and the release tool (Go 1.27: brew install go)
 ushgo-test:
     @src/go/scripts/test.sh
+    @tools/release/test.sh
 
 # ushpy's black-box tests against the Go binary: the two implementations behave the same
 ushgo-conform:
-    @src/go/scripts/conform.sh
+    @tests/conform/run.sh
 
-# Build the Go release archives into src/go/dist/, e.g. `just ushgo-release 0.1.0` (`--check` to
-# build twice and compare). Building only; publishing a release is a human's step.
+# Build the Go release archives into dist/, e.g. `just ushgo-release 0.1.0` (`--check` to build
+# twice and compare). Building only; publishing a release is a human's step.
 ushgo-release version *args:
-    @src/go/scripts/release.sh {{version}} {{args}}
+    @tools/release/release.sh {{version}} {{args}}
 
-# Check relative links and images in all Markdown files
+# Check the documents: relative links and images in all Markdown files, and tools/docs' tests
 links:
-    @python3 tools/check-links.py
+    @python3 tools/docs/check-links.py
+    @python3 -m unittest discover -s tools/docs
 
 # Local CI (tools/ci/README.md): the jobs of .github/workflows/ci.yml on a clean worktree of a
 # commit, while GitHub Actions doesn't start jobs. E.g. `just ci`, `just ci --job ushpy`, `just ci
