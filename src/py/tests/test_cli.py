@@ -116,7 +116,7 @@ class CliTest(TempDirTest):
             with open(os.path.join(handoff, "proposal")) as f:
                 self.assertEqual(f.read(), f"capture\ntouch {made}")
             self.assertEqual([t["name"] for t in api.requests[0]["body"]["tools"]],
-                             ["propose_command"])
+                             ["propose_command", "ask_user"])
             os.remove(os.path.join(handoff, "proposal"))  # taken by the plugin
             with open(os.path.join(handoff, "ran"), "w") as f:
                 f.write(f"0\ntouch {made}\n")
@@ -377,6 +377,48 @@ class CliTest(TempDirTest):
         self.assertEqual(cli.brief("free text"), "free text")
 
     @unittest.skipUnless(HAVE_SDK, "anthropic SDK not installed")
+    def test_the_model_asks_back_at_the_request_level(self):
+        # TODO 2.35: ask_user's question is shown as `// question`; with the plugin, `// ` goes
+        # on the command line (mode `ask`, not a proposal); the answer is the tool's result.
+        handoff = os.path.join(self.tmp, "ush.handoff1")
+        os.mkdir(handoff, 0o700)
+        ask = ([{"type": "tool_use", "id": "q1", "name": "ask_user",
+                 "input": {"question": "Which directory, build or dist?"}}], "tool_use")
+        propose = ([{"type": "tool_use", "id": "p1", "name": "propose_command",
+                     "input": {"command": "rm -rf build", "purpose": "clean", "effect": "change",
+                               "interactive": False}}], "tool_use")
+        env = {"ANTHROPIC_API_KEY": SYNTHETIC_KEY, "USH_HANDOFF": handoff}
+        with MockAPI([ask, propose]) as api:
+            env["USH_BASE_URL"] = api.url
+            first = self.ush("//clean up", env=env)
+            self.assertEqual(first.returncode, 0, first.stderr)
+            self.assertIn("// Which directory, build or dist?", first.stderr)
+            self.assertIn("answer on your command line: // TEXT", first.stderr)
+            with open(os.path.join(handoff, "proposal")) as f:
+                self.assertEqual(f.read(), "ask\n// ")
+            os.remove(os.path.join(handoff, "proposal"))  # taken by the plugin
+            second = self.ush("//build", env=env)
+        self.assertEqual(second.returncode, 0, second.stderr)
+        sent = api.requests[1]["body"]["messages"][-1]["content"]
+        self.assertEqual(sent, [{"type": "tool_result", "tool_use_id": "q1",
+                                 "content": "The user answers: build"}])
+        with open(os.path.join(handoff, "proposal")) as f:
+            self.assertEqual(f.read(), "capture\nrm -rf build")
+        # Without the plugin, and agent mode; `//` alone tells the model there was no answer.
+        done = ([{"type": "text", "text": "Taking build."}], "end_turn")
+        with MockAPI([ask, done, ask]) as api:
+            env = {"ANTHROPIC_API_KEY": SYNTHETIC_KEY, "USH_BASE_URL": api.url}
+            plain = self.ush("-N", "//clean up", env=env)
+            self.assertIn("answer with `ush //TEXT`", plain.stderr)
+            self.assertEqual(self.ush("//", env=env).returncode, 0)
+            agent = self.ush("-r", "//clean up", env=env)
+        self.assertIn("did not answer", json.dumps(api.requests[1]["body"]["messages"][-1]))
+        self.assertEqual(agent.returncode, 0, agent.stderr)
+        self.assertIn("// Which directory, build or dist?", agent.stderr)
+        self.assertEqual([t["name"] for t in api.requests[2]["body"]["tools"]],
+                         ["run_command", "run_script", "ask_user"])
+
+    @unittest.skipUnless(HAVE_SDK, "anthropic SDK not installed")
     def test_research_proposes_and_runs_nothing(self):
         # TODO 2.38: `//? TEXT` and `ush research TEXT`, in propose and agent mode, send no tools;
         # a tool call the model writes anyway is refused, nothing runs, and nothing is proposed.
@@ -435,7 +477,7 @@ class CliTest(TempDirTest):
         self.assertIn("make clean is safer.", result.stdout)
         body = api.requests[1]["body"]
         # The conversation has a tool call, so the tools stay defined; the proposal is answered.
-        self.assertEqual([t["name"] for t in body["tools"]], ["propose_command"])
+        self.assertEqual([t["name"] for t in body["tools"]], ["propose_command", "ask_user"])
         content = body["messages"][-1]["content"]
         self.assertEqual(content[0]["tool_use_id"], "p1")
         self.assertIn("did not run the proposed command", content[0]["content"])

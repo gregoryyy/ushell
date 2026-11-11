@@ -53,7 +53,8 @@ read-only commands itself and asks before anything else ([Agent mode](#agent-mod
 | --- | --- |
 | `// REQUEST` (with the plugin) | ush proposes a command on your command line, or answers |
 | `//` | continue: ush gets what you ran (command, exit status, output) and proposes the next one |
-| `// TEXT` after a proposal | continue with a remark or a new question, e.g. `// that's the wrong disk` |
+| `// TEXT` after a proposal | ask instead of running it: a remark or a new question, e.g. `// that's the wrong disk`; the proposal counts as not run |
+| `// ANSWER` after a `//` question | when ush needs to know something, it asks with a `//` line (`// Which directory, build or dist?`) and puts `// ` on your command line: type the answer after it |
 | `//? TEXT`, or `ush research TEXT` | research only: the model compares the options, e.g. `//? which backup tool fits a Mac`; ush proposes and runs nothing for it, and a proposal on your line counts as not run |
 | `ush //REQUEST` | the same as `// REQUEST`, without the plugin's `//` shortcut |
 | `ush --new //REQUEST` | start over instead of continuing this shell's conversation |

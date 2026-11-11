@@ -84,7 +84,13 @@ and quotes first.
 .B ush //
 Continue: send what you ran, its exit status and output, and get the next proposal.
 .BI "// " text
-after a proposal continues with a remark or a new question.
+after a proposal asks instead of running it, with a remark or a new question; the proposal
+counts as not run.
+When the model needs to know something, it asks with a
+.B //
+line, and the plugin puts
+.B "// "
+on the command line for the answer.
 .TP
 .BI "ush //?" " text"
 Research only: the model compares the options and answers;

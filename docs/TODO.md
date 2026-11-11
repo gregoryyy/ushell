@@ -356,7 +356,7 @@ Done in Python, and in Go through the port (section 4).
   syntax, propose mode only (GAPS Q15). Not on Windows (GAPS Q16: "not now").
   Acceptance: the plugin's pty tests ported to pwsh 7 on macOS and Linux; the installer offers
   the profile; the Go archive carries the module.
-- [ ] 2.35 *py – go –* Ask back instead of running a proposal (user, 2026-11-08): provide an
+- [x] 2.35 *py ✓ go ✓* Ask back instead of running a proposal (user, 2026-11-08): provide an
   explicit interactive action from a pending proposal to ask a follow-up or clarify the request,
   without running the proposal. `// TEXT` already continues without running it; make this choice
   available and clear in the proposal and session UI. When the model asks the user a follow-up
@@ -364,6 +364,13 @@ Done in Python, and in Go through the port (section 4).
   at the natural-language request level, not presenting a shell command. Acceptance: pty tests in
   both interfaces show the follow-up reaches the saved conversation, the proposal is not executed,
   the model's question is prefixed with `//`, and the next response can replace the proposal.
+  Done: on a proposal, the hint line (plugin and session) says `// TEXT` instead asks, which
+  answers the proposal as not run. The model asks with `ask_user` (both modes), shown as
+  `// question`; the plugin gets `// ` on the command line (mode `ask`), the session pre-fills it,
+  and the answer is the tool's result. Tests: `test_the_model_asks_back_at_the_request_level`,
+  `test_a_question_puts_slashes_on_the_line_without_proposal_keys`,
+  `test_a_question_prefills_slashes_for_the_answer` (both implementations), and ushpy's
+  `test_the_model_asks_back_and_the_answer_is_its_result`, `test_no_answer_and_bad_questions`.
 - [ ] 2.36 *py – go –* Multi-line scripts in propose mode (user, 2026-11-08): let ush build a
   multi-line script for a task, show its complete source for review and editing, then execute it
   only after the user explicitly approves that reviewed source. Agent mode already has

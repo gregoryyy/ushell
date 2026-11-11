@@ -30,7 +30,7 @@ func proposeStep(a *agent.Agent, term *ui.Terminal, id config.Identity, settings
 	} else if saved := sessions.Load(); saved != nil {
 		a.Restore(saved)
 	}
-	if request == "" && piped == "" && a.Proposal == nil {
+	if request == "" && piped == "" && a.Proposal == nil && a.Question == nil {
 		return 0, false, nil
 	}
 	banner(term, id, settings, options)
@@ -50,6 +50,18 @@ func proposeStep(a *agent.Agent, term *ui.Terminal, id config.Identity, settings
 	if err := sessions.Save(a.State()); err != nil {
 		term.Warn("could not save the conversation: " + err.Error())
 	}
+	if entry.Outcome == "asked" {
+		if dir != "" {
+			if err := handoff.WriteQuestion(dir); err == nil {
+				term.Info("answer on your command line: // TEXT")
+				return 0, true, nil
+			} else {
+				term.Warn("could not put // on your command line: " + err.Error())
+			}
+		}
+		term.Info("answer with `ush //TEXT`")
+		return 0, true, nil
+	}
 	if entry.Outcome != "proposed" || a.Proposal == nil {
 		switch entry.Outcome {
 		case "answered":
@@ -63,7 +75,7 @@ func proposeStep(a *agent.Agent, term *ui.Terminal, id config.Identity, settings
 		interactive, _ := a.Proposal["interactive"].(bool)
 		command, _ := a.Proposal["command"].(string)
 		if err := handoff.WriteProposal(dir, command, interactive); err == nil {
-			term.Info("on your command line: Enter runs it, or edit it first · then // continues")
+			term.Info("on your command line: Enter runs it, or edit it first · then // continues · // TEXT instead asks")
 			return 0, true, nil
 		} else {
 			term.Warn("could not put it on your command line: " + err.Error())
@@ -173,11 +185,14 @@ func session(a *agent.Agent, term *ui.Terminal, factory *providerFactory, follow
 	case followUp:
 		term.Info("follow up with // QUESTION, run a command, or press Enter to finish")
 	case a.Options.Propose:
-		term.Info("// REQUEST asks · proposals appear at the prompt: Enter runs, // continues · exit or Ctrl-D ends")
+		term.Info("// REQUEST asks · proposals appear at the prompt: Enter runs, // continues, // TEXT instead asks · exit or Ctrl-D ends")
 	default:
 		term.Info("// REQUEST asks · other lines run as commands · exit or Ctrl-D ends")
 	}
 	offer := ""
+	if a.Question != nil {
+		offer = "// " // answer the model's question (TODO 2.35)
+	}
 	for {
 		stop.take()
 		line, ok := term.ReadLine("ush> ", offer, true)
@@ -207,7 +222,7 @@ func session(a *agent.Agent, term *ui.Terminal, factory *providerFactory, follow
 			if research {
 				request, ask = strings.TrimSpace(request[1:]), a.Research
 			}
-			if request == "" && (research || a.Proposal == nil) {
+			if request == "" && (research || (a.Proposal == nil && a.Question == nil)) {
 				continue
 			}
 			secrets, err := factory.secrets()
@@ -220,6 +235,8 @@ func session(a *agent.Agent, term *ui.Terminal, factory *providerFactory, follow
 			stop.end()
 			if a.Proposal != nil {
 				offer, _ = a.Proposal["command"].(string)
+			} else if a.Question != nil {
+				offer = "// " // the model asked: the answer goes at the `//` level (TODO 2.35)
 			}
 		} else {
 			a.RunExplicit(stop.begin(), line)

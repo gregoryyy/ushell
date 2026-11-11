@@ -57,6 +57,7 @@ type Agent struct {
 	steps        int
 	Proposal     block   // propose mode: id, command, purpose, verbose, interactive, cwd
 	Unanswered   []block // results due with the next request
+	Question     block   // the model asked the user (TODO 2.35): id, question
 	Ran          *handoff.Ran
 	system       string
 	research     string // the system prompt of a research request
@@ -78,9 +79,9 @@ func New(p provider.Provider, t *ui.Terminal, s config.Settings, id config.Ident
 	shell := strings.Join(execute.FindShell()[:len(execute.FindShell())-1], " ")
 	cwd, _ := os.Getwd()
 	prompt := systemRun
-	a.tools = Tools
+	a.tools = append(append([]block{}, Tools...), AskTool)
 	if o.Propose {
-		prompt, a.tools = systemPropose, []block{ProposeTool}
+		prompt, a.tools = systemPropose, []block{ProposeTool, AskTool}
 	}
 	replacer := strings.NewReplacer("{os}", OSName(), "{user}", id.Name, "{root}", root, "{cwd}", cwd,
 		"{shell}", shell)
@@ -171,7 +172,10 @@ func (a *Agent) ask(ctx context.Context, request string, ran *handoff.Ran, track
 	entry.Steps = append(entry.Steps, a.pendingSteps...)
 	a.pendingSteps = nil
 	var results []block
-	if a.Proposal != nil {
+	answering := a.Question != nil // the request answers the model's question
+	if answering {
+		results = a.questionResults(request)
+	} else if a.Proposal != nil {
 		if ran == nil {
 			ran = a.Ran
 		}
@@ -184,7 +188,9 @@ func (a *Agent) ask(ctx context.Context, request string, ran *handoff.Ran, track
 	}
 	content := append(append([]block{}, results...), a.pending...)
 	if request != "" {
-		content = append(content, block{"type": "text", "text": request})
+		if !answering {
+			content = append(content, block{"type": "text", "text": request})
+		}
 		a.Requests = append(a.Requests, request)
 	}
 	a.Messages = append(a.Messages, block{"role": "user", "content": content})
@@ -277,6 +283,10 @@ func (a *Agent) loop(ctx context.Context, entry *history.Entry, research bool) (
 			}
 			continue
 		}
+		if due, asked := a.askBack(uses); asked {
+			a.Unanswered = due
+			return "asked", text.String(), nil
+		}
 		if a.Options.Propose {
 			results := a.propose(ctx, uses, entry)
 			if a.Proposal != nil {
@@ -364,6 +374,42 @@ func (a *Agent) rules() [][]string {
 		return nil // a root session uses no allow rules: they were given for the user's own account
 	}
 	return a.Settings.AllowRules()
+}
+
+// askBack: if the model asks the user a valid question, show it as `// question` and return the
+// results of its other calls, due with the answer (TODO 2.35).
+func (a *Agent) askBack(uses []block) ([]block, bool) {
+	var ask block
+	for _, b := range uses {
+		if str(b["name"]) == str(AskTool["name"]) && validate(str(b["name"]), b["input"], a.tools) == "" {
+			ask = b
+			break
+		}
+	}
+	if ask == nil {
+		return nil, false
+	}
+	question := truncate(strings.Join(strings.Fields(str(ask["input"].(block)["question"])), " "), 1000)
+	a.UI.ShowQuestion(question)
+	a.Question = block{"id": ask["id"], "question": question}
+	due := []block{}
+	for _, b := range uses {
+		if b["id"] != ask["id"] {
+			due = append(due, result(b, "Not done: you asked the user a question first; wait for the answer.", false))
+		}
+	}
+	return due, true
+}
+
+// questionResults: the user's answer to the model's question, and the results due with it.
+func (a *Agent) questionResults(request string) []block {
+	q, due := a.Question, a.Unanswered
+	a.Question, a.Unanswered = nil, nil
+	text := "The user did not answer; continue with what you have, or ask again."
+	if request != "" {
+		text = "The user answers: " + a.clean(request)
+	}
+	return append([]block{result(block{"id": q["id"]}, text, false)}, due...)
 }
 
 // propose presents the first valid proposal; the others get results due with the next request.
@@ -462,8 +508,12 @@ func (a *Agent) State() block {
 	if a.Proposal != nil {
 		proposal = a.Proposal
 	}
+	var question any
+	if a.Question != nil {
+		question = a.Question
+	}
 	return block{"version": 1, "messages": nonNil(a.Messages), "requests": nonNilS(a.Requests),
-		"proposal": proposal, "unanswered": nonNil(a.Unanswered)}
+		"proposal": proposal, "unanswered": nonNil(a.Unanswered), "question": question}
 }
 
 // Restore continues a saved conversation; anything unknown is ignored.
@@ -488,6 +538,13 @@ func (a *Agent) Restore(data block) {
 		a.Proposal = p
 		if due, ok := data["unanswered"].([]any); ok {
 			a.Unanswered = toBlocks(due)
+		}
+	} else if q, ok := data["question"].(block); ok {
+		if _, ok := q["id"].(string); ok {
+			a.Question = q
+			if due, ok := data["unanswered"].([]any); ok {
+				a.Unanswered = toBlocks(due)
+			}
 		}
 	}
 }
@@ -682,7 +739,7 @@ func validate(name string, args any, tools []block) string {
 		}
 	}
 	props := schema["properties"].(block)
-	for _, key := range []string{"command", "language", "source", "purpose", "effect", "timeout_seconds", "interactive"} {
+	for _, key := range []string{"command", "language", "source", "purpose", "effect", "timeout_seconds", "interactive", "question"} {
 		raw, ok := props[key]
 		if !ok {
 			continue
@@ -714,6 +771,15 @@ func validate(name string, args any, tools []block) string {
 				return fmt.Sprintf("%s must be one of %s", key, pyList(enum))
 			}
 		}
+	}
+	if name == str(AskTool["name"]) {
+		if strings.TrimSpace(str(in["question"])) == "" {
+			return "empty question"
+		}
+		if Control.MatchString(str(in["question"])) {
+			return "the question contains control characters; ask it without them"
+		}
+		return ""
 	}
 	text := str(in["command"])
 	if text == "" {

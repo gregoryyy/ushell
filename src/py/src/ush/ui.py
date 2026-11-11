@@ -115,6 +115,10 @@ class Terminal:
         for note in notes:
             self._emit(self._style("33", f"  {visible(note)}"))
 
+    def show_question(self, question: str) -> None:
+        """The model asks the user (TODO 2.35): a `//` line, the level the answer goes at."""
+        self._emit(self._style("36", "// ") + self.bold(visible(question)))
+
     def show_script(self, language: str, source: str, purpose: str, note: str) -> None:
         self._emit(self._style("36", f"$ {language} script") +
                    (self.dim(f"   # {visible(purpose)}") if purpose else ""))

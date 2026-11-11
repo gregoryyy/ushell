@@ -16,7 +16,7 @@ from .config import (EFFORTS, PROVIDERS, THINKING, ConfigError, Identity, KeySto
                      apply_environment, check_ollama_url, identity, load_settings, mask,
                      save_settings)
 from .handoff import (Explanations, Sessions, handoff_dir, last_ran, session_key, take_ran,
-                      write_proposal)
+                      write_proposal, write_question)
 from .history import History, Step
 from .policy import classify
 from .provider import (API_URL, AnthropicProvider, OllamaProvider, Provider, ProviderError,
@@ -257,7 +257,7 @@ def _main(argv: list[str], ui: Terminal) -> int:
             saved = sessions.load()
             if saved:
                 agent.restore(saved)
-        if request or piped or agent.proposal is not None:
+        if request or piped or agent.proposal is not None or agent.question is not None:
             return _propose(agent, ui, ident, settings, options, request, piped, handoff,
                             sessions)
         # `//` with nothing to continue opens a session, as before.
@@ -273,7 +273,7 @@ def _main(argv: list[str], ui: Terminal) -> int:
     entry = agent.ask(request, research=options.research)
     if not options.once and ui.can_prompt:
         _session(agent, ui, factory, follow_up=True)
-    return {"answered": 0, "dry-run": 0, "aborted": 130}.get(entry.outcome, 1)
+    return {"answered": 0, "asked": 0, "dry-run": 0, "aborted": 130}.get(entry.outcome, 1)
 
 
 def _propose(agent: Agent, ui: Terminal, ident: Identity, settings: Settings, options: Options,
@@ -291,12 +291,23 @@ def _propose(agent: Agent, ui: Terminal, ident: Identity, settings: Settings, op
         sessions.save(agent.state())
     except OSError as exc:
         ui.warn(f"could not save the conversation: {exc}")
+    if entry.outcome == "asked":
+        if handoff:
+            try:
+                write_question(handoff)
+                ui.info("answer on your command line: // TEXT")
+                return 0
+            except OSError as exc:
+                ui.warn(f"could not put // on your command line: {exc}")
+        ui.info("answer with `ush //TEXT`")
+        return 0
     if entry.outcome != "proposed" or agent.proposal is None:
         return {"answered": 0, "aborted": 130}.get(entry.outcome, 1)
     if handoff:
         try:
             write_proposal(handoff, agent.proposal["command"], agent.proposal["interactive"])
-            ui.info("on your command line: Enter runs it, or edit it first · then // continues")
+            ui.info("on your command line: Enter runs it, or edit it first · then // continues · "
+                    "// TEXT instead asks")
             return 0
         except OSError as exc:
             ui.warn(f"could not put it on your command line: {exc}")
@@ -602,11 +613,11 @@ def _session(agent: Agent, ui: Terminal, factory: ProviderFactory, follow_up: bo
     if follow_up:
         ui.info("follow up with // QUESTION, run a command, or press Enter to finish")
     elif agent.options.propose:
-        ui.info("// REQUEST asks · proposals appear at the prompt: Enter runs, // continues · "
-                "exit or Ctrl-D ends")
+        ui.info("// REQUEST asks · proposals appear at the prompt: Enter runs, // continues, "
+                "// TEXT instead asks · exit or Ctrl-D ends")
     else:
         ui.info("// REQUEST asks · other lines run as commands · exit or Ctrl-D ends")
-    offer = ""
+    offer = "// " if agent.question is not None else ""   # answer the model's question
     while True:
         try:
             line = ui.read_line("ush> ", prefill=offer, session=True)
@@ -630,7 +641,7 @@ def _session(agent: Agent, ui: Terminal, factory: ProviderFactory, follow_up: bo
             research = request.startswith("?")   # `//? TEXT` (TODO 2.38)
             if research:
                 request = request[1:].strip()
-            if not request and (research or agent.proposal is None):
+            if not request and (research or (agent.proposal is None and agent.question is None)):
                 continue
             try:
                 agent.secrets = factory.secrets()
@@ -640,6 +651,8 @@ def _session(agent: Agent, ui: Terminal, factory: ProviderFactory, follow_up: bo
             agent.ask(request, research=research)
             if agent.proposal is not None:
                 offer = agent.proposal["command"]
+            elif agent.question is not None:
+                offer = "// "   # the model asked: the answer goes at the `//` level (TODO 2.35)
         else:
             agent.run_explicit(line)
 

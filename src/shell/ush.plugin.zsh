@@ -141,6 +141,8 @@ _ush_precmd() {
   command rm -f -- $_ush_dir/proposal
   _ush_mode=${content%%$'\n'*}
   print -rz -- "${content#*$'\n'}"
+  # ush asked a question (TODO 2.35): `// ` for the answer is text, not a proposal; no keys.
+  [[ $_ush_mode == ask ]] && return 0
   _ush_state=offered
   _ush_keys_bind
 }

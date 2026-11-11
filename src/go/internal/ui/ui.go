@@ -140,6 +140,11 @@ func (t *Terminal) ShowProposal(command, purpose string, notes []string) {
 	}
 }
 
+// ShowQuestion: the model asks the user (TODO 2.35), as a `//` line, the level the answer goes at.
+func (t *Terminal) ShowQuestion(question string) {
+	t.emit(t.style("36", "// ") + t.bold(Visible(question)))
+}
+
 // ShowScript shows a script with line numbers.
 func (t *Terminal) ShowScript(language, source, purpose, note string) {
 	line := t.style("36", "$ "+language+" script")

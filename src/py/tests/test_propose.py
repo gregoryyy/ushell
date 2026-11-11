@@ -7,7 +7,7 @@ from unittest import mock
 
 from helpers import SYNTHETIC_KEY, TempDirTest, fake_identity, text
 from test_agent import assert_every_tool_use_answered
-from ush.agent import PROPOSE_TOOL
+from ush.agent import ASK_TOOL, PROPOSE_TOOL
 from ush.handoff import (EXPLANATIONS_KEPT, SESSION_TTL, Explanations, Ran, Sessions,
                          handoff_dir, last_ran, session_key, take_ran, write_proposal)
 
@@ -22,6 +22,47 @@ def propose_use(command: str, effect: str = "read", interactive: bool = False,
 class ProposeAgentTest(TempDirTest):
     def make(self, turns):
         return self.make_agent(turns, propose=True)
+
+    def test_the_model_asks_back_and_the_answer_is_its_result(self):
+        # TODO 2.35: ask_user shows `// question`; the next request is the answer, as the tool's
+        # result. Another call in the same turn waits for it; nothing is proposed meanwhile.
+        ask = {"type": "tool_use", "id": "q1", "name": "ask_user",
+               "input": {"question": "Which   directory:\nbuild or dist?"}}
+        agent, provider, ui, _ = self.make([
+            [text("I need to know one thing."), ask, propose_use("rm -rf build", ident="p0")],
+            [propose_use("rm -rf build", effect="change")],
+        ])
+        entry = agent.ask("clean up")
+        self.assertEqual(entry.outcome, "asked")
+        self.assertIsNone(agent.proposal)
+        self.assertIn("// Which directory: build or dist?", ui.err.getvalue())
+        self.assertEqual(agent.question, {"id": "q1", "question": "Which directory: build or dist?"})
+        saved = agent.state()
+        again, provider2, _, _ = self.make([[propose_use("rm -rf build", effect="change")]])
+        again.restore(saved)
+        self.assertEqual(again.ask("build").outcome, "proposed")
+        sent = provider2.requests[0][-1]["content"]
+        self.assertEqual([r["tool_use_id"] for r in sent], ["q1", "p0"])
+        self.assertEqual(sent[0]["content"], "The user answers: build")
+        self.assertIn("wait for the answer", sent[1]["content"])
+        self.assertEqual(len(sent), 2)  # the answer isn't sent twice as text
+        assert_every_tool_use_answered(self, provider2.requests[0])
+
+    def test_no_answer_and_bad_questions(self):
+        agent, provider, _, _ = self.make([
+            [{"type": "tool_use", "id": "q1", "name": "ask_user", "input": {"question": "Which?"}}],
+            [text("Then I'll take build.")],
+        ])
+        agent.ask("clean up")
+        self.assertEqual(agent.ask("").outcome, "answered")   # `//` alone: no answer
+        self.assertIn("did not answer", provider.requests[1][-1]["content"][0]["content"])
+        for question, problem in (("  ", "empty question"), ("ok\x1b[2Jx", "control characters")):
+            bad, prov, _, _ = self.make([
+                [{"type": "tool_use", "id": "q1", "name": "ask_user", "input": {"question": question}}],
+                [text("fine")],
+            ])
+            self.assertEqual(bad.ask("x").outcome, "answered")
+            self.assertIn(problem, prov.requests[1][-1]["content"][0]["content"])
 
     def test_propose_mode_never_starts_a_process(self):
         # TODO 2.39 (GAPS Q18): in propose mode the user runs every command, with Enter on their
@@ -67,7 +108,7 @@ class ProposeAgentTest(TempDirTest):
         original = provider.turn
         provider.turn = lambda system, t, *a, **k: (tools.append(t), original(system, t, *a, **k))[1]
         agent.ask("hello")
-        self.assertEqual(tools, [[PROPOSE_TOOL]])
+        self.assertEqual(tools, [[PROPOSE_TOOL, ASK_TOOL]])
         self.assertIn("You do not run commands", agent.system)
 
     def test_unverified_read_is_marked(self):

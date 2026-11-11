@@ -88,9 +88,9 @@ The default since 2026-10-28 (TODO 2.17). The user's request: "the idea of the u
 propose specific shell commands and prewrite them to be executed by the user"; their choices are in
 [GAPS](GAPS.md) Q6.
 
-1. `// REQUEST` runs `ush` as in agent mode, but the model has one tool, `propose_command`
-   (`command`, `purpose`, `effect`, `interactive`), and a system prompt that says it runs nothing.
-   The model either proposes one command or answers. ush shows the proposal with notes: a change, a
+1. `// REQUEST` runs `ush` as in agent mode, but the model has `propose_command` (`command`,
+   `purpose`, `effect`, `interactive`) and `ask_user`, and a system prompt that says it runs nothing.
+   The model either proposes one command, asks one question, or answers. ush shows the proposal with notes: a change, a
    command the policy can't verify as read-only, or the checker's objection. It runs nothing.
 2. **Handoff:** ush writes the proposal into the plugin's handoff directory (`USH_HANDOFF`), and
    saves the conversation in `sessions/KEY.json`, one per shell.
@@ -105,6 +105,16 @@ propose specific shell commands and prewrite them to be executed by the user"; t
    `propose_command` with what ran: the same or an edited command, the exit status, a changed
    working directory, and the redacted output (bounded head and tail), or that nothing ran. The
    model then proposes the next command or answers.
+
+**Asking back** (TODO 2.35): `ask_user` (`question`) is offered in both modes. ush shows the
+question as a `//` line (`// Which directory, build or dist?`), and the request ends as `asked`.
+The other calls of that turn get "wait for the answer" results, due with it. With the plugin, ush
+writes `proposal` with the mode `ask` and the literal text `// `: the plugin puts that on the
+command line for the answer, without the proposal's keys and without recording a run; the model's
+text never goes there. In the `ush>` session `// ` is pre-filled. The next request is the answer,
+sent as the question's tool result (`The user answers: …`); `//` alone answers that there was no
+answer. The saved conversation keeps the open question (`question`). On a proposal, the hint
+line says that `// TEXT` instead asks: a new request over the proposal answers it as not run.
 
 **Research** (`//? TEXT`, `ush research TEXT`, TODO 2.38) is a request in the same conversation,
 in either mode, with its own system prompt: compare the options, carry out nothing. On a new

@@ -14,6 +14,61 @@ implementation kept its own log: [ushpy](archive/DONE-ushpy.md), [ushgo](archive
 
 ---
 
+## 2026-11-11 09:01 — Asking back at the `//` level (TODO 2.35)
+
+TODO items: 2.35 (done). PR: not yet opened (branch `feat/ush-2.35-interaction`).
+
+Agent: Opus 5.5, reasoning: not exposed, subagents: none.
+
+### Implementation notes
+
+- **Asking instead of running a proposal:** `// TEXT` over a proposal already did it. The hint line
+  now says so ("// TEXT instead asks", in `ush //` and the `ush>` session), and the 2.39 tests
+  show the proposal doesn't run.
+- **The model asks with `ask_user`** (`question`), in both modes, next to `propose_command` or the
+  agent-mode tools; both system prompts say to ask with it instead of guessing.
+  - ush shows the question as `// question` (`show_question` / `ShowQuestion`) and ends the request
+    as `asked`. The turn's other calls get "wait for the answer" results, sent with the answer.
+  - The next request is the answer, as the question's tool result (`The user answers: …`), not
+    as a text block too. `//` alone answers "did not answer". The open question is saved with the
+    conversation.
+  - Validation: an empty question, or one with control characters, is refused; the question is
+    shortened to 1000 characters and its whitespace collapsed.
+- **Handoff:** `write_question` / `WriteQuestion` writes `proposal` as `ask` and `// `. The plugin
+  puts that on the command line without the proposal's keys or a recorded run; only that literal
+  text, never the model's.
+- **Session:** after a question, `// ` is pre-filled at `ush>`, also for an agent-mode follow-up.
+- **Changed tests:** the tool lists asserted in `test_propose_mode_hands_over_and_continues`,
+  `test_research_over_a_proposal_answers_it_as_not_run` and `test_only_the_proposal_tool_is_offered`
+  now include `ask_user`.
+- **New tests** (both implementations unless noted):
+  - `test_the_model_asks_back_at_the_request_level`: the `// …` line, the handoff `ask\n// `, and
+    the answer as the tool result, after which the next proposal is handed off. Also without the
+    plugin ("answer with `ush //TEXT`"), `//` with no answer, and agent mode with its tool list.
+  - `test_a_question_puts_slashes_on_the_line_without_proposal_keys` (plugin): Down keeps
+    `down-line-or-history`; `// build` is a request, not a recorded run.
+  - `test_a_question_prefills_slashes_for_the_answer` (`ush>` against the mock).
+  - ushpy's unit tests: `test_the_model_asks_back_and_the_answer_is_its_result` (with save and
+    restore) and `test_no_answer_and_bad_questions`.
+- **Docs:** USER (the Asking table), the man page (Requests), ARCH (asking back, propose mode's
+  tools), SEC (a threat row), `handoff.py`'s format note.
+- **Validation:** `./scripts/test.sh -p 'test_[apc]*.py'`: 140 tests OK.
+  `./scripts/test.sh -p 'test_*.py' -k asks_back -k question`: 5 tests OK. Against the Go binary,
+  `-k asks_back -k question -k hands_over -k research`: 7 tests OK. `go vet`, `go test ./...`:
+  ok. `just links`, `mandoc -T lint -W warning`: clean.
+
+### Deviations
+
+- **No key to ask over a proposal:** `// TEXT` typed over it does that, and the hint line says
+  so. A key would only save typing `// `.
+
+### Insights
+
+- The answer as a tool result keeps the conversation valid without an extra text block. The
+  model sees exactly which question was answered.
+
+---
+
 ## 2026-11-11 08:54 — Research only: `//? TEXT` and `ush research TEXT` (TODO 2.38)
 
 TODO items: 2.38 (done). PR: not yet opened (branch `feat/ush-2.35-interaction`).

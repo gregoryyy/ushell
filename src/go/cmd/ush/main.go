@@ -298,7 +298,7 @@ func realMain(argv []string, term *ui.Terminal) (int, error) {
 		session(a, term, factory, true, stop)
 	}
 	switch entry.Outcome {
-	case "answered", "dry-run":
+	case "answered", "asked", "dry-run":
 		return 0, nil
 	case "aborted":
 		return 130, nil

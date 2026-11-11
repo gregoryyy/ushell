@@ -166,6 +166,8 @@ elif args[:1] == ["explain"]:
     print("EXPLAIN" + json.dumps(args[1:]))
 elif args == ["//"]:
     print("RAN" + json.dumps([read("ran"), read("output")]))
+elif len(args[0][2:].split()) < 2:
+    print("REQUEST" + json.dumps(args))
     for name in ("ran", "output"):
         if os.path.exists(os.path.join(d, name)):
             os.remove(os.path.join(d, name))
@@ -281,6 +283,20 @@ class ZshProposeTest(TempDirTest):
                                     ("\r", "PROMPT> ")])
                 self.assertTrue(os.path.exists(mark), out)
                 os.remove(mark)
+
+    def test_a_question_puts_slashes_on_the_line_without_proposal_keys(self):
+        # TODO 2.35: ush asked (mode `ask`): `//` is on the line for the answer; it is not a
+        # proposal, so Down keeps its own binding and the answer isn't recorded as a run.
+        out = self.session([
+            ("// ask //\r", "PROMPT> //"),
+            ("\x15bindkey -M main '^[[B'\r", "PROMPT> "),
+            ("// ask //\r", "PROMPT> //"),
+            (" build\r", "PROMPT> "),
+            ("//\r", "PROMPT> "),
+        ])
+        self.assertIn("down-line-or-history", out[1])
+        self.assertIn('REQUEST["// build"]', out[3])
+        self.assertEqual(self.records(out[4]), [None, None])
 
     def test_esc_removes_the_proposal(self):
         out = self.session([
@@ -703,6 +719,42 @@ class SessionExplainTest(TempDirTest):
         explained = [r["body"]["messages"][-1]["content"] for r in api.requests[1:]]
         self.assertEqual(len(api.requests), 3, explained)
         self.assertIn("echo kept-one x", json.dumps(explained[-1]))
+
+    def test_a_question_prefills_slashes_for_the_answer(self):
+        # TODO 2.35: in `ush>`, the model's question is a `//` line and `// ` is pre-filled.
+        src = SRC
+        replies = [
+            ([{"type": "tool_use", "id": "q1", "name": "ask_user",
+               "input": {"question": "Which directory, build or dist?"}}], "tool_use"),
+            ([{"type": "text", "text": "TAKING-BUILD"}], "end_turn"),
+        ]
+        with MockAPI(replies) as api:
+            pid, fd = pty.fork()
+            if pid == 0:
+                os.environ.update({"PYTHONPATH": src, "HOME": self.tmp, "NO_COLOR": "1",
+                                   "TERM": "xterm-256color",
+                                   "XDG_CONFIG_HOME": os.path.join(self.tmp, "config"),
+                                   "XDG_STATE_HOME": os.path.join(self.tmp, "state"),
+                                   "ANTHROPIC_API_KEY": SYNTHETIC_KEY, "USH_BASE_URL": api.url})
+                os.environ.pop("USH_HANDOFF", None)
+                os.chdir(self.tmp)
+                argv = ush_argv()
+                os.execv(argv[0], argv)
+            try:
+                read = ZshPluginTest._read
+                read(fd, "ush> ", timeout=20)
+                outputs = []
+                for keys, until in [("// clean up\r", "ush> // "), ("build\r", "TAKING-BUILD"),
+                                    ("", "ush> "), ("\x04", "")]:
+                    if keys:
+                        os.write(fd, keys.encode())
+                    outputs.append(read(fd, until, timeout=20))
+            finally:
+                os.close(fd)
+                os.waitpid(pid, 0)
+        self.assertIn("// Which directory, build or dist?", outputs[0])
+        sent = api.requests[1]["body"]["messages"][-1]["content"]
+        self.assertEqual(sent[0]["content"], "The user answers: build")
 
     def test_a_proposal_runs_only_on_enter(self):
         # TODO 2.39 (GAPS Q18): pre-filled at `ush>`, a proposal is not consent. Down, Esc and a

@@ -90,6 +90,28 @@ func WriteProposal(dir, command string, interactive bool) error {
 	return os.Rename(tmp, filepath.Join(dir, "proposal"))
 }
 
+// WriteQuestion: the model asked the user (TODO 2.35); the plugin puts `// ` on the next command
+// line for the answer, as text, not as a proposal (mode `ask`).
+func WriteQuestion(dir string) error {
+	for _, name := range []string{"ran", "output"} {
+		removeIfExists(filepath.Join(dir, name))
+	}
+	tmp := filepath.Join(dir, fmt.Sprintf(".proposal.%d", os.Getpid()))
+	removeIfExists(tmp)
+	f, err := os.OpenFile(tmp, os.O_WRONLY|os.O_CREATE|os.O_EXCL|syscall.O_NOFOLLOW, 0o600)
+	if err != nil {
+		return err
+	}
+	_, err = io.WriteString(f, "ask\n// ")
+	if cerr := f.Close(); err == nil {
+		err = cerr
+	}
+	if err != nil {
+		return err
+	}
+	return os.Rename(tmp, filepath.Join(dir, "proposal"))
+}
+
 // TakeRan returns what the plugin recorded since the proposal, then keeps it only for notes; nil
 // if nothing ran.
 func TakeRan(dir string, limit int) *Ran {
