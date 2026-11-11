@@ -117,7 +117,8 @@ var AskTool = block{
 // NextTool lets the model offer the next steps with its answer (TODO 2.41).
 var NextTool = block{
 	"name": "offer_next",
-	"description": "With your answer, when the user's task has more steps, offer the typical next ones: one " +
+	"description": "With your answer, written as text in the same reply (the user sees your text, not " +
+		"your thinking), when the user's task has more steps, offer the typical next ones: one " +
 		"to three short actions in the user's words, e.g. 'restart nginx'. ush lists them as " +
 		"//1, //2, //3; the user picks one, says `//` to go on, or asks something else, and the " +
 		"choice comes back as this tool's result. Offering runs and proposes nothing.",
@@ -140,6 +141,10 @@ const MaxNext = 3
 var Step = regexp.MustCompile(`^[1-9]$`)
 
 const notShown = "Not shown: offer next steps with your answer alone, not with a proposal or a command."
+
+// noAnswer: an offer of next steps without answer text (TODO 2.49); the user sees text, not thinking.
+const noAnswer = "Not shown: write your answer as text in your reply, then offer the next steps with it. " +
+	"The user sees your text, not your thinking."
 
 const systemPropose = "You are ush, a shell assistant in the user's zsh on their own computer. The user asks " +
 	"questions or describes tasks in natural language. You do not run commands: you propose one " +

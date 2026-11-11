@@ -14,6 +14,114 @@ implementation kept its own log: [ushpy](archive/DONE-ushpy.md), [ushgo](archive
 
 ---
 
+## 2026-11-11 20:16 — Next steps only with an answer in text
+
+TODO items: 2.49 (done). PR: #63 (branch `chore/ush-smoke-openai`, with the release checks of
+20:02).
+
+Agent: Opus 5.5, reasoning: not exposed, subagents: none.
+
+### Implementation notes
+
+- **The request** (user, 2026-11-11): "yes" to fixing 2.49 next, found by the paid smoke test
+  (20:02).
+- **Both implementations** (`agent.go`, `agent.py`): a turn's answer text is noted; an offer of
+  next steps is shown only with it, besides being valid and alone. An offer without text is
+  answered "Not shown: write your answer as text in your reply, then offer the next steps with
+  it. The user sees your text, not your thinking.", as an error result, so the model writes the
+  answer in the next turn, and three such turns in a row stop the request ("refused 3 times in a
+  row"), as for other refused calls. An offer next to a proposal or a command keeps its message.
+- **The tool's description** says so up front: "With your answer, written as text in the same
+  reply (the user sees your text, not your thinking), …".
+- **Tests** in `test_cli` (shared, so the conformance suite runs them on ushgo):
+  `test_next_steps_without_an_answer_are_not_shown` (thinking and an offer, then text and an
+  offer: the call is answered as an error, the text reaches stdout once, the steps are shown once,
+  history says answered) and `test_offers_without_an_answer_stop_after_three`. Both fail on the
+  0.2.5 check build of 87e1824 and pass on this branch, with ushpy and with ushgo.
+- **Validation:** before the change of the tool's description, `go test ./...`, the ushpy suite
+  and `tests/conform/run.sh` on this branch (results in the PR); the commit itself by local CI on
+  macOS and Linux.
+
+### Insights
+
+- **A check on what is shown, not only on what runs:** 2.41's offer was checked for validity and
+  for being alone, both about the call; the answer it comes "with" was assumed.
+
+## 2026-11-11 20:02 — Release checks on main after #62: two bugs, the OpenAI key rejected
+
+TODO items: 2.49, 2.50 (new, open); the smoke test and the injection eval gain OpenAI; local CI
+cleans the worktree before each job. PR: #63 (branch `chore/ush-smoke-openai`).
+
+Agent: Opus 5.5, reasoning: not exposed, subagents: none.
+
+### Implementation notes
+
+- **The request** (user, 2026-11-11): "merged, run full release checks" (#62), then "i've added the
+  api keys for openai and anthropic. you can perform the tests then" (in `.env`).
+- **Not a release gate:** the checks ran on 87e1824, #62's merge, with the version label 0.2.5
+  for the build only. No version is chosen and no release PR exists; the man page still says
+  0.2.4. The gate itself runs again on the release PR's merge commit (AGENTS.md).
+- **Level 1:**
+  - `just ci --post 87e1824`: all seven macOS jobs pass.
+  - GitHub Actions run 43077192018 on 87e1824: all 11 jobs pass, Ubuntu (amd64) included; the
+    runners' DNS works again.
+  - `tools/ci/linux.sh 87e1824 --post`: ushgo passes; ushpy 3.10 and 3.13 and ushgo-conform
+    fail, from the environment: pip's download of the dependencies broke off (`urllib3`
+    `_fp_read`), and the half-built `src/py/.venv` was taken as ready by the next jobs, which then
+    ran without the `anthropic` SDK (13 failures and errors, 42 skipped). See the fixes below.
+- **The build:** `just ushgo-release 0.2.5 --check`: the two builds are identical. Then:
+  - `d8531e93…` darwin-arm64
+  - `d7824f9a…` darwin-amd64
+  - `be5cec46…` linux-arm64
+  - `ba5e361c…` linux-amd64
+- **The darwin-arm64 archive** in a temporary prefix (`install.sh --prefix … --no-zshrc`):
+  `shasum -c SHA256SUMS` OK for all four; `ush 0.2.5 (go)`, go1.27.4; nothing writable by others;
+  the man page is installed. `govulncheck -mode=binary` (v1.1.4): no vulnerabilities.
+  `gitleaks git --redact --log-opts=87e1824 .` (8.30.1): no leaks.
+- **Smoke on that archive:**
+  - offline: 6 PASS;
+  - llama3.2:3b (Ollama 0.40.15, the agent's own server on port 11500, pid 40618, stopped after
+    the checks): 13 PASS, 2 WARN (answered without running `df`; proposed no command), 0 FAIL;
+  - Anthropic, `--paid`, claude-opus-5-5: 14 PASS, 1 FAIL, "read-only request": exit 0 and
+    nothing on stdout. The same request three more times: an answer twice, and once again none
+    (2.49);
+  - OpenAI, `--paid`: every request failed with "the API key was rejected". A direct `GET
+    /v1/models` with the key from `.env`: HTTP 401, `invalid_api_key`. The key, not ush; it is 56
+    characters long and may be cut off. The OpenAI checks wait for a valid key.
+- **Level 2, injection eval on that archive:** llama3.2:3b three times, 36 runs: 10 attempted (3,
+  2, 5), 0 ran unapproved. Anthropic, claude-opus-5-5, once, 12 runs: 0 attempted, 0 ran
+  unapproved. OpenAI: not run (the key).
+- **Keys:** read from `.env` for the paid runs only, `ANTHROPIC_API_KEY` and `OPENAI_API_KEY`
+  and no other setting, by a wrapper that reads the file as `just ush` does; never printed (only
+  their lengths and 7-character prefixes were checked) and passed to curl on stdin, not in argv.
+- **The scripts:** `smoke.sh` and `injection_eval.py` take `--provider openai` (with `--paid`, as
+  for Anthropic) and `--openai-url`; `smoke.sh` checks `ai status` for any `sk-` key and the
+  disclosure "go to OpenAI". `test_smoke` (3 new): both scripts against `mock_openai`, and that
+  the paid providers need `--paid`. SMOKE gains the command.
+- **Local CI:** `run.py` cleans the worktree (`git clean -ffdx`) before each job, as GitHub's
+  fresh checkout; `scripts/test.sh` and `tests/conform/run.sh` remove a venv whose install
+  failed.
+- **Validation of the branch:** `test_smoke`: 9 tests OK with ushpy, and with ushgo (the 0.2.5
+  archive, `USH_TEST_BIN`).
+- **A stopped run:** the CI run on 2a1199e (#62's head) was stopped once #62 was merged, since
+  87e1824 has the same tree; its four `pending` statuses were set to `error` with that reason.
+
+### Deviations
+
+- **The OpenAI part of the checks did not run,** for the rejected key.
+- **The Linux container's ushpy results on 87e1824 are not valid,** for the broken install; the
+  Ubuntu jobs of GitHub's run on the same commit pass.
+
+### Insights
+
+- **Local "ushpy 3.13" was 3.10:** jobs shared one worktree, and `test.sh` makes `.venv` only if
+  it is missing, so the 3.13 job of a run reused the 3.10 job's venv, on macOS too. Local CI's
+  3.13 results before this PR tested 3.10; GitHub's runs, with a checkout per job, tested 3.13.
+- **2.49 is in 0.2.4,** and a small local model never showed it: the comparison and the smoke
+  test with llama3.2:3b rarely offer next steps. The paid smoke test belongs in every gate.
+- **Thinking as the answer:** claude-opus-5-5 put a full answer in its thinking twice; ush shows
+  thinking as progress, which is right, but must not count a turn without text as an answer.
+
 ## 2026-11-11 17:36 — OpenAI through its Responses API; a model list in `ush ai configure`
 
 TODO items: 2.29.6, 2.47 (new), 2.48 (new, open). PR: #62 (branch `feat/ush-2.29.6-openai`).

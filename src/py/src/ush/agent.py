@@ -153,7 +153,8 @@ ASK_TOOL = {
 NEXT_TOOL = {
     "name": "offer_next",
     "description": (
-        "With your answer, when the user's task has more steps, offer the typical next ones: one "
+        "With your answer, written as text in the same reply (the user sees your text, not "
+        "your thinking), when the user's task has more steps, offer the typical next ones: one "
         "to three short actions in the user's words, e.g. 'restart nginx'. ush lists them as "
         "//1, //2, //3; the user picks one, says `//` to go on, or asks something else, and the "
         "choice comes back as this tool's result. Offering runs and proposes nothing."
@@ -171,6 +172,9 @@ NEXT_TOOL = {
 }
 MAX_NEXT = 3
 NOT_SHOWN = "Not shown: offer next steps with your answer alone, not with a proposal or a command."
+# An offer of next steps without answer text (TODO 2.49); the user sees text, not thinking.
+NO_ANSWER = ("Not shown: write your answer as text in your reply, then offer the next steps with "
+             "it. The user sees your text, not your thinking.")
 STEP = re.compile(r"^[1-9]$")   # `//2`: the user picks an offered step (TODO 2.41)
 
 SYSTEM_PROPOSE = """\
@@ -275,6 +279,7 @@ class Agent:
     unanswered: list[dict] = field(default_factory=list)  # results due with the next request
     question: Optional[dict] = None     # the model asked the user (TODO 2.35): {id, question}
     next: Optional[dict] = None         # next steps the model offered (TODO 2.41): {id, steps}
+    answered: bool = False              # the turn has answer text; an offer needs it (2.49)
     ran: Optional[Ran] = None           # what the user ran in a session after a proposal
 
     def __post_init__(self) -> None:
@@ -391,6 +396,7 @@ class Agent:
             self.messages.append({"role": "assistant", "content": content})
             text = "".join(b.get("text", "") for b in content if b.get("type") == "text")
             uses = [b for b in content if b.get("type") == "tool_use"]
+            self.answered = bool(text.strip())
             if turn.stop_reason == "refusal":
                 self.ui.warn("the model declined this request" +
                              (f": {turn.refusal}" if turn.refusal else ""))
@@ -436,7 +442,7 @@ class Agent:
                     results.append(_result(block, "Not run: the user stopped the request."))
                     continue
                 if block.get("name") == NEXT_TOOL["name"]:
-                    results.append(self._not_shown(block))
+                    results.append(self._not_shown(block, uses))
                     continue
                 try:
                     results.append(self._tool(block, entry))
@@ -492,24 +498,29 @@ class Agent:
 
     def _offer_next(self, uses: list[dict]) -> Optional[dict]:
         """Show the next steps the model offers with its answer, if valid and alone with it (not
-        with a proposal or a command to run); its result is due with the next request. Returns
-        the call it took, or None."""
+        with a proposal or a command to run) and with answer text (2.49: an answer only in the
+        thinking reaches neither stdout nor history); its result is due with the next request.
+        Returns the call it took, or None."""
         offer = next((b for b in uses if b.get("name") == NEXT_TOOL["name"]), None)
         if offer is None:
             return None
-        if len(uses) > 1 or _validate(offer.get("name"), offer.get("input"), self.tools):
+        if len(uses) > 1 or _validate(offer.get("name"), offer.get("input"), self.tools) or \
+                not self.answered:
             return None   # handled as any other call: refused, or answered with the rest
         steps = [" ".join(s.split())[:200] for s in offer["input"]["steps"]]
         self.ui.show_next(steps)
         self.next = {"id": offer["id"], "steps": steps}
         return offer
 
-    def _not_shown(self, block: dict) -> dict:
-        """An offer of next steps that ush didn't show: invalid, or not alone with the answer."""
+    def _not_shown(self, block: dict, uses: list[dict]) -> dict:
+        """An offer of next steps that ush didn't show: invalid, not alone with the answer, or
+        without answer text. The last counts as refused, so a model that keeps doing it stops."""
         problem = _validate(block.get("name"), block.get("input"), self.tools)
         if problem:
             return _result(block, json.dumps({"INVALID_JSON": json.dumps(block.get("input")),
                                               "error": problem}), error=True)
+        if len(uses) == 1 and not self.answered:
+            return _result(block, NO_ANSWER, error=True)
         return _result(block, NOT_SHOWN)
 
     def _next_results(self, request: str) -> list[dict]:
@@ -532,7 +543,7 @@ class Agent:
         for block in uses:
             name, args = block.get("name"), block.get("input")
             if name == NEXT_TOOL["name"]:
-                results.append(self._not_shown(block))
+                results.append(self._not_shown(block, uses))
                 continue
             if self.proposal is not None:
                 results.append(_result(block, "Not proposed: propose one command at a time."))

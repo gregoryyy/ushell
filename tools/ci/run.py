@@ -381,6 +381,9 @@ def main() -> int:
         try:
             for job in jobs:
                 print(f"\n{job.name}", flush=True)
+                # Each job starts from a clean checkout, as on GitHub: nothing a job built (the
+                # ushpy venv of another Python, build output) carries over to the next.
+                git("clean", "-ffdxq", cwd=worktree)
                 o = run_job(job, ctx)
                 outcomes.append(o)
                 print(f"  → {'pass' if o.ok else 'fail'} in {duration(o.seconds)}", flush=True)

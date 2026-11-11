@@ -14,7 +14,9 @@ cd "$root/src/py"
 python=${PYTHON:-python3}
 if [ ! -x .venv/bin/python ]; then
     "$python" -m venv .venv
-    .venv/bin/pip install -q --disable-pip-version-check --require-hashes -r requirements.lock
+    # A failed install leaves no half-built venv that a later run would take as ready.
+    .venv/bin/pip install -q --disable-pip-version-check --require-hashes -r requirements.lock ||
+        { rm -rf .venv; exit 1; }
 fi
 "$work/ush" --version
 cd tests

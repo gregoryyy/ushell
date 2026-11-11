@@ -36,7 +36,8 @@ stays the one definition of CI; the local run reads it.
    job's `name` and `runs-on` and a step's `name` and `with`. When the matrix chooses the runner,
    only the entries for this machine's platform run; the others are listed as "not run here".
    A job with a fixed runner (`ubuntu-24.04`) runs on this machine as its stand-in.
-4. **Actions mapped.** `actions/checkout` is the worktree. `actions/setup-python` takes an
+4. **Actions mapped.** `actions/checkout` is the worktree, cleaned (`git clean -ffdx`) before
+   each job, so a job starts from the commit alone, as on GitHub. `actions/setup-python` takes an
    installed Python of the asked version, found by `uv python find` (no downloads), and links it
    first on `PATH` as `python` and `python3`. `astral-sh/setup-uv` sets `UV_PYTHON`. `actions/setup-go` takes the machine's `go` if `go env GOVERSION`
    matches the asked version or prefix (`1.27` matches `go1.27.3`; `brew install go`), and sets

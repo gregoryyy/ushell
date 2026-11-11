@@ -516,6 +516,21 @@ Done in Python, and in Go through the port (section 4).
   runs, so the process group is not killed. 3.12 passes; CI runs 3.10 and 3.13 only. Find what
   changed in 3.15 (signal delivery or `subprocess` waiting), fix it, and add 3.15 to the ushpy
   matrix. ushgo is not affected.
+- [x] 2.49 *py ✓ go ✓* Bug (2026-11-11, the paid smoke test before the next release): an offer of
+  next steps without an answer. claude-opus-5-5, asked "How much free disk space is on /? Run df
+  -h / to find out." in agent mode, ran `df`, then in 2 of 4 runs wrote its answer only in its
+  thinking and called the next-steps tool (2.41) with no text: ush showed the thinking as a `…`
+  note on stderr and the steps, printed nothing on stdout, and recorded `answered` with an empty
+  answer, so `ush … > file` and pipes get nothing. In both implementations, an offer is shown only
+  with answer text in the same reply; otherwise the call is answered "not shown: write your answer
+  as text, with the next steps" and the turn goes on, as for an offer that is not alone (2.41).
+  Acceptance: `test_cli` (shared) with a scripted reply of thinking and an offer without text: the
+  model is asked again, the answer reaches stdout and history. In 0.2.4 already. Fixed 2026-11-11
+  (user: "yes"); three such offers in a row stop the request, as other refused calls do.
+- [ ] 2.50 *py – go –* The banner names OpenAI for any endpoint (2026-11-11, found with 2.29.6's
+  smoke test): with `openai_url` / `USH_OPENAI_URL` set to another host, the banner and `ai
+  status` still say "go to OpenAI". They should name the host when it isn't api.openai.com, as
+  for an Ollama cloud model. Acceptance: `test_cli` (shared) for the default and another host.
 - [ ] 3.1 Release 0.1 gate per [AGENTS.md](../AGENTS.md): fresh suite on the exact
   candidate on each supported OS/Python, dependency audit, release notes, human merge.
   Overtaken: releases ship the Go binary (5.2), and each release runs the gate of 5.3; 0.1 was
