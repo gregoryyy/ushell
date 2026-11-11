@@ -514,6 +514,9 @@ here.
   `ubuntu-latest` in every GitHub Actions run, because the runner has no zsh and the executor fell
   back to `sh`. Acceptance: the job installs zsh like the ushpy and conformance jobs; the test
   unchanged; the fallback documented in ARCH.
+- [x] 6.3 `just pdfs` without pandoc's deprecation warning (user, 2026-11-11: "adjust the
+  deprecation warning in just pdfs"): `--mathml` became `--math-method=mathml`, which pandoc
+  3.13 asks for. Acceptance: no warning; formulas still MathML; the PDFs build.
 
 ## Old IDs
 
