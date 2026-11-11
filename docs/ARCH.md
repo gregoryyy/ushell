@@ -345,8 +345,8 @@ can only add friction (always ask, or never run, even when approved) is safe and
   `--shell NAME`. Agent mode is refused in a shell without its own policy and executor, rather
   than running zsh commands for a bash or fish user: the policy is only sound for the shell it
   models, and only zsh has one now.
-- **Name:** `wsh` (Wave Terminal's CLI) and `zish` (an active Zig shell) were taken.
-  `ush`, "the you shell", collides only with small, unrelated npm/PyPI packages.
+- **Name:** ush, the you shell. `wsh` (Wave Terminal's CLI) and `zish` (an active Zig shell)
+  were taken; `ush` collides only with small, unrelated npm/PyPI packages.
 
 ## The Go implementation
 
