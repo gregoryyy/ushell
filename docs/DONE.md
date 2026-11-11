@@ -14,6 +14,49 @@ implementation kept its own log: [ushpy](archive/DONE-ushpy.md), [ushgo](archive
 
 ---
 
+## 2026-11-11 15:00 — Version 0.2.4: release notes, version, man page; #59 landed
+
+TODO items: 5.13 (new; open until published), 2.45, 2.46 (landing). PR: #60 (branch
+`chore/ush-0.2.4`).
+
+Agent: Opus 5.5, reasoning: not exposed, subagents: none.
+
+### Implementation notes
+
+- **The request** (user, 2026-11-11): "ready for a release". 0.3.0 stays the shells release
+  (5.11), so this is 0.2.4, as 0.2.3 was chosen over 0.3.0.
+- **#59 was not on main.** It was merged at 13:54:03 into its base, #58's branch, 20 s after #58
+  had been merged into main (13:53:43), before GitHub moved its base; 2.45 and 2.46 (1495379,
+  ca10e61) were on `docs/ush-2.35-live-check` only. This branch starts at that merge (5584f5f),
+  so its PR lands them with the version.
+- **Contents,** what ships that main has since `v0.2.3`: ask back, scripts in propose mode, the
+  thinking toggle, research, next steps (2.35–2.38, 2.41, #57) and the Enter-only audit (2.39);
+  Delete, Home and End in the editor (2.40, #55); string booleans from local models (2.45, #59).
+  Also since 0.2.3, not shipped or not user-visible: tests and tools out of `src/` (#53), the
+  Esc test race (2.44, #54), the live checks (#58), the comparison harness (2.46).
+- **Version 0.2.4** in `pyproject.toml`, `ush/__init__.py`, the manual page's header, USER,
+  README, ushgo's README (pointing at 5.13), ROAD's status line and `formula.sh`'s usage line.
+  The Go binary gets its version from the release build.
+- **The manual page** already describes what users see (research, `//N`, scripts, Delete, Home,
+  End, `--no-thinking`, from #55 and #57); only its header changed.
+- **Release notes:** [releases/0.2.4.md](releases/0.2.4.md): changed, fixed, inside, install,
+  security, known limitations. The 0.2.3 limitation on Homebrew's Go is gone (Homebrew's Go is
+  1.27.4); the one on small local models now cites the comparison of DONE 13:02.
+- **Validation** (before the PR; the release gate runs on the merge commit): `just ushgo-test`:
+  every package ok. `just links`: OK. `mandoc -T lint -W warning src/man/ush.1`: clean;
+  `man ./src/man/ush.1` shows "ush 0.2.4, 2026-11-11". `ush.__version__`: 0.2.4.
+
+### Deviations
+
+- **Two things in one PR:** the landing of #59 and the version, so that one merge puts both on
+  main; #48 landed a stranded PR on its own.
+
+### Insights
+
+- A PR based on another PR's branch must not be merged until GitHub has moved it onto main after
+  the first merge; otherwise it merges into the old branch. Stacked PRs are better avoided, or
+  merged in order with a check of the base in between.
+
 ## 2026-11-11 13:39 — String booleans from local models; the model comparison in the repository
 
 TODO items: 2.45, 2.46. PR: #59 (branch `feat/ush-2.45-string-booleans`, on #58's branch).

@@ -13,7 +13,7 @@ any command line, and `-v` gives the full explanation.
 
 | Part | What | Status |
 | --- | --- | --- |
-| [src/go/](src/go/README.md) | ush in Go: the deliverable, one static binary, no dependencies; releases ship it | Shipped in 0.2.3 (GitHub release, Homebrew) |
+| [src/go/](src/go/README.md) | ush in Go: the deliverable, one static binary, no dependencies; releases ship it | Shipped in 0.2.4 (GitHub release, Homebrew) |
 | [src/py/](src/py/README.md) | ush in Python: the experimental implementation, where features are tried first | At parity with Go |
 | [src/shell/](src/shell/) | The zsh plugin and the installers' `~/.zshrc` step, used by both | |
 | [src/man/](src/man/ush.1) | The manual page, for both | |
