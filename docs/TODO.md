@@ -365,6 +365,14 @@ Done in Python, and in Go through the port (section 4).
   are taken on the branch `docs/ush-interaction-followups`.) Acceptance: unit tests in both
   implementations (`cd`, `cd ..`, a failed `cd`, `exit 4`, a replaced trap); a pty test of the
   real session that runs in ushpy and, through the conformance suite, against ushgo.
+- [x] 2.43 *py ✓ go ✓* `ush explain` without quotes (user, 2026-11-10: "can we have the ush
+  explain 'arg' as args without quotes"). Unquoted words already worked when zsh left them alone;
+  globs, quotes, `|`, `;` and `>` were acted on by zsh first, so `ush explain cat x | sort` ran
+  `sort`. The zsh plugin (shared by both implementations) now passes everything after
+  `ush explain [-v]` verbatim, as it does for `//` requests; one quoted word is left as it is.
+  Acceptance: a pty test with pipes, globs, `;`, `>`, apostrophes, `-v`, a quoted line and none,
+  checking that nothing after `;` ran and nothing was redirected; it fails on the old plugin;
+  USER and the manual page say so.
 
 ## 3. Release
 

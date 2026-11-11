@@ -8,7 +8,9 @@
 #
 #   ush //REQUEST            sudo [OPTIONS] ush //REQUEST            // REQUEST
 #
-# so ush receives it verbatim. Under sudo, `ush` is replaced by its absolute path
+# so ush receives it verbatim. The same goes for the command line after
+# `ush explain [-v]`: `ush explain find . -name *.log | xargs rm` explains that whole line,
+# unexpanded, and runs none of it. A command line given as one quoted word is left as it is. Under sudo, `ush` is replaced by its absolute path
 # because sudo's secure_path usually does not include the install directory.
 #
 # In propose mode, ush's proposal is put on the next command line, and what you then
@@ -28,8 +30,19 @@ typeset -g _ush_plugin_loaded=1
 # Print the rewritten form of $1, or nothing if the line is not an ush request.
 _ush_rewrite() {
   emulate -L zsh
-  local line=$1 lead sudo_part req bin
+  local line=$1 lead sudo_part req bin opts
+  local -a words
   [[ $line == *$'\n'* ]] && return 1
+  if [[ $line =~ '^([[:space:]]*)ush[[:space:]]+explain(([[:space:]]+(-v|--verbose))*)[[:space:]]+(.*[^[:space:]].*)$' ]]; then
+    lead=$match[1] opts=$match[2] req=$match[5]
+    [[ $req == (--|-v|--verbose) ]] && return 1
+    [[ $req =~ '^--[[:space:]]+(.*)$' ]] && req=$match[1]
+    # One quoted word: the user quoted the command line already.
+    words=(${(z)req})
+    [[ $req == [\'\"]* ]] && (( $#words == 1 )) && return 1
+    print -r -- "$lead${(q-)${USH_BIN:-ush}} explain${opts} -- ${(qq)req}"
+    return 0
+  fi
   if [[ $line =~ '^([[:space:]]*)(sudo([[:space:]]+-[^[:space:]]+)*[[:space:]]+)?ush[[:space:]]+(//.*)$' ]]; then
     lead=$match[1] sudo_part=$match[2] req=$match[4]
   elif [[ ${USH_BARE_SLASH:-1} != 0 && $line =~ '^([[:space:]]*)(//.*)$' ]]; then

@@ -187,6 +187,9 @@ in front says so explicitly.
 .TP
 .BR "ush explain " [ \-v ] " \fIcommand\fR ..."
 Explain a command line with the model, without running it; the same as Down on a proposal.
+With the zsh plugin, the rest of the line is the command line, unexpanded and not run, so it
+needs no quotes, also with pipes, redirections or globs.
+Without the plugin, quote such a command line.
 .TP
 .BR "ush notes " [ \-v "] [" \-\-last "] [\fIquestion\fR] \fIfile\fR ..."
 Notes on files, piped input or, with
