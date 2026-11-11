@@ -6,7 +6,7 @@ where features are tried first, and Go in [src/go](../src/go/), the deliverable.
 [ROAD](ROAD.md), open questions in [GAPS](GAPS.md), progress in [DONE](DONE.md). The process is
 [SDLC](SDLC.md); the rules in [AGENTS.md](../AGENTS.md) take precedence. IDs are ush's
 own, independent of wish's. Until 2026-10-29 each implementation had its own TODO; their old IDs
-map to these as listed in [Old IDs](#old-ids). Status: 2026-11-10 12:30.
+map to these as listed in [Old IDs](#old-ids). Status: 2026-11-11 08:32.
 
 Status: `[ ]` open, `[x]` done. An item of section 2 also says where it is built: *py ✓ go ✓* in
 both, *py ✓ go –* in Python so far, *py – go –* in neither. Tags:
@@ -356,6 +356,39 @@ Done in Python, and in Go through the port (section 4).
   syntax, propose mode only (GAPS Q15). Not on Windows (GAPS Q16: "not now").
   Acceptance: the plugin's pty tests ported to pwsh 7 on macOS and Linux; the installer offers
   the profile; the Go archive carries the module.
+- [ ] 2.35 *py – go –* Ask back instead of running a proposal (user, 2026-11-08): provide an
+  explicit interactive action from a pending proposal to ask a follow-up or clarify the request,
+  without running the proposal. `// TEXT` already continues without running it; make this choice
+  available and clear in the proposal and session UI. When the model asks the user a follow-up
+  question, prefix that question with `//` so the prompt clearly signals that the conversation is
+  at the natural-language request level, not presenting a shell command. Acceptance: pty tests in
+  both interfaces show the follow-up reaches the saved conversation, the proposal is not executed,
+  the model's question is prefixed with `//`, and the next response can replace the proposal.
+- [ ] 2.36 *py – go –* Multi-line scripts in propose mode (user, 2026-11-08): let ush build a
+  multi-line script for a task, show its complete source for review and editing, then execute it
+  only after the user explicitly approves that reviewed source. Agent mode already has
+  `run_script`, which requires approval; this adds the reviewed script workflow to propose mode.
+  Acceptance: tests cover complete, terminal-safe source display; edits are exactly what runs;
+  decline, abort, and invalid scripts run nothing; execution and captured output continue the
+  conversation in both implementations.
+- [ ] 2.37 *py – go –* Toggle thinking visibility (user, 2026-11-08): let the user show or hide
+  model thinking/progress blocks in the terminal without changing the request, provider behavior,
+  or conversation data needed for follow-up. Acceptance: on/off tests in both implementations
+  verify the display changes while follow-up requests remain valid and no hidden content leaks
+  into unrelated output or history.
+- [ ] 2.38 *py – go –* Research available options without executing tasks (user, 2026-11-08):
+  provide a research-only path for comparing available approaches. It must not execute commands
+  or scripts, stage a proposal for shell execution, or perform the requested task; research results
+  are information for the user to act on. Acceptance: tests with command-like and task-like model
+  output prove that neither implementation starts a process, creates a handoff proposal, or
+  otherwise performs the task.
+- [ ] 2.39 *py – go –* Confirm every proposed command before execution (user, 2026-11-08,
+  possible propose-mode bug): audit every propose-mode path and require explicit, per-command
+  user confirmation before any proposed command executes. A proposal or pre-filled command line
+  is not consent; until confirmation, no process may start. Acceptance: tests cover the plugin,
+  session, edited proposals, and commands requiring an interactive terminal; decline or missing
+  confirmation runs nothing, and confirmation runs only the exact command the user reviewed.
+  **Blocking:** GAPS Q18 (what counts as confirmation).
 - [x] 2.40 *py ✓ go ✓* Fix macOS Fn-Backspace/Delete in the session editor (user, 2026-11-08):
   pressing Fn-Backspace to delete the character under the cursor currently inserts the literal
   terminal sequence `[3~` instead. Bind and handle the Delete sequence correctly in the editor
@@ -366,6 +399,13 @@ Done in Python, and in Go through the port (section 4).
   fn-backspace".) Done: the session editor binds Delete, Home, End (also `\eOH`/`\e[1~`,
   `\eOF`/`\e[4~`) and Page Up/Down (`beep`); the plugin binds the same keys for a proposal where
   the emacs keymap leaves them undefined, and removes them with Esc's binding (ARCH).
+- [ ] 2.41 *py – go –* Contextual "go on" actions for larger plans (user, 2026-11-08): when a
+  request spans multiple steps, offer the typical next actions and a shortcut to choose "go on"
+  and continue to the next step without retyping the request. This asks ush/model to continue the
+  interaction; it must not itself execute a proposed command or bypass the review and confirmation
+  flow. Acceptance: session and plugin tests cover showing relevant next actions, invoking the
+  shortcut, continuing the same conversation, and ensuring commands remain proposals pending the
+  usual user action.
 - [x] 2.42 *py ✓ go ✓* Bug (user, 2026-11-10): "cd does not move away from the initial
   directory". In the `ush>` session every line, typed or an accepted proposal, ran in a fresh
   `zsh -c`, so `cd` was lost when it ended. A session line now reports its final `$PWD` through

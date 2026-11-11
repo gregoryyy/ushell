@@ -4,7 +4,7 @@ Open questions and explicit assumptions for ush, both implementations. Q9–Q12 
 ushgo's Q1–Q4 and A1–A3 until 2026-10-29. **Questions** are for the user to answer.
 **Assumptions** are what the documents currently take for granted because they seemed clear enough
 not to ask; check them and correct any that are wrong. The rules for this file are in
-[SDLC](SDLC.md#work-items). Status: 2026-10-30 06:05.
+[SDLC](SDLC.md#work-items). Status: 2026-11-11 08:32.
 
 - Answers carry date, time and author: `**Answer** (2026-10-27 15:10, Gregor Heinrich): …`. Short
   answers are fine. A changed answer goes on top; earlier ones stay below it, struck through.
@@ -293,6 +293,31 @@ models, local and small among them.
 - **Resolved:** TODO 2.29 (release condition) and [ROAD](ROAD.md) phase 4: the platforms can be
   built and merged, but no release ships them before TODO 2.23, and that release's gate runs the
   injection eval on one model per new adapter.
+
+### Q18. What counts as confirming a proposal? — blocking for TODO 2.39
+
+TODO 2.39 (user, 2026-11-08, "possible propose-mode bug") says: "A proposal or pre-filled command
+line is not consent; until confirmation, no process may start." Today, in propose mode:
+- With the plugin, the proposal is put on your command line. Nothing runs until you press Enter on
+  it, and what runs is the line as you left it, edits included. Esc or a new `// …` drops it.
+- In the `ush>` session, the proposal is pre-filled at the prompt in the same way, and Enter runs
+  it.
+- Without the plugin, ush only prints it.
+- Agent mode (`--run`) is separate: it runs commands it verifies as read-only without asking, and
+  asks for anything else (SECTEST F8).
+
+So by design, Enter on the reviewed line is the confirmation. The item reads as if that isn't
+enough, or as if a proposal ran without it.
+
+- **Proposed:** Enter on the line counts as confirmation; no extra prompt. 2.39 then becomes an
+  audit with tests: no path in the plugin or the session starts a process before that Enter,
+  including `//` continuations, the handoff, Ctrl-N, Down's explanation, and interactive
+  proposals. What runs is exactly the line as shown. Any path that fails is a bug, fixed there.
+- **Alternative A:** after Enter on a proposal, ask again (`run this? [y/N]`), in both the plugin
+  and the session: one more keystroke per command.
+- **Alternative B:** ask again only when the command isn't read-only by ush's policy.
+- **Also:** if you saw a proposal run without pressing Enter, which request was it, and in the
+  plugin or the session? That would be a bug to fix first, whatever the answer here.
 
 ## Assumptions
 
