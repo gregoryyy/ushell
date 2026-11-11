@@ -512,6 +512,41 @@ class CliTest(TempDirTest):
         self.assertIn("Not shown", content[1]["content"])
 
     @unittest.skipUnless(HAVE_SDK, "anthropic SDK not installed")
+    def test_next_steps_without_an_answer_are_not_shown(self):
+        # TODO 2.49: the answer only in the thinking and an offer of next steps: not shown, the
+        # model is asked for the answer as text, and that answer reaches stdout.
+        def offer(ident, *text):
+            return ([{"type": "thinking", "thinking": "325 GiB are free on /."},
+                     *({"type": "text", "text": t} for t in text),
+                     {"type": "tool_use", "id": ident, "name": "offer_next",
+                      "input": {"steps": ["show usage per volume"]}}], "tool_use")
+        env = {"ANTHROPIC_API_KEY": SYNTHETIC_KEY}
+        with MockAPI([offer("n1"), offer("n2", "325 GiB are free on /.")]) as api:
+            env["USH_BASE_URL"] = api.url
+            result = self.ush("--run", "-1", "//how much space is free", env=env)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.strip(), "325 GiB are free on /.")
+        self.assertEqual(result.stderr.count("//1 show usage per volume"), 1)
+        (answer,) = api.requests[1]["body"]["messages"][-1]["content"]
+        self.assertEqual((answer["tool_use_id"], answer.get("is_error")), ("n1", True))
+        self.assertIn("write your answer as text", answer["content"])
+        history = self.ush("history", "-n", "1", env=env)
+        self.assertIn("[answered]", history.stdout)
+
+    @unittest.skipUnless(HAVE_SDK, "anthropic SDK not installed")
+    def test_offers_without_an_answer_stop_after_three(self):
+        offer = ([{"type": "thinking", "thinking": "Done."},
+                  {"type": "tool_use", "id": "n1", "name": "offer_next",
+                   "input": {"steps": ["more"]}}], "tool_use")
+        env = {"ANTHROPIC_API_KEY": SYNTHETIC_KEY}
+        with MockAPI([offer, offer, offer, offer]) as api:
+            env["USH_BASE_URL"] = api.url
+            result = self.ush("--run", "-1", "//anything", env=env)
+        self.assertEqual(len(api.requests), 3)
+        self.assertIn("refused 3 times in a row", result.stderr)
+        self.assertNotIn("//1", result.stderr)
+
+    @unittest.skipUnless(HAVE_SDK, "anthropic SDK not installed")
     def test_research_proposes_and_runs_nothing(self):
         # TODO 2.38: `//? TEXT` and `ush research TEXT`, in propose and agent mode, send no tools;
         # a tool call the model writes anyway is refused, nothing runs, and nothing is proposed.

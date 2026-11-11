@@ -14,6 +14,39 @@ implementation kept its own log: [ushpy](archive/DONE-ushpy.md), [ushgo](archive
 
 ---
 
+## 2026-11-11 20:16 — Next steps only with an answer in text
+
+TODO items: 2.49 (done). PR: #63 (branch `chore/ush-smoke-openai`, with the release checks of
+20:02).
+
+Agent: Opus 5.5, reasoning: not exposed, subagents: none.
+
+### Implementation notes
+
+- **The request** (user, 2026-11-11): "yes" to fixing 2.49 next, found by the paid smoke test
+  (20:02).
+- **Both implementations** (`agent.go`, `agent.py`): a turn's answer text is noted; an offer of
+  next steps is shown only with it, besides being valid and alone. An offer without text is
+  answered "Not shown: write your answer as text in your reply, then offer the next steps with
+  it. The user sees your text, not your thinking.", as an error result, so the model writes the
+  answer in the next turn, and three such turns in a row stop the request ("refused 3 times in a
+  row"), as for other refused calls. An offer next to a proposal or a command keeps its message.
+- **The tool's description** says so up front: "With your answer, written as text in the same
+  reply (the user sees your text, not your thinking), …".
+- **Tests** in `test_cli` (shared, so the conformance suite runs them on ushgo):
+  `test_next_steps_without_an_answer_are_not_shown` (thinking and an offer, then text and an
+  offer: the call is answered as an error, the text reaches stdout once, the steps are shown once,
+  history says answered) and `test_offers_without_an_answer_stop_after_three`. Both fail on the
+  0.2.5 check build of 87e1824 and pass on this branch, with ushpy and with ushgo.
+- **Validation:** before the change of the tool's description, `go test ./...`, the ushpy suite
+  and `tests/conform/run.sh` on this branch (results in the PR); the commit itself by local CI on
+  macOS and Linux.
+
+### Insights
+
+- **A check on what is shown, not only on what runs:** 2.41's offer was checked for validity and
+  for being alone, both about the call; the answer it comes "with" was assumed.
+
 ## 2026-11-11 20:02 — Release checks on main after #62: two bugs, the OpenAI key rejected
 
 TODO items: 2.49, 2.50 (new, open); the smoke test and the injection eval gain OpenAI; local CI

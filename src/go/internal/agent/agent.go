@@ -61,6 +61,7 @@ type Agent struct {
 	Unanswered   []block // results due with the next request
 	Question     block   // the model asked the user (TODO 2.35): id, question
 	Next         block   // next steps the model offered (TODO 2.41): id, steps
+	answered     bool    // the current turn has answer text: an offer of next steps needs it (2.49)
 	Ran          *handoff.Ran
 	system       string
 	research     string // the system prompt of a research request
@@ -261,6 +262,7 @@ func (a *Agent) loop(ctx context.Context, entry *history.Entry, research bool) (
 				uses = append(uses, b)
 			}
 		}
+		a.answered = strings.TrimSpace(text.String()) != ""
 		switch {
 		case turn.StopReason == "refusal":
 			msg := "the model declined this request"
@@ -323,7 +325,7 @@ func (a *Agent) loop(ctx context.Context, entry *history.Entry, research bool) (
 				continue
 			}
 			if str(b["name"]) == str(NextTool["name"]) {
-				results = append(results, a.notShown(b))
+				results = append(results, a.notShown(b, uses))
 				continue
 			}
 			r, err := a.tool(ctx, b, entry)
@@ -452,11 +454,12 @@ func steps(offer block) []string {
 	return out
 }
 
-// offerNext shows the next steps the model offers with its answer, if valid and alone with it;
+// offerNext shows the next steps the model offers with its answer, if valid, alone with it, and
+// with answer text (2.49: an answer only in the thinking reaches neither stdout nor history);
 // their result is due with the next request.
 func (a *Agent) offerNext(uses []block) bool {
 	if len(uses) != 1 || str(uses[0]["name"]) != str(NextTool["name"]) ||
-		validate(str(uses[0]["name"]), uses[0]["input"], a.tools) != "" {
+		validate(str(uses[0]["name"]), uses[0]["input"], a.tools) != "" || !a.answered {
 		return false
 	}
 	var shown []string
@@ -468,10 +471,14 @@ func (a *Agent) offerNext(uses []block) bool {
 	return true
 }
 
-// notShown answers an offer of next steps that ush didn't show: invalid, or not alone.
-func (a *Agent) notShown(b block) block {
+// notShown answers an offer of next steps that ush didn't show: invalid, not alone, or without
+// answer text. The last counts as refused, so a model that keeps doing it stops (2.49).
+func (a *Agent) notShown(b block, uses []block) block {
 	if problem := validate(str(b["name"]), b["input"], a.tools); problem != "" {
 		return result(b, invalid(b["input"], problem), true)
+	}
+	if len(uses) == 1 && !a.answered {
+		return result(b, noAnswer, true)
 	}
 	return result(b, notShown, false)
 }
@@ -497,7 +504,7 @@ func (a *Agent) propose(ctx context.Context, uses []block, entry *history.Entry)
 	for _, b := range uses {
 		name, args := str(b["name"]), b["input"]
 		if name == str(NextTool["name"]) {
-			results = append(results, a.notShown(b))
+			results = append(results, a.notShown(b, uses))
 			continue
 		}
 		if a.Proposal != nil {
