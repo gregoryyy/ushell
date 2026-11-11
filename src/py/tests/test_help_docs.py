@@ -1,11 +1,9 @@
-"""ush's documents are shared by both implementations, in docs/: the user guide covers the
-command line, there is one copy of each document, and every follow-up item in TODO says where it
-is built."""
+"""The shared documents cover ushpy's command line: every option and subcommand of `ush help` is in
+the user guide and the manual page. The checks of the documents that need no implementation are in
+tools/docs/test_docs.py."""
 
 import os
 import re
-import shutil
-import subprocess
 import unittest
 
 import helpers  # noqa: F401  puts src/py/src on the path
@@ -24,7 +22,7 @@ def manual_page_text() -> str:
     return re.sub(r" +", " ", re.sub(r" +,", ",", text))
 
 
-class SharedDocsTest(unittest.TestCase):
+class HelpIsDocumentedTest(unittest.TestCase):
     def test_every_option_and_subcommand_is_in_the_user_guide(self):
         from ush.cli import USAGE
         with open(os.path.join(DOCS, "USER.md"), encoding="utf-8") as f:
@@ -51,35 +49,6 @@ class SharedDocsTest(unittest.TestCase):
                   "USH_BARE_SLASH"]
         for word in words:
             self.assertTrue(word in page, f"{word} is not in src/man/ush.1")
-
-    @unittest.skipUnless(shutil.which("mandoc"), "mandoc is not installed")
-    def test_the_manual_page_is_well_formed(self):
-        lint = subprocess.run(["mandoc", "-T", "lint", "-W", "warning", MANUAL_PAGE],
-                              capture_output=True, text=True, timeout=30)
-        self.assertEqual((lint.returncode, lint.stdout + lint.stderr), (0, ""))
-
-    def test_one_document_set(self):
-        for name in ("USER.md", "ADMIN.md", "ARCH.md", "SEC.md", "SECTEST.md", "SMOKE.md",
-                     "TODO.md", "ROAD.md", "GAPS.md", "DONE.md"):
-            self.assertTrue(os.path.isfile(os.path.join(DOCS, name)), name)
-        for implementation in ("py", "go"):
-            self.assertFalse(os.path.exists(os.path.join(ROOT, "src", implementation, "docs")),
-                             f"src/{implementation}/docs: the documents are shared, in docs/")
-
-    def test_follow_up_items_say_where_they_are_built(self):
-        with open(os.path.join(DOCS, "TODO.md"), encoding="utf-8") as f:
-            todo = f.read()
-        section = todo[todo.index("## 2. "):todo.index("## 3. ")]
-        items = re.findall(r"(?m)^- \[([ x])\] (2\.\d+) (.*)$", section)
-        self.assertGreaterEqual(len(items), 30)
-        for done, ident, rest in items:
-            with self.subTest(item=ident):
-                status = re.match(r"\*py (✓|–) go (✓|–)\*", rest)
-                if status is None:
-                    self.fail(f"TODO {ident}: *py ✓ go ✓* or similar")
-                if done == "x":
-                    self.assertEqual(status.groups(), ("✓", "✓"),
-                                     f"TODO {ident}: done only when both have it")
 
 
 if __name__ == "__main__":
