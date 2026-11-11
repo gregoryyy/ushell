@@ -14,7 +14,76 @@ implementation kept its own log: [ushpy](archive/DONE-ushpy.md), [ushgo](archive
 
 ---
 
-## 2026-11-11 05:20 — `just pdfs` without the deprecation warning
+## 2026-11-11 05:40 — Release 0.2.3: the gate, the tag, the GitHub release and the tap
+
+TODO items: 5.12 (done). PR: not yet opened (branch `docs/ush-0.2.3-released`); the release PR
+was #50, the candidate 50257ee (#50 and #51 merged).
+
+Agent: Opus 5.5, reasoning: not exposed, subagents: none.
+
+### Implementation notes
+
+- **The request** (user, 2026-11-11): "merged", then "tag the rc": the tag `v0.2.3-rc1` on
+  50257ee, annotated, as for 0.2.0-rc1; no GitHub release for it. Earlier: "create the homebrew
+  release in the ../ush-homebrew project". There was no `../ush-homebrew`; the tap
+  `gregoryyy/homebrew-ush` was cloned there.
+- **Gate on 50257ee**, the merge of #51 (0.2.3 and the PDF fix):
+  - Level 1, macOS arm64: `just ci --post 50257ee`: all seven jobs pass; statuses posted.
+  - Level 1, Linux: GitHub Actions run 42959159122 on 50257ee, success: ushpy on Ubuntu with
+    3.10 and 3.13, ushgo and the conformance suite on Ubuntu, with go1.27.4. No container runtime
+    here, so the Linux archives were built, not run.
+  - **govulncheck v1.1.4:** with Homebrew's Go 1.27.3 it reports GO-2026-6859 (`net/http`, a
+    crash of HTTP/1 servers through `MaxBytesReader`; ush is only a client), fixed in Go 1.27.4.
+    Go 1.27.4 from go.dev (`golang.org/dl/go1.27.4`): no vulnerabilities; `just ushgo-test`
+    passes with it. The release archives are built with it.
+  - Release build with go1.27.4: `just ushgo-release 0.2.3 --check` (two builds identical), then
+    the build:
+    - `65e8c152…` darwin-arm64
+    - `27e349c5…` darwin-amd64
+    - `2451c7e3…` linux-arm64
+    - `88fe1a1b…` linux-amd64
+  - darwin-arm64 archive in a temporary prefix: the checksum verifies, `ush 0.2.3 (go)`, built
+    with go1.27.4, nothing writable by others, `man ush` shows 0.2.3 of 2026-11-11; offline smoke
+    6 PASS; `smoke.sh --bin` with llama3.2:3b: 13 PASS, 2 WARN (the model proposed no command for
+    the two propose checks), 0 FAIL, as for 0.2.2.
+  - Level 2: the injection eval three times on that archive with llama3.2:3b, 36 runs: 8
+    attempted (2, 3, 3), 0 ran unapproved.
+  - `gitleaks git --redact --log-opts=50257ee .`: no leaks. Over all local refs, it also finds the
+    synthetic tokens of `test_redact.py` in `refs/agents/…/checkpoints/…`, local checkpoint refs of
+    an agent tool from 2026-11-08 that are not on GitHub and not in the release; the same tokens
+    are already in `.gitleaksignore` at their other paths.
+- **Published by the agent, at the user's request** (5.12):
+  - the tag `v0.2.3` on 50257ee;
+  - the GitHub release v0.2.3 (latest), with the four archives, `SHA256SUMS` and the notes as
+    corrected here. Downloaded again: the checksums verify, and `SHA256SUMS` is byte-identical to
+    the build's;
+  - the 0.2.3 formula in `gregoryyy/homebrew-ush` (b6e4ef4), from `formula.sh 0.2.3`: the
+    tarball's checksum `4c3ed991…`, the `src/` paths; `brew style` clean; its build reproduced by
+    hand from the tag's tarball with Homebrew's Go: `ush 0.2.3 (go)`, built with go1.27.3, the
+    plugin and the page at their paths. `brew info gregoryyy/ush/ush`: 0.2.2 → stable 0.2.3.
+- **Release notes,** corrected after the tag ([releases/0.2.3.md](releases/0.2.3.md), the
+  GitHub release has this text): built with Go 1.27.4 and GO-2026-6859 (Security); Homebrew builds
+  with Homebrew's Go, 1.27.3 for now (known limitations); the reproducible build names Go 1.27.4.
+
+### Deviations
+
+- **The Linux archives weren't run:** no Docker or Podman here, unlike 0.2.2's Debian container.
+  The release notes say so.
+- **Homebrew builds with Go 1.27.3** until Homebrew updates Go; a formula can't pin Go's patch
+  version. The GitHub archives are built with 1.27.4.
+- **The tap commit's author** is `gregor@flunder.local`, the default of the fresh clone; earlier
+  tap commits use another address. Not changed, as that would need a force push.
+- **The release notes in the tag** (50257ee) still have the uncorrected text; the GitHub release
+  and `main` have the corrected one.
+
+### Insights
+
+- govulncheck findings come from the Go toolchain too, not only from dependencies: check the
+  installed Go's patch level before the release build.
+- Agent tools may keep refs of their own (`refs/agents/…`) that gitleaks scans; CI's scan up to
+  the commit is the one that counts for a release.
+
+ — `just pdfs` without the deprecation warning
 
 TODO items: 6.3 (new, done). PR: not yet opened (branch `fix/pdf-math-method`).
 
