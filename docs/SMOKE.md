@@ -24,10 +24,10 @@ both implementations of the command, Python ([src/py/](../src/py/README.md)) and
 ## 1. Automated checks: `smoke.sh`
 
 ```sh
-src/py/scripts/smoke.sh                                    # offline: no model, no cost
-src/py/scripts/smoke.sh --provider ollama --model qwen3.5:9b --checker ollama:llama3.2:3b
-src/py/scripts/smoke.sh --provider anthropic --paid        # your configured model; --model to change
-src/py/scripts/smoke.sh --bin ~/go/bin/ush                 # another implementation or install
+tests/smoke/smoke.sh                                    # offline: no model, no cost
+tests/smoke/smoke.sh --provider ollama --model qwen3.5:9b --checker ollama:llama3.2:3b
+tests/smoke/smoke.sh --provider anthropic --paid        # your configured model; --model to change
+tests/smoke/smoke.sh --bin ~/go/bin/ush                 # another implementation or install
 ```
 
 | Check | Passes when |

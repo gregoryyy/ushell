@@ -526,6 +526,16 @@ here.
 - [x] 6.3 `just pdfs` without pandoc's deprecation warning (user, 2026-11-11: "adjust the
   deprecation warning in just pdfs"): `--mathml` became `--math-method=mathml`, which pandoc
   3.13 asks for. Acceptance: no warning; formulas still MathML; the PDFs build.
+- [x] 6.4 Auxiliary code by what it serves (user, 2026-11-11: "aren't some of the auxiliary
+  sources spread inconsistently between main codebase and tests/ or tools/", then "do 1 and 2" of
+  the agent's proposal). Tests for both implementations in `tests/`: `tests/conform/run.sh` (was
+  `src/go/scripts/conform.sh`), `tests/smoke/smoke.sh` and `tests/security/injection_eval.py`
+  (were in `src/py/scripts/`). Repository tools in `tools/`: `tools/docs/` (the link checker and
+  the document checks of `test_docs` that need no implementation), `tools/release/` (the release
+  tool as a module of its own, `release.sh`, `formula.sh`; archives in `dist/`). The checks of the
+  documents against `ush help` stay in ushpy as `test_help_docs`. Acceptance: history kept by
+  `git mv`; the test counts unchanged in sum; CI runs the release tool's tests and the document
+  tests; the moved release tool, run on the `v0.2.3` source, gives the published checksums.
 
 ## Old IDs
 

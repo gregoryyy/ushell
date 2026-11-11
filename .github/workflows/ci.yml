@@ -18,7 +18,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Relative links and images in all Markdown files.
+  # The documents: relative links and images in all Markdown files, and tools/docs' tests.
   links:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -31,7 +31,12 @@ jobs:
         with:
           python-version: "3.13"
       - name: Check links
-        run: python tools/check-links.py
+        run: python tools/docs/check-links.py
+      # Ubuntu runners lack mandoc, which checks the manual page.
+      - name: Install mandoc
+        run: command -v mandoc >/dev/null || { sudo apt-get update && sudo apt-get install -y mandoc; }
+      - name: Check documents
+        run: python -m unittest discover -s tools/docs
 
   # The Python ush suite on each supported platform and the oldest and newest supported Python (TODO
   # 1.9, 2.3). Locally only this machine's platform runs.
@@ -82,6 +87,10 @@ jobs:
         run: command -v zsh >/dev/null || { sudo apt-get update && sudo apt-get install -y zsh; }
       - name: Test
         run: ./scripts/test.sh
+      # The release tool (tools/release/), which builds this module's archives.
+      - name: Test the release tool
+        working-directory: tools/release
+        run: ./test.sh
 
   # Conformance: ushpy's black-box tests against the Go binary (ushgo TODO 1.10).
   ushgo-conform:
@@ -105,7 +114,7 @@ jobs:
       - name: Install zsh
         run: command -v zsh >/dev/null || { sudo apt-get update && sudo apt-get install -y zsh; }
       - name: Conformance
-        run: PYTHON=python ./src/go/scripts/conform.sh
+        run: PYTHON=python ./tests/conform/run.sh
 
   # The local CI's own code (tools/ci/).
   tools:

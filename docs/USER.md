@@ -261,6 +261,6 @@ configuration error, 130 stopped.
 | The proposal doesn't appear on the command line | add the zsh plugin and open a new terminal; `echo $USH_HANDOFF` should print a directory |
 | `//` says nothing about what you ran | the plugin records only the line run right after the proposal appeared |
 
-To check a whole install, run the smoke test: `src/py/scripts/smoke.sh --bin "$(command -v ush)"`
+To check a whole install, run the smoke test: `tests/smoke/smoke.sh --bin "$(command -v ush)"`
 ([SMOKE](SMOKE.md)).
 

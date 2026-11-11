@@ -14,6 +14,63 @@ implementation kept its own log: [ushpy](archive/DONE-ushpy.md), [ushgo](archive
 
 ---
 
+## 2026-11-11 05:53 — Auxiliary code by what it serves: `tests/` and `tools/`
+
+TODO items: 6.4 (new, done). PR: not yet opened (branch `chore/aux-layout`).
+
+Agent: Opus 5.5, reasoning: not exposed, subagents: none.
+
+### Implementation notes
+
+- **The request** (user, 2026-11-11): "aren't some of the auxiliary sources spread inconsistently
+  between main codebase and tests/ or tools/". The agent listed what sat with one implementation
+  but served both or the repository, and proposed three steps; the user chose "do 1 and 2".
+- **Step 1, tests and tools for both implementations,** all by `git mv`:
+  - `src/go/scripts/conform.sh` → [tests/conform/run.sh](../tests/conform/run.sh), next to the
+    policy corpus;
+  - `src/py/scripts/smoke.sh` → [tests/smoke/smoke.sh](../tests/smoke/smoke.sh);
+  - `src/py/scripts/injection_eval.py` → [tests/security/injection_eval.py](../tests/security/injection_eval.py);
+  - `tools/check-links.py` → [tools/docs/check-links.py](../tools/docs/check-links.py);
+  - `test_docs` split: the three checks that need no implementation (the manual page is
+    well-formed, one document set, TODO items say where they are built) → [tools/docs/test_docs.py](../tools/docs/test_docs.py),
+    run by `just links` and the CI job `links` (which now installs mandoc on Ubuntu); the two that
+    compare the documents with ushpy's `ush help` stay in ushpy as `test_help_docs`.
+- **Step 2, the release tooling** → [tools/release/](../tools/release/): `main.go` and its tests
+  as a module of their own (`github.com/gregoryyy/ushell/tools/release`), `release.sh`,
+  `formula.sh`, and a `test.sh`. The tool finds the ush module as `src/go/` at or above the
+  working directory (it used the nearest `go.mod`). Archives go to `dist/` at the root (was
+  `src/go/dist/`). `just ushgo-test` and the CI job `ushgo` also run `tools/release/test.sh`.
+- **Kept where they are:** `policy_corpus.py` (it writes the corpus from ushpy's policy), each
+  implementation's `scripts/test.sh`, `src/go/packaging/` (the archive's installer).
+- **References:** justfile, ci.yml, `tools/ci/test_workflow.py` (the new steps of `links` and
+  `ushgo`), `.gitignore`, README, ADMIN, ARCH, SEC, SECTEST, SDLC, SMOKE, USER, both
+  implementations' READMEs, `tools/ci/README.md`, the man page's comment. Completed TODO items,
+  SECTEST's dated eval sections, DONE and the archive keep their old paths.
+- **Validation** on macOS, with Go 1.27.4: `just ushgo-test` (now also `tools/release/test.sh`):
+  exit 0. `PYTHON=/opt/homebrew/bin/python3.12 just ushpy-test`: 223 tests OK (226 before; the
+  3 moved checks run in `tools/docs/`). `just ushgo-conform` (`tests/conform/run.sh`): 83 tests
+  OK. `just links`: links passed, `tools/docs` 3 tests OK. The release tool, moved and built
+  once, run on a worktree of `v0.2.3` with that commit's time: SHA256SUMS identical to the
+  published 0.2.3 ones. (`tools/release/release.sh 0.2.3 --check` on this tree is reproducible
+  too, with other checksums: another commit time and the man page's changed comment.)
+
+### Deviations
+
+- **`check-links.py` went to `tools/docs/`,** not `tools/links/` as proposed, so that the link check
+  and the document tests sit together.
+- **`test_docs` was split, not moved:** two of its five tests read ushpy's `USAGE`.
+- **Two DONE headings repaired:** inserting the 05:40 entry (#52) and this one dropped the heading
+  line of the entry below each, `## 2026-11-11 05:20 — …` and `## 2026-11-11 05:40 — …`;
+  both are restored as they were, as are the `---` separators above the entries of 22:58, 15:02
+  and 12:30 on 2026-11-10, dropped the same way. The entries' text is unchanged.
+
+### Insights
+
+- `tests/conform/` now holds the corpus and the runner, but the black-box tests it runs are still
+  in `src/py/tests/`, mixed with ushpy's unit tests (step 3 of the proposal, not chosen).
+
+---
+
 ## 2026-11-11 05:40 — Release 0.2.3: the gate, the tag, the GitHub release and the tap
 
 TODO items: 5.12 (done). PR: not yet opened (branch `docs/ush-0.2.3-released`); the release PR
@@ -83,7 +140,9 @@ Agent: Opus 5.5, reasoning: not exposed, subagents: none.
 - Agent tools may keep refs of their own (`refs/agents/…`) that gitleaks scans; CI's scan up to
   the commit is the one that counts for a release.
 
- — `just pdfs` without the deprecation warning
+---
+
+## 2026-11-11 05:20 — `just pdfs` without the deprecation warning
 
 TODO items: 6.3 (new, done). PR: not yet opened (branch `fix/pdf-math-method`).
 
@@ -145,6 +204,8 @@ Agent: Opus 5.5, reasoning: not exposed, subagents: none.
 - Ctrl-N and the `cd` fix had waited on `main` since 2026-10-30 and 2026-11-10; a release after
   each user-visible fix keeps Homebrew users current.
 
+---
+
 ## 2026-11-10 22:58 — `ush explain` without quotes
 
 TODO items: 2.43 (new, done), in the plugin both implementations share. PR: not yet opened
@@ -189,6 +250,8 @@ Agent: Opus 5.5, reasoning: not exposed, subagents: none.
 - `${#${(z)s}}` counts characters, not words, when `(z)` yields one word; split into an array
   first.
 
+---
+
 ## 2026-11-10 15:02 — CI: zsh for the ushgo job on Ubuntu
 
 TODO items: 6.2 (new, done). PR: not yet opened (branch `fix/ci-ushgo-zsh`, stacked on #46).
@@ -220,6 +283,8 @@ Agent: Opus 5.5, reasoning: not exposed, subagents: none.
 - The `sh` fallback silently drops pipefail on a machine without zsh. ush needs zsh for its plugin,
   so this mainly affects `ush` without the plugin; whether to set pipefail where `sh` supports it is
   open.
+
+---
 
 ## 2026-11-10 12:30 — One project, one layout: `src/`, `docs/`, `tests/conform/`
 

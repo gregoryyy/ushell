@@ -5,13 +5,13 @@
 # gregoryyy/homebrew-ush (created by the user). Users then install with:
 #   brew install gregoryyy/ush/ush
 #
-#   scripts/formula.sh 0.2.3 > ush.rb
+#   tools/release/formula.sh 0.2.3 > ush.rb
 #
 # The paths are those of the src/ layout (2026-11-10). Tags before it have ush/go/ (from #30) or,
 # before that, ushgo/ and ushpy/shell/ (v0.2.0 among them): their formula comes from formula.sh at
-# that tag.
+# that tag. Up to v0.2.3 this script was src/go/scripts/formula.sh.
 set -eu
-version=${1:?usage: scripts/formula.sh VERSION}
+version=${1:?usage: tools/release/formula.sh VERSION}
 case "$version" in *[!0-9A-Za-z.-]*) echo "formula.sh: bad version $version" >&2; exit 2 ;; esac
 url="https://github.com/gregoryyy/ushell/archive/refs/tags/v$version.tar.gz"
 sha=$(curl -fsSL "$url" | shasum -a 256 | cut -d' ' -f1)
