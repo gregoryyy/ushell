@@ -72,7 +72,9 @@ reviewed and checked here.
   - `USH_TEST_BIN=<ushgo> python -m unittest test_cli test_models test_help_docs`: 42 tests OK;
   - `diff` of `ush help` from both: identical;
   - `just ushgo-conform`: 113 tests OK; `just links`: OK.
-- **Documents:** USER, ADMIN, SEC (key leakage, disclosure to OpenAI), ARCH, the man page.
+- **Documents:** USER, ADMIN, SEC (key leakage, disclosure to OpenAI), ARCH, the man page; `.env.template` gains the provider, its models, the
+  `openai:` checker, `OPENAI_API_KEY` and `USH_OPENAI_URL`, for `just ush` (user, 2026-11-11:
+  "create a .env.template for testing with Claude and OpenAI API keys").
 
 ### Deviations
 
