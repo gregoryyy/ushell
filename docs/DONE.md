@@ -41,6 +41,41 @@ Agent: Opus 5.5, reasoning: not exposed, subagents: none.
 
 ---
 
+## 2026-11-11 05:07 — Version 0.2.3: release notes, version, man page
+
+TODO items: 5.12 (new; open until published). PR: not yet opened (branch `chore/ush-0.2.3`).
+
+Agent: Opus 5.5, reasoning: not exposed, subagents: none.
+
+### Implementation notes
+
+- **The request** (user, 2026-11-11): "update release notes and man pages and pr and release
+  0.3.0". Asked first, because 0.3.0 is planned as the shells and platforms release (5.11) and
+  none of it is built: the user chose **0.2.3**, with the agent publishing as for 0.2.2.
+- **Contents,** what `main` has since `v0.2.2` (deac48b): notes on Ctrl-N (2.25, #39), `ush
+  explain` without quotes (2.43, #49), `cd` in the session (2.42, #42), the provider table and
+  model profiles (2.29.1, #41), the `src/` layout (6.1, #46 via #48), the Linux CI fix (6.2, #47).
+- **Version 0.2.3** in `pyproject.toml`, `ush/__init__.py`, the manual page's header (dated
+  2026-11-11), USER, README, ushgo's README (now pointing at 5.12), ROAD's status line and
+  `formula.sh`'s usage line. The Go binary gets its version from the release build.
+- **The manual page** already describes the three changes users see (Ctrl-N, `cd` in the
+  session, `ush explain` without quotes); only its header changed.
+- **Release notes:** [releases/0.2.3.md](releases/0.2.3.md): changed, fixed, inside, install,
+  security, known limitations.
+- **Validation** (before the PR; the release gate runs on the merge commit): `just ushgo-test`:
+  every package ok. `PYTHON=/opt/homebrew/bin/python3.12 just ushpy-test`: 226 tests OK.
+  `just links`: passed. `mandoc -T lint -W warning src/man/ush.1`: clean; `man ./src/man/ush.1`
+  shows "ush 0.2.3, 2026-11-11".
+
+### Deviations
+
+- **0.2.3, not 0.3.0,** as the user chose; 0.3.0 keeps its plan (5.11).
+
+### Insights
+
+- Ctrl-N and the `cd` fix had waited on `main` since 2026-10-30 and 2026-11-10; a release after
+  each user-visible fix keeps Homebrew users current.
+
 ## 2026-11-10 22:58 — `ush explain` without quotes
 
 TODO items: 2.43 (new, done), in the plugin both implementations share. PR: not yet opened
