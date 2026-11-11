@@ -35,10 +35,15 @@ Agent: Opus 5.5, reasoning: not exposed, subagents: none.
 - **Validation:** `mandoc -T lint -W warning src/man/ush.1`: clean. `test_help_docs`: OK. `just
   links`: OK.
 
+- **Technical debt** (user, 2026-11-11: "not hide, but for the 0.3.0-rc we can keep testing it
+  extensively as technical debt"): 2.51 is the debt of 0.3.0-rc1, which ships OpenAI as a preview
+  and names 2.51 in its release notes; the testing is owed before 0.3.0.
+
 ### Deviations
 
 - **A preview, not a removal:** the request names the documents only, and documents that left
-  OpenAI out would contradict `ush help` and `ush ai configure`, which offer it.
+  OpenAI out would contradict `ush help` and `ush ai configure`, which offer it; the user then
+  confirmed: "not hide".
 
 ## 2026-11-11 20:16 — Next steps only with an answer in text
 

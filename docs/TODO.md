@@ -537,7 +537,10 @@ Done in Python, and in Go through the port (section 4).
   against `mock_openai` only; USER and the man page call it a preview. Supported once the live
   smoke test passes: `tests/smoke/smoke.sh --provider openai --paid` once, at low effort, with the
   cost estimated beforehand and at most $1 in total (user, 2026-11-11), and 2.50 is fixed. Then
-  the documents drop "preview".
+  the documents drop "preview". **Technical debt of 0.3.0-rc1** (user, 2026-11-11: "not hide, but
+  for the 0.3.0-rc we can keep testing it extensively as technical debt"): the release candidate
+  ships OpenAI as a preview, visible in `ush help` and `ush ai configure`, and its release notes
+  name this item under known limitations; the testing is owed before 0.3.0.
 - [ ] 3.1 Release 0.1 gate per [AGENTS.md](../AGENTS.md): fresh suite on the exact
   candidate on each supported OS/Python, dependency audit, release notes, human merge.
   Overtaken: releases ship the Go binary (5.2), and each release runs the gate of 5.3; 0.1 was
