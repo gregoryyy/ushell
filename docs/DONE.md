@@ -14,6 +14,58 @@ implementation kept its own log: [ushpy](archive/DONE-ushpy.md), [ushgo](archive
 
 ---
 
+## 2026-11-11 11:33 — Live check of TODO 2.35–2.38, 2.41 with local models, on ushgo
+
+TODO items: 2.35, 2.36, 2.37, 2.38, 2.41 (follow-up, after #57's merge). PR: not yet opened
+(branch `docs/ush-2.35-live-check`).
+
+Agent: Opus 5.5, reasoning: not exposed, subagents: none.
+
+### Implementation notes
+
+- **Why:** #57 left open how real models use `ask_user`, `offer_next` and `propose_script`; its
+  tests use the mock API only. Checked with local Ollama models, at no cost, after the user's
+  "go on" following the question how to test the Go version.
+- **The binary:** ushgo built from main e215849 (`go build`, Go 1.27.4).
+- **Smoke test:** `tests/smoke/smoke.sh --bin … --provider ollama --model qwen3.8:latest`: 15 of
+  15 PASS.
+- **The new tools:** a scratch script ran ush without a terminal, as the plugin calls it, with
+  a 0700 handoff directory and its own settings and state. Results with `qwen3.8:latest`:
+  - Research: `//? which backup tool fits a Mac` gave a comparison, with its one command marked
+    "example (not run)". The banner said "research, runs and proposes nothing"; nothing was
+    handed off.
+  - Ask back: `//clean up` gave `// What would you like to clean up? …` and the handoff
+    `ask\n// `. The answer, `//the .log files …`, came back as its result; the model then
+    proposed a `find` listing, flagged as not verified as read-only for its `tee /tmp/…`.
+  - Scripts: asked for a short multi-line script, the model used `propose_script` (zsh). The
+    source was shown numbered, and the handoff was exactly
+    `zsh -c "$(cat <<'USH_EOF'` … `USH_EOF` `)"`. The script itself was wrong: `$($f | wc -l)`
+    would execute each file. That's the model's error; the source on the line is there to be
+    reviewed before Enter.
+  - Next steps: `//how do I set up SSH keys …` gave the answer and `//1`…`//3`. `//2` came back
+    as the choice, and the model checked for an existing key first (`ls -la ~/.ssh/`). `//` went
+    on to `ssh-keygen …`, marked as a change and handed off as interactive.
+  - Thinking: with `--no-thinking`, no `…` lines; without it, the model's thinking showed.
+- **With `llama3.2:3b`**, the same requests behaved safely, but the new tools are used poorly:
+  - research: a plain comparison;
+  - `//clean up`: a proposal (`ls -aH`) instead of a question;
+  - the script request: answered in text, with no `propose_script`;
+  - the SSH request: a question (`// Do you have a GitHub account already?`) instead of an
+    answer with steps.
+
+### Deviations
+
+- None. The server was started for the check (`ollama serve`) and stopped afterwards.
+
+### Insights
+
+- An 8B-class local model uses all three new tools as intended; a 3B model rarely does, as USER
+  says of agent mode already. Nothing unsafe followed in either case: whatever the model did
+  ended in a proposal, a question or text.
+- The bad script shows why scripts are only proposed: the model marked it read-only and wrong.
+
+---
+
 ## 2026-11-11 09:31 — Scripts in propose mode, on the command line (TODO 2.36)
 
 TODO items: 2.36 (done). PR: not yet opened (branch `feat/ush-2.35-interaction`).
