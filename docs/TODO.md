@@ -470,6 +470,23 @@ Done in Python, and in Go through the port (section 4).
   Esc and `l` together as Alt-l, and `ls` became `s`. Steps after a bare Esc now wait for zsh's
   output (`ANY_OUTPUT`), then quiet. Acceptance: a regression test that stops zsh before the Esc
   and resumes it a second later; it fails with the old wait, as on CI.
+- [x] 2.45 *py ✓ go ✓* String booleans from local models (user, 2026-11-11, "yes" to the
+  proposal in DONE 12:24): llama3.1:8b sends `"interactive": "true"` in its tool calls, and the
+  schema check refused every one ("tool calls were refused 3 times"). For providers whose profile
+  reads tool calls written as text (Ollama), exactly `"true"` and `"false"` in a tool's boolean
+  field are now booleans in every call, as they already were in calls written as text; any other
+  string is still refused, and Anthropic's calls stay strict. Acceptance: provider tests in both
+  implementations (`"true"`, `"false"`, `"yes"`, `"True"`; Anthropic unchanged), a CLI test that
+  hands such a proposal over as `interactive` (both implementations, failing without the fix), and
+  a live rerun of llama3.1:8b with 2.46.
+- [x] 2.46 *py ✓ go ✓* A rerunnable comparison of local models (user, 2026-11-11, "yes" to
+  putting DONE 13:02's harness in the repository): `tests/models/compare.py` sends ten graded
+  requests per trial to each named Ollama model and prints the table for DONE; documented in
+  [SMOKE](SMOKE.md#3-comparing-local-models-comparepy). Live models can't run in CI, so its
+  grading is tested against the mock API instead: a model that does everything right passes
+  every case, the failures it is meant to find fail, and a case with nothing to go on from does
+  not apply. `test_models` runs in ushpy's suite and, through the conformance suite, against
+  ushgo.
 - [ ] 3.1 Release 0.1 gate per [AGENTS.md](../AGENTS.md): fresh suite on the exact
   candidate on each supported OS/Python, dependency audit, release notes, human merge.
   Overtaken: releases ship the Go binary (5.2), and each release runs the gate of 5.3; 0.1 was
