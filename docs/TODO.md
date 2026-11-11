@@ -376,6 +376,12 @@ Done in Python, and in Go through the port (section 4).
 
 ## 3. Release
 
+- [x] 2.44 *py ✓ go ✓* Flaky test (2026-11-11, GitHub Actions on #53): `test_esc_clears_the_line`
+  failed once on macOS in the conformance run with "echo prefilleds". The step after Esc waited
+  only for a quiet terminal (0.5 s); on a starved runner zsh hadn't read the Esc by then, read
+  Esc and `l` together as Alt-l, and `ls` became `s`. Steps after a bare Esc now wait for zsh's
+  output (`ANY_OUTPUT`), then quiet. Acceptance: a regression test that stops zsh before the Esc
+  and resumes it a second later; it fails with the old wait, as on CI.
 - [ ] 3.1 Release 0.1 gate per [AGENTS.md](../AGENTS.md): fresh suite on the exact
   candidate on each supported OS/Python, dependency audit, release notes, human merge.
   Overtaken: releases ship the Go binary (5.2), and each release runs the gate of 5.3; 0.1 was
