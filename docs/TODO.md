@@ -356,6 +356,16 @@ Done in Python, and in Go through the port (section 4).
   syntax, propose mode only (GAPS Q15). Not on Windows (GAPS Q16: "not now").
   Acceptance: the plugin's pty tests ported to pwsh 7 on macOS and Linux; the installer offers
   the profile; the Go archive carries the module.
+- [x] 2.40 *py ✓ go ✓* Fix macOS Fn-Backspace/Delete in the session editor (user, 2026-11-08):
+  pressing Fn-Backspace to delete the character under the cursor currently inserts the literal
+  terminal sequence `[3~` instead. Bind and handle the Delete sequence correctly in the editor
+  without changing other keybindings. Acceptance: pty tests verify Fn-Backspace deletes at the
+  cursor in a proposal and ordinary input, never inserts `[3~`, and existing editing/history keys
+  remain unchanged. (The item comes from the local branch `docs/ush-interaction-followups`,
+  which has 2.35–2.41 and no PR; reported again 2026-11-11: "the [3~ issue exists for
+  fn-backspace".) Done: the session editor binds Delete, Home, End (also `\eOH`/`\e[1~`,
+  `\eOF`/`\e[4~`) and Page Up/Down (`beep`); the plugin binds the same keys for a proposal where
+  the emacs keymap leaves them undefined, and removes them with Esc's binding (ARCH).
 - [x] 2.42 *py ✓ go ✓* Bug (user, 2026-11-10): "cd does not move away from the initial
   directory". In the `ush>` session every line, typed or an accepted proposal, ran in a fresh
   `zsh -c`, so `cd` was lost when it ended. A session line now reports its final `$PWD` through

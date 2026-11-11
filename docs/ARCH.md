@@ -121,6 +121,13 @@ propose specific shell commands and prewrite them to be executed by the user"; t
   before, e.g. one recalled from history, is shown again without a request. Failures are not
   kept.
 - **Esc** clears the explanation, or else the proposal.
+- **Delete, Home, End, Page Up and Down** (TODO 2.40) send escape sequences that zsh binds to
+  nothing by default. With a bare Esc bound, zsh would run the Esc widget on them and insert the
+  rest of the sequence (`[3~`). The session editor binds them: `delete-char`, `beginning-of-line`,
+  `end-of-line`, and `beep` for the page keys. Binding a sequence to `undefined-key` doesn't stop
+  zsh from falling back to Esc. The plugin binds them only for a proposal, and only those that
+  are `undefined-key` in the emacs keymap, so the user's own bindings are kept. It removes them
+  with Esc's binding.
 - **The installers** offer to add the plugin to `~/.zshrc` (`shell/zshrc.sh`).
 
 **Notes** (TODO 2.25, GAPS Q7): Ctrl-N, bound for the whole shell, not only on a proposal,
