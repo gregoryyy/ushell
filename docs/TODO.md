@@ -200,16 +200,15 @@ Done in Python, and in Go through the port (section 4).
   the command line it explains, and show it again on Down while `$BUFFER` is unchanged; ask the
   model only when the line was edited. The plugin (`_ush_explain`, shared with ushgo) and the
   session editor (`ui.py`'s `vared` script) both do this; a new proposal starts without one.
-  And "also cache any explanation of commands in the history" (user, 2026-10-29): `ush explain`
+  And, requested 2026-10-29, explanations of commands from the history are cached: `ush explain`
   keeps its answers in the state directory, `explanations.json`, keyed by a hash of the command
   line, so a command explained before, e.g. recalled from history, is not sent again.
   Acceptance: zsh tests in a pty with a counting fake provider: Down, Up, Down asks once; Down,
   Esc, Down asks once; Down, edit, Down asks twice; the same in the `ush>` session; a failed
   explanation is not kept; the store holds no command line, is 0600, keeps the newest 500, and
   ignores a broken or linked file; the Go session editor and store use the same file and keys.
-- [x] 2.25 *py ✓ go ✓* Notes on command output and files (user, 2026-10-29: "add the possibility to analyze
-  command output and files. this could be a shortcut like ctrl-n like notes"; ROAD's
-  `ush analyze`). The key is Ctrl-N (Ctrl-X n until 2026-10-30), and the output is the plugin's
+- [x] 2.25 *py ✓ go ✓* Notes on command output and files (requested 2026-10-29: analyze command output and
+  files, with a shortcut for notes; ROAD's `ush analyze`). The key is Ctrl-N (Ctrl-X n until 2026-10-30), and the output is the plugin's
   recorded output (GAPS Q7, both answered):
   - **Ctrl-N** on the command line asks the model for notes and prints them before the next
     prompt, so they stay in the scrollback. A comment ending the line is the question
@@ -258,10 +257,10 @@ Done in Python, and in Go through the port (section 4).
   `fish_preexec`/`fish_postexec`), after bash, with proposals in fish's syntax and no agent
   mode (GAPS Q15).
   Acceptance: as for 2.27, in fish 3, with the Go archive and installer.
-- [ ] 2.29 *py – go –* More model platforms (user, 2026-10-29: "widen the compatibility with external models:
-  openai, mistral, huggingface, any other important platforms"; 2026-10-30: "we need in
-  particular mistral, openai, if possible other european providers and other local apis beyond
-  ollama"). One adapter for the OpenAI Chat Completions API with tool calling, which most
+- [ ] 2.29 *py – go –* More model platforms (requested 2026-10-29: wider compatibility with
+  external models, such as OpenAI, Mistral, Hugging Face and other important platforms;
+  2026-10-30: in particular Mistral and OpenAI, other European providers if possible, and local
+  APIs beyond Ollama). One adapter for the OpenAI Chat Completions API with tool calling, which most
   platforms serve. The agent keeps its `Provider` protocol and its Anthropic-shaped messages
   (ARCH); the adapter translates at its edge (`tool_use` to `tool_calls`, `tool_result` to
   `role: tool`, tool-call arguments streamed in pieces, stop reasons, strict schemas where the
@@ -288,8 +287,8 @@ Done in Python, and in Go through the port (section 4).
     to confirm against each one's documentation (GAPS Q13): Scaleway Generative APIs, OVHcloud
     AI Endpoints, IONOS AI Model Hub, STACKIT AI Model Serving, Nebius AI Studio. `ush ai
     configure` and the banner show the platform's country and region.
-  - [x] 2.29.6 *py ✓ go ✓* OpenAI through its Responses API (user, 2026-11-11: "add an openai
-    key option for ush ai configure"). OpenAI's documentation says gpt-6-astra and gpt-6.1-sol
+  - [x] 2.29.6 *py ✓ go ✓* OpenAI through its Responses API (requested 2026-11-11: an OpenAI key
+    option for ush ai configure). OpenAI's documentation says gpt-6-astra and gpt-6.1-sol
     call tools only through the Responses API, so OpenAI gets its own adapter instead of 2.29.2's
     Chat Completions; the user chose it. A provider `openai` in the table (OpenAI, `api.openai.com`,
     `OPENAI_API_KEY`, default model gpt-6-astra), its key in `ush ai configure` (keychain account
@@ -338,8 +337,8 @@ Done in Python, and in Go through the port (section 4).
   Acceptance: unit, provider (mock Ollama) and CLI tests in both implementations; llama3.2:3b
   proposes a command for the request in 6 of 6 runs in each. Done 2026-10-29 (DONE).
 
-- [ ] 2.32 *py – go –* A shell interface in the core (user, 2026-10-30: "bash, sh, potentially fish and
-  powershell"; GAPS Q15), before 2.27. The prompts, proposals and explanations say "the user's
+- [ ] 2.32 *py – go –* A shell interface in the core (requested 2026-10-30: bash, sh, possibly fish and
+  PowerShell; GAPS Q15), before 2.27. The prompts, proposals and explanations say "the user's
   shell is zsh" today, so a proposal for a bash or fish user is written for zsh. Each shell is an
   implementation of one interface: its name and syntax for the prompts, a parse check for
   proposals, the plugin's capabilities (pre-filled line, recorded output, keys), and, optionally,
@@ -358,17 +357,17 @@ Done in Python, and in Go through the port (section 4).
     without agent mode; a proposal that doesn't parse in the shell (`bash -n`, `sh -n`,
     `fish --no-execute`) sent back to the model once, then shown with a warning, against the mock;
     the zsh suites unchanged; ARCH, USER, the man page updated.
-- [ ] 2.33 *py – go –* POSIX sh (`dash`, BusyBox `ash`, `sh` on macOS) (user, 2026-10-30), after 2.32. These
+- [ ] 2.33 *py – go –* POSIX sh (`dash`, BusyBox `ash`, `sh` on macOS) (requested 2026-10-30), after 2.32. These
   shells have no line editor ush can hook into, so there is no plugin: `ush '//…'` is quoted,
   proposals are in POSIX syntax and are printed, and running one is the user's step (GAPS Q14).
   No agent mode (GAPS Q15).
   Acceptance: the CLI tests under `dash` and BusyBox `sh`; proposals pass `sh -n`; USER says
   what sh users don't get (no `// …`, no pre-filled line, no recorded output unless Q14 adds it).
-- [ ] 2.34 *py – go –* PowerShell 7 (`pwsh`) on macOS and Linux (user, 2026-10-30: "potentially"), after
+- [ ] 2.34 *py – go –* PowerShell 7 (`pwsh`) on macOS and Linux (requested 2026-10-30, as a possibility), after
   2.28: a module for the profile with PSReadLine (`Set-PSReadLineKeyHandler` on Enter for
   `// …`, `[Microsoft.PowerShell.PSConsoleReadLine]::Replace` to pre-fill the proposal, the
   exit status from `$?`/`$LASTEXITCODE`, output through `Tee-Object`), proposals in PowerShell's
-  syntax, propose mode only (GAPS Q15). Not on Windows (GAPS Q16: "not now").
+  syntax, propose mode only (GAPS Q15). Not on Windows (GAPS Q16: not now).
   Acceptance: the plugin's pty tests ported to pwsh 7 on macOS and Linux; the installer offers
   the profile; the Go archive carries the module.
 - [x] 2.35 *py ✓ go ✓* Ask back instead of running a proposal (user, 2026-11-08): provide an
@@ -393,7 +392,7 @@ Done in Python, and in Go through the port (section 4).
   Acceptance: tests cover complete, terminal-safe source display; edits are exactly what runs;
   decline, abort, and invalid scripts run nothing; execution and captured output continue the
   conversation in both implementations.
-  Done (the user chose "On the command line"): `propose_script` (`sh`, `zsh`, `python3`); the
+  Done (the user chose to hand the script over on the command line): `propose_script` (`sh`, `zsh`, `python3`); the
   source is shown with line numbers and handed over as one entry,
   `LANGUAGE -c "$(cat <<'USH_EOF' … USH_EOF\n)"`, a quoted here-document with an end marker no
   source line equals; control characters refused. Enter runs it as edited, Esc removes it, `//`
@@ -417,7 +416,7 @@ Done in Python, and in Go through the port (section 4).
   are information for the user to act on. Acceptance: tests with command-like and task-like model
   output prove that neither implementation starts a process, creates a handoff proposal, or
   otherwise performs the task.
-  Done (the user chose "Both"): `//? TEXT` and `ush research TEXT`, in the plugin (quoted like
+  Done (the user chose both): `//? TEXT` and `ush research TEXT`, in the plugin (quoted like
   `ush explain`), the session and without it, in propose and agent mode. A research system prompt;
   no tools on a new conversation, and an error result for any tool call; nothing reaches the
   executor or the handoff. Tests: `test_research_proposes_and_runs_nothing`,
@@ -441,8 +440,8 @@ Done in Python, and in Go through the port (section 4).
   without changing other keybindings. Acceptance: pty tests verify Fn-Backspace deletes at the
   cursor in a proposal and ordinary input, never inserts `[3~`, and existing editing/history keys
   remain unchanged. (The item comes from the local branch `docs/ush-interaction-followups`,
-  which has 2.35–2.41 and no PR; reported again 2026-11-11: "the [3~ issue exists for
-  fn-backspace".) Done: the session editor binds Delete, Home, End (also `\eOH`/`\e[1~`,
+  which has 2.35–2.41 and no PR; reported again 2026-11-11: the `[3~` issue exists for
+  Fn-Backspace.) Done: the session editor binds Delete, Home, End (also `\eOH`/`\e[1~`,
   `\eOF`/`\e[4~`) and Page Up/Down (`beep`); the plugin binds the same keys for a proposal where
   the emacs keymap leaves them undefined, and removes them with Esc's binding (ARCH).
 - [x] 2.41 *py ✓ go ✓* Contextual "go on" actions for larger plans (user, 2026-11-08): when a
@@ -452,15 +451,15 @@ Done in Python, and in Go through the port (section 4).
   flow. Acceptance: session and plugin tests cover showing relevant next actions, invoking the
   shortcut, continuing the same conversation, and ensuring commands remain proposals pending the
   usual user action.
-  Done (the user chose "`//1`…`//3`, `//` goes on"): `offer_next` (one to three steps, both modes),
+  Done (the user chose `//1`…`//3`, with `//` going on): `offer_next` (one to three steps, both modes),
   listed as `//1 …`; `//N` picks one, `//` alone goes on, another request leaves them, each sent as
   the offer's result; `//N` not offered is exit 2 and sends nothing; `//` with a conversation goes
   on ("Go on."), without one it opens a session as before. Nothing runs or is proposed by it.
   Tests: `test_next_steps_are_picked_with_a_number_or_gone_on_with`,
   `test_next_steps_with_a_proposal_are_not_shown`, `test_next_steps_are_picked_in_the_session`
   (both implementations), ushpy's `test_bad_next_steps_are_refused`.
-- [x] 2.42 *py ✓ go ✓* Bug (user, 2026-11-10): "cd does not move away from the initial
-  directory". In the `ush>` session every line, typed or an accepted proposal, ran in a fresh
+- [x] 2.42 *py ✓ go ✓* Bug (reported 2026-11-10): `cd` did not move away from the initial
+  directory. In the `ush>` session every line, typed or an accepted proposal, ran in a fresh
   `zsh -c`, so `cd` was lost when it ended. A session line now reports its final `$PWD` through
   an EXIT trap and ush changes there (and sets `PWD`); the status, output and line numbers of the
   command are unchanged. Variables and `cd -` still don't carry over between lines. Agent-mode
@@ -468,8 +467,8 @@ Done in Python, and in Go through the port (section 4).
   are taken on the branch `docs/ush-interaction-followups`.) Acceptance: unit tests in both
   implementations (`cd`, `cd ..`, a failed `cd`, `exit 4`, a replaced trap); a pty test of the
   real session that runs in ushpy and, through the conformance suite, against ushgo.
-- [x] 2.43 *py ✓ go ✓* `ush explain` without quotes (user, 2026-11-10: "can we have the ush
-  explain 'arg' as args without quotes"). Unquoted words already worked when zsh left them alone;
+- [x] 2.43 *py ✓ go ✓* `ush explain` without quotes (requested 2026-11-10: `ush explain` with its
+  arguments given without quotes). Unquoted words already worked when zsh left them alone;
   globs, quotes, `|`, `;` and `>` were acted on by zsh first, so `ush explain cat x | sort` ran
   `sort`. The zsh plugin (shared by both implementations) now passes everything after
   `ush explain [-v]` verbatim, as it does for `//` requests; one quoted word is left as it is.
@@ -485,7 +484,7 @@ Done in Python, and in Go through the port (section 4).
   Esc and `l` together as Alt-l, and `ls` became `s`. Steps after a bare Esc now wait for zsh's
   output (`ANY_OUTPUT`), then quiet. Acceptance: a regression test that stops zsh before the Esc
   and resumes it a second later; it fails with the old wait, as on CI.
-- [x] 2.45 *py ✓ go ✓* String booleans from local models (user, 2026-11-11, "yes" to the
+- [x] 2.45 *py ✓ go ✓* String booleans from local models (approved 2026-11-11: the
   proposal in DONE 12:24): llama3.1:8b sends `"interactive": "true"` in its tool calls, and the
   schema check refused every one ("tool calls were refused 3 times"). For providers whose profile
   reads tool calls written as text (Ollama), exactly `"true"` and `"false"` in a tool's boolean
@@ -494,7 +493,7 @@ Done in Python, and in Go through the port (section 4).
   implementations (`"true"`, `"false"`, `"yes"`, `"True"`; Anthropic unchanged), a CLI test that
   hands such a proposal over as `interactive` (both implementations, failing without the fix), and
   a live rerun of llama3.1:8b with 2.46.
-- [x] 2.46 *py ✓ go ✓* A rerunnable comparison of local models (user, 2026-11-11, "yes" to
+- [x] 2.46 *py ✓ go ✓* A rerunnable comparison of local models (approved 2026-11-11:
   putting DONE 13:02's harness in the repository): `tests/models/compare.py` sends ten graded
   requests per trial to each named Ollama model and prints the table for DONE; documented in
   [SMOKE](SMOKE.md#3-comparing-local-models-comparepy). Live models can't run in CI, so its
@@ -502,9 +501,9 @@ Done in Python, and in Go through the port (section 4).
   every case, the failures it is meant to find fail, and a case with nothing to go on from does
   not apply. `test_models` runs in ushpy's suite and, through the conformance suite, against
   ushgo.
-- [x] 2.47 *py ✓ go ✓* A list of models to choose from in `ush ai configure` (user,
-  2026-11-11: "also add allow a list of models to choose from once a provider is selected"; the
-  user chose the provider's own list). After the provider and its key, `ush ai configure` lists
+- [x] 2.47 *py ✓ go ✓* A list of models to choose from in `ush ai configure` (requested
+  2026-11-11: a list of models to choose from once a provider is selected; the user chose the
+  provider's own list). After the provider and its key, `ush ai configure` lists
   the provider's chat models, newest first (Anthropic's and OpenAI's `GET /v1/models` with the
   key, Ollama's pulled models), or ush's short list when they can't be fetched, numbered; a
   number or a name answers, and a number outside the list is an error. `ush ai models` prints
@@ -527,18 +526,18 @@ Done in Python, and in Go through the port (section 4).
   as text, with the next steps" and the turn goes on, as for an offer that is not alone (2.41).
   Acceptance: `test_cli` (shared) with a scripted reply of thinking and an offer without text: the
   model is asked again, the answer reaches stdout and history. In 0.2.4 already. Fixed 2026-11-11
-  (user: "yes"); three such offers in a row stop the request, as other refused calls do.
+  (approved); three such offers in a row stop the request, as other refused calls do.
 - [ ] 2.50 *py – go –* The banner names OpenAI for any endpoint (2026-11-11, found with 2.29.6's
   smoke test): with `openai_url` / `USH_OPENAI_URL` set to another host, the banner and `ai
   status` still say "go to OpenAI". They should name the host when it isn't api.openai.com, as
   for an Ollama cloud model. Acceptance: `test_cli` (shared) for the default and another host.
-- [ ] 2.51 *docs* OpenAI as a supported provider (user, 2026-11-11: "skip openai for now", then
-  "adjust the documentation and add openai as a future feature"). 2.29.6 is in the code, tested
+- [ ] 2.51 *docs* OpenAI as a supported provider (requested 2026-11-11: leave OpenAI out for now, then
+  adjust the documentation to list it as a future feature). 2.29.6 is in the code, tested
   against `mock_openai` only; USER and the man page call it a preview. Supported once the live
   smoke test passes: `tests/smoke/smoke.sh --provider openai --paid` once, at low effort, with the
-  cost estimated beforehand and at most $1 in total (user, 2026-11-11), and 2.50 is fixed. Then
-  the documents drop "preview". **Technical debt of 0.3.0-rc1** (user, 2026-11-11: "not hide, but
-  for the 0.3.0-rc we can keep testing it extensively as technical debt"): the release candidate
+  cost estimated beforehand and at most $1 in total (requested 2026-11-11), and 2.50 is fixed. Then
+  the documents drop "preview". **Technical debt of 0.3.0-rc1** (decided 2026-11-11: not hidden, but its
+  extensive testing may stay open as technical debt for the 0.3.0 release candidate): the release candidate
   ships OpenAI as a preview, visible in `ush help` and `ush ai configure`, and its release notes
   name this item under known limitations; the testing is owed before 0.3.0.
 - [ ] 3.1 Release 0.1 gate per [AGENTS.md](../AGENTS.md): fresh suite on the exact
@@ -634,23 +633,23 @@ Until 2026-10-29: ushgo TODO 2.1–2.7.
   so the user pushes it (DONE 2026-10-29 11:10). Each release then updates `Formula/ush.rb` there
   with `scripts/formula.sh VERSION`. Done 2026-10-29: the user created the repository with the
   0.2.0 formula; the agent pushed 0.2.1's. Homebrew asks users to `brew trust` the tap first.
-- [x] 5.8 0.2.0 on the commit of 0.2.0-rc1, b4f9d82 (user, 2026-10-29: "do it. also publish the
-  github release and homebrew tap"): the release gate (5.3) again on that commit with version
+- [x] 5.8 0.2.0 on the commit of 0.2.0-rc1, b4f9d82 (requested 2026-10-29: do it, and also publish the
+  GitHub release and the Homebrew tap): the release gate (5.3) again on that commit with version
   0.2.0, the tag `v0.2.0`, the GitHub release (5.6) and the tap (5.7), published by the agent at
   the user's request. Done; the tap (5.7) followed. Release notes: [docs/releases/0.2.0.md](releases/0.2.0.md).
-- [x] 5.9 0.2.1, the next release, from `main` (user, 2026-10-29: "add a man page and re-release to
-  0.2.1"; it replaces the planned 0.3.0): the layout (#30), explanations kept per command line
+- [x] 5.9 0.2.1, the next release, from `main` (requested 2026-10-29: a man page and a re-release as
+  0.2.1; it replaces the planned 0.3.0): the layout (#30), explanations kept per command line
   (2.24), notes (2.25) and the man page (2.14, 5.4). Version 0.2.1 in both implementations; after
   the merge the gate (5.3) on the merge commit, the tag `v0.2.1`, the GitHub release, and the
   formula from `scripts/formula.sh`, which has the new layout's paths. Done 2026-10-29 on 5c77891,
   with SECTEST F8 documented again (GAPS Q12).
-- [x] 5.10 0.2.2 (user, 2026-10-29: "deploy to a homebrew tap", for the fix of TODO 2.31): tool calls
+- [x] 5.10 0.2.2 (requested 2026-10-29: deploy to a Homebrew tap, for the fix of TODO 2.31): tool calls
   that local models write as text. Version 0.2.2 in both implementations and the man page; after
   the merge the gate (5.3) on the merge commit, the tag `v0.2.2`, the GitHub release, and the
   formula in the tap. Release notes: [docs/releases/0.2.2.md](releases/0.2.2.md).
   Done 2026-10-29 on deac48b (DONE).
-- [x] 5.12 0.2.3 (user, 2026-11-11: "update release notes and man pages and pr and release
-  0.3.0"; asked which version, the user chose 0.2.3, keeping 0.3.0 for 5.11, and the agent to
+- [x] 5.12 0.2.3 (requested 2026-11-11: update the release notes and man pages, make the PR
+  and release 0.3.0; asked which version, the user chose 0.2.3, keeping 0.3.0 for 5.11, and the agent to
   publish as for 0.2.2): what main has since 0.2.2: notes on Ctrl-N (2.25, #39), `ush explain`
   without quotes (2.43, #49), `cd` in the session (2.42, #42), the provider table (2.29.1, #41),
   the `src/` layout (6.1). Version 0.2.3 in both implementations and the man page; release notes
@@ -661,7 +660,7 @@ Until 2026-10-29: ushgo TODO 2.1–2.7.
   Follow-up 2026-11-11: Homebrew's Go is 1.27.4, so `brew upgrade go && brew reinstall ush`
   builds 0.2.3 without GO-2026-6859, and the Homebrew limitation in the release notes is gone.
   No 0.2.4: what main has since 0.2.3 (#53, #54) doesn't change what ships (DONE).
-- [x] 5.13 0.2.4 (user, 2026-11-11: "ready for a release"; 0.3.0 stays the shells release, 5.11):
+- [x] 5.13 0.2.4 (requested 2026-11-11: a release; 0.3.0 stays the shells release, 5.11):
   what main has since 0.2.3 that ships: ask back, scripts in propose mode, the thinking toggle,
   research, next steps and the Enter-only audit (2.35–2.39, 2.41, #57), Delete, Home and End in
   the editor (2.40, #55), string booleans from local models (2.45, #59, landed with this
@@ -670,7 +669,7 @@ Until 2026-10-29: ushgo TODO 2.1–2.7.
   commit, the tag `v0.2.4`, the GitHub release with the four archives and `SHA256SUMS`, and the
   formula in the tap. Acceptance: the gate's results recorded in DONE; the published checksums
   verified after download. Done 2026-11-11 on 8da67d8 (DONE).
-- [ ] 5.14 0.3.0-rc1 (requested 2026-11-11: the next version is 0.3.0, first as a release
+- [x] 5.14 0.3.0-rc1 (requested 2026-11-11: the next version is 0.3.0, first as a release
   candidate; OpenAI's testing is its technical debt; no repeated test runs): what ships since 0.2.4: OpenAI as a
   preview (2.29.6), the model list in `ush ai configure` (2.47), per-provider keys, next steps only
   with an answer in text (2.49). Version 0.3.0-rc1 in both implementations and the man page; release
@@ -678,6 +677,7 @@ Until 2026-10-29: ushgo TODO 2.1–2.7.
   20:02) and GitHub Actions on every commit since; no repeated test run. Released before 2.23 (GAPS
   Q17, answered for the rc); technical debt 2.51. After the merge: the tag `v0.3.0-rc1`, the GitHub
   release (a prerelease) with the four archives and `SHA256SUMS`, and the formula in the tap.
+  Published 2026-11-11 (DONE 23:12).
 - [ ] 5.11 0.4.0, planned as 0.3.0 until 2026-11-11, when 0.3.0 went to 5.14 (requested 2026-10-30: bash, sh and other commonly
   used shells; the agent's proposal, accepted as proposed and adjusted to the
   answers to GAPS Q15–Q17). Contents:
@@ -708,12 +708,12 @@ here.
   `ubuntu-latest` in every GitHub Actions run, because the runner has no zsh and the executor fell
   back to `sh`. Acceptance: the job installs zsh like the ushpy and conformance jobs; the test
   unchanged; the fallback documented in ARCH.
-- [x] 6.3 `just pdfs` without pandoc's deprecation warning (user, 2026-11-11: "adjust the
-  deprecation warning in just pdfs"): `--mathml` became `--math-method=mathml`, which pandoc
+- [x] 6.3 `just pdfs` without pandoc's deprecation warning (requested 2026-11-11: adjust the
+  deprecation warning in just pdfs): `--mathml` became `--math-method=mathml`, which pandoc
   3.13 asks for. Acceptance: no warning; formulas still MathML; the PDFs build.
-- [x] 6.4 Auxiliary code by what it serves (user, 2026-11-11: "aren't some of the auxiliary
-  sources spread inconsistently between main codebase and tests/ or tools/", then "do 1 and 2" of
-  the agent's proposal). Tests for both implementations in `tests/`: `tests/conform/run.sh` (was
+- [x] 6.4 Auxiliary code by what it serves (requested 2026-11-11: check whether some auxiliary
+  sources are spread inconsistently between the main codebase and tests/ or tools/, then steps 1
+  and 2 of the agent's proposal). Tests for both implementations in `tests/`: `tests/conform/run.sh` (was
   `src/go/scripts/conform.sh`), `tests/smoke/smoke.sh` and `tests/security/injection_eval.py`
   (were in `src/py/scripts/`). Repository tools in `tools/`: `tools/docs/` (the link checker and
   the document checks of `test_docs` that need no implementation), `tools/release/` (the release
@@ -721,7 +721,7 @@ here.
   documents against `ush help` stay in ushpy as `test_help_docs`. Acceptance: history kept by
   `git mv`; the test counts unchanged in sum; CI runs the release tool's tests and the document
   tests; the moved release tool, run on the `v0.2.3` source, gives the published checksums.
-- [x] 6.5 Local CI on Linux (user, 2026-11-11: "do local ci", then "set up a docker container",
+- [x] 6.5 Local CI on Linux (requested 2026-11-11: run CI locally, then set up a Docker container,
   after every Ubuntu job on GitHub failed while apt-get could not resolve Ubuntu's mirrors, so
   0.2.4's candidate had no Linux run): the workflow's `ubuntu-latest` entries in a container on
   this machine, by the same `tools/ci/run.py`. Docker through Colima (MIT) and the Docker CLI

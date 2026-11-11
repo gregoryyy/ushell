@@ -3,8 +3,8 @@
 Where ush goes, in both implementations. The phases build on each other, and each one ends with a
 gate: a tested result that decides whether the next phase starts. When a phase starts, its work
 becomes items in [TODO](TODO.md), and this file links to them. Open questions are in
-[GAPS](GAPS.md). Status: 2026-11-11; phases 1 and 3 are done, 0.3.0-rc1 is the release candidate (TODO 5.14), with
-OpenAI as a preview; the shells release is 0.4.0 (5.11). Phase 4 was widened on 2026-10-30: European and local platforms, sh and PowerShell.
+[GAPS](GAPS.md). Status: 2026-11-11; phases 1 and 3 are done, 0.3.0-rc1 is released (TODO 5.14), with OpenAI as
+a preview; the shells release is 0.4.0 (5.11). Phase 4 was widened on 2026-10-30: European and local platforms, sh and PowerShell.
 This file merges, on 2026-11-10, the repository roadmap (`docs/ROAD.md`) and ush's own
 (`ush/docs/ROAD.md`), when wish had moved to its own repository and ush's documents moved to `docs/`.
 

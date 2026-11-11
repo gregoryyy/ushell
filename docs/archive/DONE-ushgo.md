@@ -51,7 +51,7 @@ Agent: Opus 5.5, reasoning: not exposed, subagents: none.
 ### Implementation notes
 
 - **The tag:**
-  - The user's request: "the tag should be on this commit", "the merged one".
+  - The user's request: the tag should be on the merged commit.
   - The agent moved `v0.2.0-rc1` from b19db18 to b4f9d82, the merge of #24: it deleted the remote
     tag and pushed the new one.
   - No GitHub release existed yet.
@@ -94,9 +94,9 @@ Agent: Opus 5.5, reasoning: not exposed, subagents: none.
 ### Implementation notes
 
 - **The user's decisions:**
-  - On the tag: "tag the release 0.1.0-rc1", then, asked about the version, `v0.2.0-rc1`, which
+  - On the tag: tag the release as 0.1.0-rc1, then, asked about the version, `v0.2.0-rc1`, which
     matches the code.
-  - On GAPS Q4: "Release, F8 documented". Recorded in GAPS, SECTEST, ushpy TODO 2.23 (the
+  - On GAPS Q4: release, with F8 documented. Recorded in GAPS, SECTEST, ushpy TODO 2.23 (the
     mitigation) and ushgo TODO 2.8 (its port).
 - **The tag:** the agent created the annotated tag `v0.2.0-rc1` on main's b19db18 (the merge of
   #23) and pushed it, at the user's request.
@@ -119,7 +119,7 @@ Agent: Opus 5.5, reasoning: not exposed, subagents: none.
 - **The earlier candidate:** `just ci --post` on e3ea569, #23's head, passed all seven jobs after
   #23 was merged.
 - **The user's machine:** the darwin-arm64 archive from the tag replaced the Python install in
-  `~/.local` ("install the go version instead of the python version"). The checksum was verified
+  `~/.local`, at the user's request to install the Go version instead of the Python version. The checksum was verified
   and the venv removed; `ush ai status` reads the existing settings and keychain key.
 
 ### Deviations
@@ -202,7 +202,7 @@ Agent: Opus 5.5, reasoning: not exposed, subagents: none.
 
 ### Implementation notes
 
-- **The request:** "the go version shall have feature parity with the python version", for the
+- **The request:** the Go version shall have feature parity with the Python version, for the
   0.2.0-rc1 release of the Go binaries.
 - **Packages:** `internal/` holds each ushpy module's counterpart:
   - `policy`, `redact`, `execute`, `config` (settings and key store), `history`;

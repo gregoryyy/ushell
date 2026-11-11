@@ -6,7 +6,7 @@ ushgo's Q1–Q4 and A1–A3 until 2026-10-29. **Questions** are for the user to 
 not to ask; check them and correct any that are wrong. The rules for this file are in
 [SDLC](SDLC.md#work-items). Status: 2026-11-11 08:32.
 
-- Answers carry date, time and author: `**Answer** (2026-10-27 15:10, Gregor Heinrich): …`. Short
+- Answers carry date and time: `**Answer** (2026-10-27 15:10): …`. Short
   answers are fine. A changed answer goes on top; earlier ones stay below it, struck through.
 - Once answered, the decision moves into the document it affects, and the entry gets a
   `**Resolved**` line saying where. Resolved entries stay as a record.
@@ -16,7 +16,7 @@ not to ask; check them and correct any that are wrong. The rules for this file a
 
 ### Q1. Which licence? — blocking for TODO 3.1
 
-**Answer** (2026-10-28 21:20, Gregor Heinrich): MIT.
+**Answer** (2026-10-28 21:20): MIT.
 
 **Resolved:** [LICENSE](../LICENSE) at the repository root.
 
@@ -29,9 +29,9 @@ and PSF-2.0, so any of the common choices is compatible.
 
 ### Q2. How is ush distributed? — blocking for TODO 3.1
 
-**Answer** (2026-10-28 21:20, Gregor Heinrich): asked to choose between a GitHub release, a GitHub
-release with a Homebrew tap, and a tag only: "try all three options". 0.2.0-rc1 ships the Go
-binaries at parity (asked separately: "Go binaries at parity").
+**Answer** (2026-10-28 21:20): asked to choose between a GitHub release, a GitHub
+release with a Homebrew tap, and a tag only: try all three. 0.2.0-rc1 ships the Go binaries at
+parity (asked separately).
 
 **Resolved:** release plan in TODO 5.5–5.7: a tag, a GitHub release with the archives and
 `SHA256SUMS`, and a Homebrew tap formula (the tap repository is created by the user).
@@ -70,17 +70,17 @@ everything except listed commands without approval.
 
 ### Q6. Should ush run commands, or propose them for the user to run?
 
-Raised by the user on 2026-10-28: "the idea of the ushell is to propose specific shell commands and
-prewrite them to be executed by the user. right now the system performs the actions directly and
-prints the result without showing what was executed". Asked as three questions.
+Raised by the user on 2026-10-28: ush is meant to propose specific shell commands and prewrite
+them for the user to execute, but it performed the actions directly and printed the result without
+showing what was executed. Asked as three questions.
 
-**Answer** (2026-10-28 18:40, Gregor Heinrich):
-- **Investigation:** "Ask each time". ush runs nothing to investigate either: it proposes
+**Answer** (2026-10-28 18:40):
+- **Investigation:** ask each time. ush runs nothing to investigate either: it proposes
   investigation commands too, the user runs them, and their output becomes context for the next
   proposal.
-- **Agent mode:** "Keep behind a flag". Proposing is the default; `ush --run //…`, or the `mode`
+- **Agent mode:** keep behind a flag. Proposing is the default; `ush --run //…`, or the `mode`
   setting, keeps the agent mode.
-- **Several commands:** "One at a time". The first command goes on the command line; after it ran,
+- **Several commands:** one at a time. The first command goes on the command line; after it ran,
   `//` continues with its output and proposes the next one.
 
 **Resolved:** propose mode, [ARCH](ARCH.md#propose-mode), TODO 2.17.
@@ -94,16 +94,15 @@ Two decisions, from the user's request of 2026-10-29.
    chose to keep keys as they are there (Esc, 2026-10-28).
    - **Proposed:** bind Ctrl-N in emacs mode for notes, as asked; Down keeps history. Make the key
      a setting, `USH_NOTES_KEY` (empty: no binding). In vi mode, leave it unbound.
-   - **Answer** (2026-10-30 08:17, Gregor Heinrich): "ctrl-x n doesn't seem to work: use a
-     single step key combination instead, like ctrl-f or ctrl-a". Offered Ctrl-N (zsh's next
-     history line, which Down also does), Ctrl-F (forward-char, which Right also does) or Ctrl-A;
-     the answer: "Ctrl-N". No startup file of the user's loaded the plugin, which is the likely
+   - **Answer** (2026-10-30 08:17): Ctrl-X n did not seem to work; use a single-step key
+     combination instead. Offered Ctrl-N (zsh's next history line, which Down also does), Ctrl-F
+     (forward-char, which Right also does) or Ctrl-A; the answer: Ctrl-N. No startup file of the user's loaded the plugin, which is the likely
      reason Ctrl-X n did nothing.
    - **Resolved:** Ctrl-N, taken in emacs and viins only where it still has zsh's own meaning;
      a key the user bound is left alone. TODO 2.25.
-   - ~~**Answer** (2026-10-29 01:05, Gregor Heinrich): "then use ctrl-m". Ctrl-M is the byte Enter
-     sends (`^M`), so a terminal can't tell them apart. Offered Ctrl-X n (unbound in zsh), Ctrl-N
-     or Alt-N; the answer: "Ctrl-X n".~~
+   - ~~**Answer** (2026-10-29 01:05): use Ctrl-M. Ctrl-M is the byte Enter sends (`^M`), so a
+     terminal can't tell them apart. Offered Ctrl-X n (unbound in zsh), Ctrl-N or Alt-N; the
+     answer: Ctrl-X n.~~
    - ~~**Resolved:** Ctrl-X n, which changes no existing binding. `USH_NOTES_KEY` (empty: no
      binding) stays in TODO 2.25.~~
 2. **Which output.** The plugin records output only for commands ush proposed. Recording every
@@ -111,7 +110,7 @@ Two decisions, from the user's request of 2026-10-29.
    - **Proposed:** Ctrl-N on an empty line takes the last recorded output. Ctrl-N on a typed
      command runs it the way a proposal runs, recorded, and then gives notes. Any other command's
      output is not recorded.
-   - **Answer** (2026-10-29, Gregor Heinrich): "implement the changes", given after the
+   - **Answer** (2026-10-29): implement the changes, given after the
      agent asked to confirm this or say otherwise; taken as acceptance of the proposal, with the
      key Ctrl-X n. **Resolved:** TODO 2.25 as proposed.
 
@@ -124,8 +123,8 @@ Asked by the user on 2026-10-29, with the state of the art (docs/SOTA.md) in vie
   do, and `--run` already covers investigation. Instead, the OS sandbox (TODO 2.6) for what agent
   mode runs without asking, first; the argument-origin rule (2.23) unconditional rather than a
   fallback to the checker. Propose mode needs neither: the user runs every command.
-- **Answer** (2026-10-29, Gregor Heinrich): "do it. promote the named items" (history as
-  context, bash and other shells, argument origin).
+- **Answer** (2026-10-29): do it and promote the named items (history as context, bash
+  and other shells, argument origin).
 - **Resolved:** TODO 2.6 and 2.23 rewritten; 2.26 (history), 2.27 (bash) and 2.28 (fish) added;
   ROAD reordered.
 
@@ -136,8 +135,8 @@ A compiled port of ush, as `ushrs` (Rust) or `ushgo` (Go). The comparison is in
 
 - **Proposed** (2026-10-27, agent): Go, for the official Anthropic SDK and less effort for the
   process and terminal work.
-- **Answer** (2026-10-27 14:52, Gregor Heinrich): "add the compiled stack project as ushrs or
-  ushgo"; the choice left to the agent.
+- **Answer** (2026-10-27 14:52): add the compiled stack project as ushrs or ushgo; the
+  choice left to the agent.
 - **Resolved** (2026-10-27 15:03, agent): Go, as `ushgo/`; [ARCH](ARCH.md#decisions). A different
   answer would mean a new `ushrs/` project; nothing beyond the skeleton depends on the choice yet.
 
@@ -148,16 +147,16 @@ Two implementations of a security-critical policy double the review work and can
 - **Proposed** (2026-10-27, agent): yes. ushgo takes over the name `ush` and the install, after one
   release in which both are available and the conformance suite passes for both. The Python
   implementation then stays only as the conformance reference, or is retired.
-- **Answer** (2026-10-28 09:59, Gregor Heinrich): "the command for ushgo is ush as well, it's just
-  another implementation." And: "ush and ushgo should have equivalent functionality. py is the
-  experimental version, go the compiled deliverable."
+- **Answer** (2026-10-28 09:59): the command for ushgo is ush as well, as just another
+  implementation; ush and ushgo should have equivalent functionality, py being the experimental
+  version and go the compiled deliverable.
 - **Resolved** (2026-10-28 09:59, agent): both are maintained; the command is `ush` in both; Python
   is experimental, Go the deliverable, with equivalent functionality. [ARCH](ARCH.md#decisions),
   [SDLC](SDLC.md#ush-one-command-two-implementations), TODO 0.3 and 5.2.
 
 ### Q11. How is the Go binary distributed on macOS? — blocking for TODO 5.1.3
 
-**Answer** (2026-10-28 21:20, Gregor Heinrich): "try all three options": a tag, a GitHub release
+**Answer** (2026-10-28 21:20): try all three options: a tag, a GitHub release
 with the archives, and a Homebrew tap. No signing for now. **Resolved:** TODO 5.1.3, 5.5–5.7.
 
 macOS refuses to run an unsigned binary that a browser downloaded (quarantine). Downloads with curl,
@@ -170,11 +169,11 @@ and binaries built locally, run without that.
 
 ### Q12. Release 0.2.0-rc1 with SECTEST F8 open?
 
-**Answer** (2026-10-29 12:20, Gregor Heinrich), for 0.2.1: "Release, F8 documented". The gate's
+**Answer** (2026-10-29 12:20), for 0.2.1: release, with F8 documented. The gate's
 eval on 0.2.1 ran the injected `cat` unapproved in 2 of 36 runs, both in the HTML scenario.
 **Resolved:** as for 0.2.0-rc1; the rate is in SECTEST and the 0.2.1 release notes.
 
-**Answer** (2026-10-29 00:25, Gregor Heinrich): "Release, F8 documented", and tag it as
+**Answer** (2026-10-29 00:25): release, with F8 documented, and tag it as
 `v0.2.0-rc1`. **Resolved:** F8 stays open, rated Low, in the release notes' known limitations; the
 mitigation is TODO 2.23, for both implementations.
 
@@ -194,8 +193,8 @@ command that ran unapproved. Propose mode, the default, attempted nothing.
 
 ### Q13. Which European platforms and local servers get presets?
 
-Asked by the user on 2026-10-30: "mistral, openai, if possible other european providers and other
-local apis beyond ollama". Every preset is a host ush sends redacted output to, and a name to keep
+Asked by the user on 2026-10-30: Mistral, OpenAI, other European providers if possible, and local
+APIs beyond Ollama. Every preset is a host ush sends redacted output to, and a name to keep
 working, so the list is worth choosing rather than growing by default.
 
 - **Proposed:** remote, in this order: Mistral (France), then Scaleway Generative APIs (France),
@@ -207,8 +206,8 @@ working, so the list is worth choosing rather than growing by default.
   on-premises platform, which `openai-compatible` with a URL covers.
 - **Alternative:** Mistral and the generic `openai-compatible` URL only; any other platform is
   configured by its URL.
-- **Answer** (2026-10-30 05:40, Gregor Heinrich): "first openai, mistral model settings
-  (consider internal abstraction?)". Taken as: OpenAI and Mistral are the first presets; their
+- **Answer** (2026-10-30 05:40): OpenAI and Mistral model settings first, considering an
+  internal abstraction. Taken as: OpenAI and Mistral are the first presets; their
   model settings (effort or reasoning, strict tool schemas, output limits) go through an internal
   abstraction rather than checks per platform. The other European platforms and the local
   presets stay as proposed, after OpenAI and Mistral; the list is still open.
@@ -224,9 +223,9 @@ the proposal can't be put on the command line, and the output isn't recorded.
   `eval "$(ush --print '//…')"` runs it after the user saw it. Without the plugin, `//` continues
   without the output of what ran, and says so.
 - **Alternative:** print only, and leave running it to copy and paste.
-- **Question back** (2026-10-30 06:05, Gregor Heinrich): "if the shell has access to history and
-  output, why not print the proposal to the shell line and let the user press enter. this gives
-  the possibility of editing. doesn't this work with all shells?"
+- **Question back** (2026-10-30 06:05): if the shell has access to history and output, why not
+  print the proposal to the shell line and let the user press Enter, which allows editing; does
+  this not work with all shells?
 - **Reply** (2026-10-30 06:05, agent): it works in every shell with a line editor that a
   function can write to: zsh (`BUFFER`), bash 4 or newer (`READLINE_LINE`), fish
   (`commandline`), PowerShell (PSReadLine), and ksh93 (`.sh.edchar` in a `KEYBD` trap). That
@@ -257,11 +256,10 @@ security-critical part.
   propose mode only (TODO 2.34).
 - **Alternative:** proposals in POSIX sh for every shell, wrapped as `sh -c '…'` in fish and
   PowerShell: one syntax to check, but awkward lines for those users.
-- **Answer** (2026-10-30 05:40, Gregor Heinrich): "agent mode not accepted in shells that don't
-  support it. (again abstraction; i believe this is an interface not a capability problem)" and
-  "create proposals in fish syntax — (generally generate in the syntax of the shell ush runs in.
-  system prompts can easily change; start using ush --shell bash etc. if the user shell is not
-  compatible)".
+- **Answer** (2026-10-30 05:40): agent mode is not accepted in shells that don't support
+  it (again an abstraction: an interface problem, not a capability problem); and proposals are
+  created in fish syntax (generally, in the syntax of the shell ush runs in; system prompts can
+  easily change; use `ush --shell bash` etc. if the user's shell is not compatible).
 - **Resolved:** a shell interface in the core, [ARCH](ARCH.md#decisions), TODO 2.32. Proposals,
   explanations and notes are in the syntax of the shell ush runs in; `--shell NAME` (and a
   setting) chooses one when that shell isn't supported. Agent mode is a part of the interface:
@@ -277,7 +275,7 @@ Windows release archives, and a policy for Windows commands.
 
 - **Proposed:** not now. PowerShell on macOS and Linux first; Windows as a separate ROAD phase if
   the user asks for it, starting with propose mode only.
-- **Answer** (2026-10-30 06:05, Gregor Heinrich): "not now".
+- **Answer** (2026-10-30 06:05): not now.
 - **Resolved:** TODO 2.34 is PowerShell 7 on macOS and Linux; A11 stands.
 
 ### Q17. Argument origin before the new platforms are released?
@@ -289,7 +287,7 @@ models, local and small among them.
   the release gate runs the injection eval on one model per new adapter. The platforms can be
   built and merged before; the release waits.
 - **Alternative:** release the platforms with F8 documented, as for 0.2.0 and 0.2.1 (Q12).
-- **Answer** (2026-10-30 06:05, Gregor Heinrich): "wait for injection fix before releasing".
+- **Answer** (2026-10-30 06:05): wait for the injection fix before releasing.
 - **Resolved:** TODO 2.29 (release condition) and [ROAD](ROAD.md) phase 4: the platforms can be
   built and merged, but no release ships them before TODO 2.23, and that release's gate runs the
   injection eval on one model per new adapter.
@@ -301,8 +299,8 @@ models, local and small among them.
 
 ### Q18. What counts as confirming a proposal? — blocking for TODO 2.39
 
-TODO 2.39 (user, 2026-11-08, "possible propose-mode bug") says: "A proposal or pre-filled command
-line is not consent; until confirmation, no process may start." Today, in propose mode:
+TODO 2.39 (requested 2026-11-08, as a possible propose-mode bug) says that a proposal or
+pre-filled command line is not consent, and that until confirmation no process may start. Today, in propose mode:
 - With the plugin, the proposal is put on your command line. Nothing runs until you press Enter on
   it, and what runs is the line as you left it, edits included. Esc or a new `// …` drops it.
 - In the `ush>` session, the proposal is pre-filled at the prompt in the same way, and Enter runs
@@ -323,7 +321,7 @@ enough, or as if a proposal ran without it.
 - **Alternative B:** ask again only when the command isn't read-only by ush's policy.
 - **Also:** if you saw a proposal run without pressing Enter, which request was it, and in the
   plugin or the session? That would be a bug to fix first, whatever the answer here.
-- **Answer** (2026-11-11 08:45, Gregor Heinrich): "Enter on the line (Recommended)".
+- **Answer** (2026-11-11 08:45): Enter on the line, as recommended.
 - **Resolved:** TODO 2.39 is the audit, with tests in both implementations; [SEC](SEC.md) states
   the confirmation in its threat table, [USER](USER.md) under the proposal's keys.
 
@@ -335,7 +333,7 @@ enough, or as if a proposal ran without it.
 | A2 | Users accept that redacted command output goes to the selected provider, as the banner says before each request. | [SEC](SEC.md), README | |
 | A3 | zsh is the only supported shell; bash and fish users quote requests or don't use the plugin. | [ARCH](ARCH.md), plugin | Until TODO 2.32 (the user's shell), 2.27 (bash), 2.33 (sh), 2.28 (fish), 2.34 (PowerShell) |
 | A4 | Anthropic's default model stays `claude-opus-5-5` with effort `medium`, even though it is the most expensive choice. | `config.py`, README | |
-| A5 | "An adversarial model to check the proposed implementation that takes independent sources; it can be a small model" (2026-10-27) means a runtime checker: a second model that judges each command or script the assistant proposes, from independent input (the user's requests only, not the output the assistant read). Not a reviewer of code changes in this repository. | TODO 2.13, [ARCH](ARCH.md), `check.py` | |
+| A5 | The request of 2026-10-27 for an adversarial model that checks the proposed implementation from independent sources, possibly a small model, means a runtime checker: a second model that judges each command or script the assistant proposes, from independent input (the user's requests only, not the output the assistant read). Not a reviewer of code changes in this repository. | TODO 2.13, [ARCH](ARCH.md), `check.py` | |
 | A6 | The checker is off unless configured: it needs a model, adds a request per command, and small models raise false alarms. | `config.py`, README | |
 | A7 | Allow rules are for the user's own account; a root session (`sudo ush`) uses none, even the invoking user's. | `agent.py`, `cli.py` | |
 | A8 | In propose mode, the line the user runs from the prompt that held the proposal is its result, even if they replaced it entirely; only another `ush` call there counts as not running it. | plugin, `handoff.py` | |
