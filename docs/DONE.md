@@ -14,6 +14,71 @@ implementation kept its own log: [ushpy](archive/DONE-ushpy.md), [ushgo](archive
 
 ---
 
+## 2026-11-11 08:24 — Fn-Backspace, Home and End no longer insert `[3~`
+
+TODO items: 2.40 (done; the item from the local branch `docs/ush-interaction-followups`).
+PR: not yet opened (branch `fix/ush-2.40-delete-key`).
+
+Agent: Opus 5.5, reasoning: not exposed, subagents: none.
+
+
+### Implementation notes
+
+- **The report** (user, 2026-11-11): "the [3~ issue exists for fn-backspace".
+- **Reproduced** in a pty with `zsh -f` and `vared`:
+  - With a widget on the bare Esc, as the session editor and the plugin's proposal have, Delete
+    (`\e[3~`) gives the line `[3~`. zsh reads `\e[3`, finds no binding, and falls back to the
+    longest bound prefix, the Esc. The Esc widget runs (in the session it clears a pre-filled line,
+    on a proposal it removes the proposal), and `[3~` is typed.
+  - Plain zsh, without the Esc binding, types `~`. That comes from zsh's defaults, not from ush.
+  - The emacs keymap binds none of Delete, Home, End, Page Up or Down. The user's zsh doesn't
+    either (`bindkey | grep 3~`: nothing).
+  - Binding a sequence to `undefined-key` is the same as no binding: Page Up still gave `[5~`.
+    `beep` stops it.
+- **Session editor** (`VARED` in [ui.py](../src/py/src/ush/ui.py), `varedScript` in
+  [ui.go](../src/go/internal/ui/ui.go), the same lines):
+  - Delete `\e[3~` → `delete-char`;
+  - Home `\e[H`, `\eOH`, `\e[1~` → `beginning-of-line`;
+  - End `\e[F`, `\eOF`, `\e[4~` → `end-of-line`;
+  - Page Up and Down `\e[5~`, `\e[6~` → `beep`.
+- **Plugin** ([ush.plugin.zsh](../src/shell/ush.plugin.zsh)): `_ush_fn_keys` holds the same keys.
+  `_ush_keys_bind` binds each one in the emacs keymap only if it is `undefined-key` there, and
+  notes it in `_ush_fn_bound`. `_ush_keys_restore` removes them along with Esc's binding. A key
+  the user bound keeps that binding, also during the proposal.
+- **Tests** ([test_zsh_plugin.py](../src/py/tests/test_zsh_plugin.py)), 4 new:
+  - `test_fn_keys_edit_the_line`: the three Home/End variants, Delete at the start, Page Up and
+    Down;
+  - `test_delete_in_typed_input`;
+  - `test_fn_keys_edit_the_proposal`: a proposal edited with Home, Delete and End runs as edited,
+    and counts as what ran;
+  - `test_fn_keys_keep_their_own_bindings`: the user's Delete binding is used and kept; Home and
+    Page Up are `undefined-key` again after the proposal.
+  - Before the fix, the first three failed with `GOT'[3~'`, `GOT'[H[3~[F[5~[6~!'` and records
+    `[None, None]` (the proposal had been removed). The fourth passed already.
+- **Validation** on macOS, Go 1.27.4:
+  - `just ushgo-test`: exit 0;
+  - `PYTHON=/opt/homebrew/bin/python3.12 just ushpy-test`: 231 tests OK (227 before);
+  - `just ushgo-conform`: 88 tests OK (84 before), so the Go session editor passes the same tests;
+  - `just links`: passed. `mandoc -T lint -W warning src/man/ush.1`: clean.
+- **Docs:** USER (keys on a proposal), the man page (under Esc), ARCH (keys on a proposal).
+
+### Deviations
+
+- **More than Delete:** the TODO item names Delete. Home, End, Page Up and Down failed the same
+  way: the Fn-arrows on a Mac send them, and in the session each one cleared a pre-filled line
+  and typed its sequence. They are fixed together. No existing binding changes: the plugin binds
+  only keys that are undefined, and the session's zsh starts with `-f`.
+- **The plugin as well as the session editor:** the item names the session editor. On a proposal,
+  the plugin's Esc caught Delete in the same way.
+- **2.35–2.39 and 2.41 stay on the user's branch;** only 2.40 is added to TODO here.
+
+### Insights
+
+- In zsh, binding a bare Esc to a widget makes every unbound escape sequence that starts with
+  `\e` run that widget and type the rest. Binding to `undefined-key` doesn't prevent that; any
+  real widget does, `beep` included. Other unbound keys (Insert, F-keys, Ctrl-arrows in some
+  terminals) still behave that way on a proposal and in the session.
+
 ## 2026-11-11 07:44 — No 0.2.4: Homebrew's Go is now 1.27.4
 
 TODO items: 5.12 (follow-up). PR: #53 (branch `chore/aux-layout`).

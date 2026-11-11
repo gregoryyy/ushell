@@ -253,6 +253,37 @@ class ZshProposeTest(TempDirTest):
         self.assertIn("other", out[2])
         self.assertEqual(self.records(out[3]), [None, None])  # nothing counts as the proposal
 
+    def test_fn_keys_edit_the_proposal(self):
+        # TODO 2.40: Fn-Backspace (Delete) and Fn-Left/Right (Home, End) on a Mac send escape
+        # sequences zsh doesn't bind; the proposal's Esc took them, removed the proposal, and
+        # typed the rest ("[3~").
+        out = self.session([
+            ("// capture xecho one\r", "PROMPT> xecho one"),
+            ("\x1b[H", ANY_OUTPUT),
+            ("\x1b[3~", ANY_OUTPUT),
+            ("\x1b[F", ANY_OUTPUT),
+            (" two\r", "PROMPT> "),
+            ("//\r", "PROMPT> "),
+        ])
+        self.assertEqual(self.records(out[5]), ["0\necho one two\n", "one two\n"])
+
+    def test_fn_keys_keep_their_own_bindings(self):
+        show = "bindkey -M emacs '^[[3~'; bindkey -M emacs '^[[H'; bindkey -M emacs '^[[5~'\r"
+        out = self.session([
+            ("bindkey -M emacs '^[[3~' kill-whole-line\r", "PROMPT> "),
+            ("// capture echo one\r", "PROMPT> echo one"),
+            ("\r", "PROMPT> "),
+            (show, "PROMPT> "),
+            ("// capture echo two\r", "PROMPT> echo two"),
+            ("\x1b[3~", ANY_OUTPUT),                 # the user's own Delete: the line is gone
+            ("echo three\r", "PROMPT> "),
+            ("//\r", "PROMPT> "),
+        ])
+        self.assertIn('"^[[3~" kill-whole-line', out[3])
+        self.assertIn('"^[[H" undefined-key', out[3])  # bound for the proposal only
+        self.assertIn('"^[[5~" undefined-key', out[3])
+        self.assertEqual(self.records(out[7])[0], "0\necho three\n")
+
     def test_esc_keeps_its_own_binding_outside_a_proposal(self):
         out = self.session([
             ("bindkey -M emacs '^[' backward-word\r", "PROMPT> "),
@@ -526,6 +557,21 @@ class SessionPrefillTest(TempDirTest):
         # hadn't read the Esc; zsh then read Esc l as Alt-l and the line became "echo prefilleds".
         out = self.edit([("\x1b", ANY_OUTPUT), ("ls\r", "END")], stalled=True)
         self.assertIn("GOT'ls'", out[2])
+
+    def test_fn_keys_edit_the_line(self):
+        # TODO 2.40: Fn-Backspace (Delete), Fn-Left/Right (Home, End) and Fn-Up/Down (Page Up and
+        # Down) on a Mac send escape sequences zsh doesn't bind; the bare Esc took them, cleared
+        # the line, and typed the rest ("[3~").
+        for home, end in (("\x1b[H", "\x1b[F"), ("\x1bOH", "\x1bOF"), ("\x1b[1~", "\x1b[4~")):
+            with self.subTest(home=home):
+                out = self.edit([(home, ANY_OUTPUT), ("\x1b[3~", ANY_OUTPUT), (end, ANY_OUTPUT),
+                                 ("\x1b[5~\x1b[6~!\r", "END")])
+                self.assertIn("GOT'cho prefilled!'", out[4])
+
+    def test_delete_in_typed_input(self):
+        out = self.edit([("\x15abc", "abc"), ("\x1b[D\x1b[D", ANY_OUTPUT),
+                         ("\x1b[3~", ANY_OUTPUT), ("\r", "END")])
+        self.assertIn("GOT'ac'", out[4])
 
     def test_up_closes_the_explanation(self):
         out = self.edit([("\x1b[B", "cannot reach Ollama"), ("\x1b[A", "echo prefilled"),
