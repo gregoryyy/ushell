@@ -14,6 +14,55 @@ implementation kept its own log: [ushpy](archive/DONE-ushpy.md), [ushgo](archive
 
 ---
 
+## 2026-11-11 12:24 — Live check with llama3.1:8b and mimo-v2.6:9b; string booleans
+
+TODO items: 2.35, 2.36, 2.38, 2.41 (follow-up). PR: #58 (branch `docs/ush-2.35-live-check`).
+
+Agent: Opus 5.5, reasoning: not exposed, subagents: none.
+
+### Implementation notes
+
+- **The request** (user): "retry with a larger llama model 9b etc.". Llama 3.x has no 9B size;
+  `llama3.1:8b` was pulled (8.0B, Q4_K_M, tools). `mimo-v2.6:9b` was already there. The same
+  requests as at 11:33, with ushgo from main e215849, `--no-thinking`.
+- **`llama3.1:8b`:**
+  - Research: a plain comparison, with what it assumed.
+  - `//clean up`: a proposal (`git status`, marked as a change and interactive) instead of a
+    question; the answer to it, `ls *.log`.
+  - The script request: the call written as text, which ush didn't take. It had
+    `"interactive": "true"`, a string.
+  - The SSH request: three `propose_command` calls in a row, each with
+    `"interactive": "true"` or without it, each refused (`interactive must be true or false`,
+    `missing interactive`). Then "the model's tool calls were refused 3 times in a row" (exit 1).
+  - `//2`: no step was offered, so exit 2 without a request.
+- **`mimo-v2.6:9b`:**
+  - Research: a comparison table.
+  - `//clean up`: `// What should I clean up? …` with the `ask` handoff; the answer gave a `find`
+    listing.
+  - The script request: one-line proposals, no `propose_script`.
+  - The SSH request: an answer in text, with no `offer_next`.
+  - `//2`: exit 2, as above.
+- **A correction to the record:** to stop the server for these runs, the agent killed an
+  `ollama serve` (pid 1024) whose parent was the user's own interactive zsh, started at 12:09,
+  not by the agent. The agent's own server of 11:29 had stopped at 11:33, as the 11:33 entry says.
+  The user was told; nothing else was affected.
+
+### Deviations
+
+- None.
+
+### Insights
+
+- **String booleans:** `llama3.1:8b` sends `"true"` for a boolean, so every proposal it makes is
+  refused by ush's strict schema check, older tools included. Accepting `"true"` and `"false"` as
+  booleans would let it work; `interactive` only decides whether output is recorded. This is a
+  proposal for the user, not done here.
+- **Of the local models tried,** only `qwen3.8` used all of the new tools (11:33). The 8–9B models
+  used research and, mimo, the question, but not scripts or next steps. Nothing unsafe followed
+  with any of them.
+
+---
+
 ## 2026-11-11 11:33 — Live check of TODO 2.35–2.38, 2.41 with local models, on ushgo
 
 TODO items: 2.35, 2.36, 2.37, 2.38, 2.41 (follow-up, after #57's merge). PR: not yet opened
