@@ -382,13 +382,18 @@ Done in Python, and in Go through the port (section 4).
   are information for the user to act on. Acceptance: tests with command-like and task-like model
   output prove that neither implementation starts a process, creates a handoff proposal, or
   otherwise performs the task.
-- [ ] 2.39 *py – go –* Confirm every proposed command before execution (user, 2026-11-08,
+- [x] 2.39 *py ✓ go ✓* Confirm every proposed command before execution (user, 2026-11-08,
   possible propose-mode bug): audit every propose-mode path and require explicit, per-command
   user confirmation before any proposed command executes. A proposal or pre-filled command line
   is not consent; until confirmation, no process may start. Acceptance: tests cover the plugin,
   session, edited proposals, and commands requiring an interactive terminal; decline or missing
   confirmation runs nothing, and confirmation runs only the exact command the user reviewed.
-  **Blocking:** GAPS Q18 (what counts as confirmation).
+  GAPS Q18, answered 2026-11-11: Enter on the reviewed line is the confirmation. Done: the audit
+  found no path that starts a process before it. Tests: `test_a_proposal_runs_only_on_enter` in
+  the plugin (captured and interactive; Down, Up, Esc, Ctrl-C, a new request over it) and in the
+  `ush>` session (Down, Esc, a new request over it), both run against ushgo by the conformance
+  suite; `test_propose_mode_never_starts_a_process` (ushpy's agent, with every way to start a
+  process patched to fail).
 - [ ] 2.41 *py – go –* Contextual "go on" actions for larger plans (user, 2026-11-08): when a
   request spans multiple steps, offer the typical next actions and a shortcut to choose "go on"
   and continue to the next step without retyping the request. This asks ush/model to continue the

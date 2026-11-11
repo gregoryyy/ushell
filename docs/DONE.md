@@ -14,6 +14,56 @@ implementation kept its own log: [ushpy](archive/DONE-ushpy.md), [ushgo](archive
 
 ---
 
+## 2026-11-11 08:46 — A proposal runs only on Enter: the audit of TODO 2.39
+
+TODO items: 2.39 (done); GAPS Q18 (answered). PR: not yet opened (branch
+`feat/ush-2.35-interaction`).
+
+Agent: Opus 5.5, reasoning: not exposed, subagents: none.
+
+### Implementation notes
+
+- **The request** (user, 2026-11-11): "implement them", for TODO 2.35–2.39 and 2.41. To GAPS Q18
+  the user answered "Enter on the line (Recommended)", so 2.39 is an audit: no path may start a
+  process before Enter on the reviewed line.
+- **Paths audited:**
+  - In the plugin: the proposal goes onto the line with `print -z`, which runs nothing. Down runs
+    `ush explain`, which runs nothing either. Up, Esc and Ctrl-C only edit or leave the line, and
+    a new `// …` over the proposal is a new request. `preexec`, which records the run, only sees
+    lines the user accepted.
+  - In the `ush>` session: the proposal is pre-filled in `vared`; only an accepted line reaches
+    `run_explicit`.
+  - In propose mode ush offers the model only `propose_command`. Without the plugin, ush prints
+    the proposal.
+  - Ctrl-N runs the line by design (notes on its output) and is the user's key, like Enter.
+  - No path ran a proposal early.
+- **Tests:**
+  - `ZshProposeTest.test_a_proposal_runs_only_on_enter`: for a captured and an interactive
+    proposal of `touch mark`, Down, Up, Esc, Ctrl-C and `// …` over it leave no file, and `//`
+    hears that nothing ran; then Enter creates it.
+  - `SessionExplainTest.test_a_proposal_runs_only_on_enter`: in `ush>` against the mock API,
+    Down, Esc and `// never mind` leave no file, and the model hears "did not run the proposed
+    command"; then Enter runs it.
+  - `test_propose_mode_never_starts_a_process` (ushpy's agent): `execute.run_command`,
+    `run_script`, `run_session_command` and `subprocess.Popen` patched to fail. A proposal, a
+    request over it, and a continuation whose model calls `run_command` start nothing.
+  - Both pty tests run against ushgo through `test_zsh_plugin` in the conformance suite.
+- **Docs:** SEC's threat table has a row for consent; USER says so under Enter; GAPS Q18 answered
+  and resolved.
+- **Validation:** `./scripts/test.sh -p test_zsh_plugin.py -k runs_only_on_enter`: 2 tests OK;
+  `-p test_propose.py -k never_starts`: OK. The full suites run with the other items.
+
+### Deviations
+
+- **No code change:** the audit found nothing to fix.
+
+### Insights
+
+- The plugin's and the session's tests exercised Enter, but never the keys that must not run a
+  proposal. These tests now do.
+
+---
+
 ## 2026-11-11 08:32 — The interaction follow-ups of 2026-11-08 on main: TODO 2.35–2.39, 2.41
 
 TODO items: 2.35, 2.36, 2.37, 2.38, 2.39, 2.41 (new, open); GAPS Q18 (new). PR: not yet opened

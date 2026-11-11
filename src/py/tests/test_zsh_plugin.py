@@ -242,6 +242,31 @@ class ZshProposeTest(TempDirTest):
         ])
         self.assertEqual(self.records(out[1]), [None, None])
 
+    def test_a_proposal_runs_only_on_enter(self):
+        # TODO 2.39 (GAPS Q18): a proposal on the command line is not consent. Explaining it,
+        # closing the explanation, removing it, abandoning it, or asking something else over it
+        # starts nothing; only Enter on the line runs it, for captured and interactive ones.
+        mark = os.path.join(self.tmp, "mark")
+        for mode in ("capture", "interactive"):
+            with self.subTest(mode=mode):
+                out = self.session([
+                    (f"// {mode} touch mark\r", "PROMPT> touch mark"),
+                    ("\x1b[B", "EXPLAIN"),                       # Down explains it
+                    ("\x1b[A", ANY_OUTPUT),                      # Up closes the explanation
+                    ("\x1b", "proposal removed"),                # Esc removes it
+                    (f"// {mode} touch mark\r", "PROMPT> touch mark"),
+                    ("\x03", "PROMPT> "),                        # Ctrl-C abandons it
+                    (f"// {mode} touch mark\r", "PROMPT> touch mark"),
+                    ("\x15// capture echo other\r", "PROMPT> echo other"),  # asks over it
+                    ("\x15//\r", "PROMPT> "),                    # continues: nothing ran
+                ])
+                self.assertFalse(os.path.exists(mark), out)
+                self.assertEqual(self.records(out[-1]), [None, None])
+                out = self.session([(f"// {mode} touch mark\r", "PROMPT> touch mark"),
+                                    ("\r", "PROMPT> ")])
+                self.assertTrue(os.path.exists(mark), out)
+                os.remove(mark)
+
     def test_esc_removes_the_proposal(self):
         out = self.session([
             ("// capture echo one\r", "PROMPT> echo one"),
@@ -663,6 +688,59 @@ class SessionExplainTest(TempDirTest):
         explained = [r["body"]["messages"][-1]["content"] for r in api.requests[1:]]
         self.assertEqual(len(api.requests), 3, explained)
         self.assertIn("echo kept-one x", json.dumps(explained[-1]))
+
+    def test_a_proposal_runs_only_on_enter(self):
+        # TODO 2.39 (GAPS Q18): pre-filled at `ush>`, a proposal is not consent. Down, Esc and a
+        # new request over it start nothing; only Enter on the line runs it.
+        src = SRC
+        mark = os.path.join(self.tmp, "mark")
+        propose = {"type": "tool_use", "name": "propose_command",
+                   "input": {"command": "touch mark", "purpose": "make it", "effect": "change",
+                             "interactive": False}}
+        replies = [
+            ([{**propose, "id": "p1"}], "tool_use"),
+            ([{"type": "text", "text": "Parts:\n- `touch`: EXPLAINED-HERE."}], "end_turn"),
+            ([{"type": "text", "text": "ANSWERED-INSTEAD"}], "end_turn"),
+            ([{**propose, "id": "p2"}], "tool_use"),
+        ]
+        with MockAPI(replies) as api:
+            pid, fd = pty.fork()
+            if pid == 0:
+                os.environ.update({"PYTHONPATH": src, "HOME": self.tmp, "NO_COLOR": "1",
+                                   "TERM": "xterm-256color",
+                                   "XDG_CONFIG_HOME": os.path.join(self.tmp, "config"),
+                                   "XDG_STATE_HOME": os.path.join(self.tmp, "state"),
+                                   "ANTHROPIC_API_KEY": SYNTHETIC_KEY, "USH_BASE_URL": api.url})
+                os.environ.pop("USH_HANDOFF", None)
+                os.chdir(self.tmp)
+                argv = ush_argv()
+                os.execv(argv[0], argv)
+            try:
+                read = ZshPluginTest._read
+                read(fd, "ush> ", timeout=20)
+                before = []
+                for keys, until in [
+                    ("// make it\r", "touch mark"),
+                    ("\x1b[B", "EXPLAINED-HERE"),             # Down explains it
+                    ("\x1b", ANY_OUTPUT),                     # Esc closes the explanation
+                    ("\x15// never mind\r", "ANSWERED-INSTEAD"),  # a new request over it
+                    ("", "ush> "),
+                ]:
+                    if keys:
+                        os.write(fd, keys.encode())
+                    before.append(read(fd, until, timeout=20))
+                existed = os.path.exists(mark)
+                for keys, until in [("// make it again\r", "touch mark"), ("\r", "ush> "),
+                                    ("\x04", "")]:
+                    os.write(fd, keys.encode())
+                    read(fd, until, timeout=20)
+            finally:
+                os.close(fd)
+                os.waitpid(pid, 0)
+        self.assertFalse(existed, before)
+        self.assertTrue(os.path.exists(mark))
+        answered = json.dumps(api.requests[2]["body"]["messages"][-1]["content"])
+        self.assertIn("did not run the proposed command", answered)
 
 
 @unittest.skipUnless(ZSH, "zsh not installed")

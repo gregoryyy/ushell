@@ -75,7 +75,9 @@ A proposal shows the command, its purpose, and in yellow what deserves a second 
 changes something, that ush's policy can't verify it as read-only, or that the checker model
 objected. With the zsh plugin it then waits on your command line:
 - **Enter** runs it in your shell, as if you had typed it: `cd` and variables persist, and it lands
-  in your shell history. ush records the exit status and the output for the next `//`.
+  in your shell history. ush records the exit status and the output for the next `//`. Nothing of
+  the proposal runs before you press Enter on it (or Ctrl-N, below): explaining it, removing it,
+  or asking something else over it starts nothing.
 - **Edit** it first; ush sees the command that actually ran.
 - **Down** (the arrow key, past the last line of the proposal) explains it: what each part of
   the command does, and what it accesses: files and network, read and write, and whether

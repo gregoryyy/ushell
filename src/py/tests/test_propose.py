@@ -3,6 +3,7 @@
 import json
 import os
 import time
+from unittest import mock
 
 from helpers import SYNTHETIC_KEY, TempDirTest, fake_identity, text
 from test_agent import assert_every_tool_use_answered
@@ -21,6 +22,29 @@ def propose_use(command: str, effect: str = "read", interactive: bool = False,
 class ProposeAgentTest(TempDirTest):
     def make(self, turns):
         return self.make_agent(turns, propose=True)
+
+    def test_propose_mode_never_starts_a_process(self):
+        # TODO 2.39 (GAPS Q18): in propose mode the user runs every command, with Enter on their
+        # own command line; ush starts nothing, whatever the model sends or the user does next.
+        def refuse(*args, **kwargs):
+            raise AssertionError(f"ush started a process: {args}")
+        agent, provider, _, _ = self.make([
+            [propose_use("touch made", effect="change")],
+            [propose_use("rm -rf made", effect="change", ident="p2")],
+            [{"type": "tool_use", "id": "r1", "name": "run_command",
+              "input": {"command": "touch made", "purpose": "x", "effect": "change",
+                        "timeout_seconds": 5}}],
+            [text("done")],
+        ])
+        with mock.patch("ush.execute.run_command", refuse), \
+                mock.patch("ush.execute.run_script", refuse), \
+                mock.patch("ush.execute.run_session_command", refuse), \
+                mock.patch("subprocess.Popen", refuse):
+            self.assertEqual(agent.ask("make a file").outcome, "proposed")
+            self.assertEqual(agent.ask("something else instead").outcome, "proposed")
+            self.assertEqual(agent.ask("", None).outcome, "answered")  # run_command is refused
+        self.assertFalse(os.path.exists(os.path.join(self.tmp, "made")))
+        assert_every_tool_use_answered(self, provider.requests[-1])
 
     def test_a_proposal_is_shown_and_not_run(self):
         made = os.path.join(self.tmp, "made")
