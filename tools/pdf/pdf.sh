@@ -88,7 +88,7 @@ trap cleanup EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
-pandoc "$src" -o "$tmp/doc.html" --standalone --embed-resources --mathml \
+pandoc "$src" -o "$tmp/doc.html" --standalone --embed-resources --math-method=mathml \
     --resource-path "$dir" --css "$css" --metadata title-prefix="" \
     --metadata pagetitle="$base"
 

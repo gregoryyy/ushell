@@ -1,6 +1,6 @@
 /* pdf-style.css: print stylesheet for the markdown documents (README, docs/).
  *
- * Wired through the justfile: pandoc --standalone --embed-resources --mathml
+ * Wired through the justfile: pandoc --standalone --embed-resources --math-method=mathml
  * --css tools/pdf-style.css, rendered to PDF by headless Chrome.
  *
  * Type system: Charter/Georgia serif for body text, system sans for headings and
@@ -116,7 +116,7 @@ pre code {
   padding: 0;
 }
 
-/* ---- math: pandoc --mathml; display formulas centred, kept whole ---- */
+/* ---- math: pandoc --math-method=mathml; display formulas centred, kept whole ---- */
 
 math { font-family: "STIX Two Math", "Latin Modern Math", "Cambria Math", math; }
 

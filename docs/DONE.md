@@ -14,6 +14,33 @@ implementation kept its own log: [ushpy](archive/DONE-ushpy.md), [ushgo](archive
 
 ---
 
+## 2026-11-11 05:20 — `just pdfs` without the deprecation warning
+
+TODO items: 6.3 (new, done). PR: not yet opened (branch `fix/pdf-math-method`).
+
+Agent: Opus 5.5, reasoning: not exposed, subagents: none.
+
+### Implementation notes
+
+- pandoc 3.13 printed `[WARNING] Deprecated: --mathml. Use --math-method=mathml instead.` for
+  every document. [pdf.sh](../tools/pdf/pdf.sh) now passes `--math-method=mathml`; the comments
+  in `pdf-style.css` say the same.
+- **Validation:** `just pdf docs/ARCH.md` (PDF removed first): written, no warning.
+  `just pdfs`: all 20 PDFs rebuilt (the renderer changed), then two again after removing them:
+  written, exit 0, no warning in the output. `just links`: passed. With `--math-method=mathml`, pandoc writes inline and display
+  formulas as `<math>` (MathML) elements, as before.
+
+### Deviations
+
+- None. Because the renderer script changed, the next `just pdfs` rebuilds every PDF once.
+
+### Insights
+
+- pandoc names its replacement in the warning itself; the old flag still works, so older
+  checkouts keep building their PDFs.
+
+---
+
 ## 2026-11-11 05:07 — Version 0.2.3: release notes, version, man page
 
 TODO items: 5.12 (new; open until published). PR: not yet opened (branch `chore/ush-0.2.3`).
