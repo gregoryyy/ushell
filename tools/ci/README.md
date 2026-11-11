@@ -62,6 +62,9 @@ stays the one definition of CI; the local run reads it.
 
 ## The workflow for a PR
 
+GitHub Actions runs the workflow on every push and PR, and its checks decide; local CI is not
+repeated after every push (AGENTS.md). The steps below are for when Actions doesn't start jobs.
+
 1. **While working:** `just ci` on the last commit, or `just ci --job ush` for one job. Nothing is
    posted.
 2. **For the PR, one run per commit:** push, then `just ci --post`, then open the PR. When all jobs

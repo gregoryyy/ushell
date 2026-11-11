@@ -3,8 +3,8 @@
 Where ush goes, in both implementations. The phases build on each other, and each one ends with a
 gate: a tested result that decides whether the next phase starts. When a phase starts, its work
 becomes items in [TODO](TODO.md), and this file links to them. Open questions are in
-[GAPS](GAPS.md). Status: 2026-11-11; phases 1 and 3 are done, 0.2.4 is released (TODO 5.13), 0.3.0 is
-next (5.11). Phase 4 was widened on 2026-10-30: European and local platforms, sh and PowerShell.
+[GAPS](GAPS.md). Status: 2026-11-11; phases 1 and 3 are done, 0.3.0-rc1 is the release candidate (TODO 5.14), with
+OpenAI as a preview; the shells release is 0.4.0 (5.11). Phase 4 was widened on 2026-10-30: European and local platforms, sh and PowerShell.
 This file merges, on 2026-11-10, the repository roadmap (`docs/ROAD.md`) and ush's own
 (`ush/docs/ROAD.md`), when wish had moved to its own repository and ush's documents moved to `docs/`.
 
@@ -111,8 +111,8 @@ provider adapters, the shells in the plugins and the prompts. In the user's orde
   (GAPS Q16).
 - **History as context (2.26),** per shell, once the shells exist: filtered, off by default.
 
-**0.3.0** (TODO 5.11, user, 2026-10-30: "for the next version 0.3.0, expand to bash, sh and other
-commonly used shells") takes the first steps of both tracks: the shell interface with bash, fish
+**0.4.0**, until 2026-11-11 planned as 0.3.0 (TODO 5.11, requested 2026-10-30: bash, sh and other
+commonly used shells) takes the first steps of both tracks: the shell interface with bash, fish
 and POSIX sh, and the Chat Completions adapter with OpenAI, Mistral and any OpenAI-compatible URL.
 Because of the new adapter it also needs argument origin (2.23, GAPS Q17). PowerShell, the local
 server presets and the other platforms come after it.

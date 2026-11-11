@@ -14,6 +14,87 @@ implementation kept its own log: [ushpy](archive/DONE-ushpy.md), [ushgo](archive
 
 ---
 
+## 2026-11-11 22:52 — Version 0.3.0-rc1: release notes, version, man page
+
+TODO items: 5.14 (new; open until published), 5.11 (now 0.4.0); GAPS Q17 (answered for the rc).
+PR: #65 (branch `chore/ush-testing-scope`, with the test runs of 22:49).
+
+Agent: Opus 5.5, reasoning: not exposed, subagents: none.
+
+### Implementation notes
+
+- **The request** (2026-11-11): version 0.3.0, first as a release candidate, with OpenAI's
+  testing as its technical debt; reminded that GAPS Q17 holds the release back until 2.23, the
+  maintainer decided to release without repeating the test runs.
+- **Contents,** what ships since `v0.2.4` (`src/go`, `src/shell`, `src/man`: e31cd92, 029c15b,
+  f622921): OpenAI as a preview (2.29.6), the model list in `ush ai configure` and `ush ai models`
+  (2.47), one key per provider and `ush ai clear-key [PROVIDER]`, next steps only with an answer in
+  text (2.49).
+- **Version 0.3.0-rc1** in `pyproject.toml`, `ush/__init__.py`, the man page's header, USER,
+  README, ushgo's README, ROAD's status line and `formula.sh`'s usage line; the Go binary gets it
+  from the release build. 0.3.0 had been the shells release (5.11); that is 0.4.0 now, in TODO
+  and ROAD.
+- **Release notes:** [releases/0.3.0-rc1.md](releases/0.3.0-rc1.md): changed, fixed, install,
+  security, known limitations (OpenAI untested against OpenAI, 2.51; the banner, 2.50; F8 without
+  2.23).
+- **GAPS Q17,** answered for the rc: released before 2.23, with F8 documented, as for 0.2.0-rc1;
+  0.3.0 itself stays open.
+- **Checks, not repeated** (the user's instruction): the release checks on 87e1824 (DONE 20:02)
+  cover the shipped code but for 029c15b's fix (2.49) and the man page's wording (f622921); both
+  passed GitHub Actions (#63, #64: all jobs) and ushgo-conform locally. GitHub Actions on this PR
+  runs on its own. Document checks: `mandoc -T lint -W warning`, `just links`.
+
+### Deviations
+
+- **No fresh gate on the candidate:** AGENTS.md asks for fresh checks on the exact candidate
+  commit; the maintainer waived them for this release candidate. The
+  archives are built from the tag, and their checksums are checked after upload.
+
+## 2026-11-11 22:49 — Final tests: Actions for each PR, one final run of the shipped build per release
+
+TODO items: none (process). PR: #65 (branch `chore/ush-testing-scope`).
+
+Agent: Opus 5.5, reasoning: not exposed, subagents: none.
+
+### Implementation notes
+
+- **The request** (2026-11-11): avoid running the same tests again and again in PRs and releases,
+  after the question whether testing went beyond industry practice; releases test the Go build that Homebrew ships,
+  not ushpy, and paid providers get a few smoke-test calls, with most model tests on local
+  Ollama models.
+- **PRs** (AGENTS.md, SDLC, tools/ci/README.md): GitHub Actions' checks decide; locally only the
+  tests a change touches. Local CI (`just ci --post`, `just ci-linux`) is the fallback while
+  Actions doesn't start jobs, not a step after every push. Actions has run every job since
+  2026-11-11 17:40 (#62, #63, #64: 11 of 11).
+- **The workflow:** ushpy runs on Linux only, with Python 3.10 and 3.13 (2 jobs instead of 4);
+  its black-box tests still run on macOS against the Go binary in ushgo-conform.
+  `tools/ci/test_workflow.py` follows.
+- **Releases** (AGENTS.md, Before every release): test what the Homebrew formula ships, the Go
+  binary with its plugin and manual page, not ushpy:
+  - ushgo's suite and the conformance suite on macOS and Linux, where Actions' run on the
+    candidate counts;
+  - the release build twice, and the archive in a temporary prefix;
+  - the smoke test on the archive: offline, on a local Ollama model, and once per paid provider
+    (about 15 requests, low effort; OpenAI at most $1);
+  - the injection eval once, on a local Ollama model; no paid evals (SECTEST); a failed paid check
+    is looked into with the mock or a local model, not by repeating it (SMOKE).
+- **Validation:** `ruff check` and `ruff format --check` on `tools/ci`: clean; `pytest
+  test_workflow.py`: 21 passed; `just links`: OK. `main` has no branch protection, so no required
+  check names the removed macOS ushpy jobs.
+
+### Deviations
+
+- **GAPS Q17's proposal** asked for the injection eval on one model per new adapter; for a paid
+  adapter that is a paid eval, which the user's rule replaces with the smoke test.
+
+### Insights
+
+- **The cost was the process, not the tests:** about 1:1 test to code in ushpy and 0.3:1 in
+  ushgo is ordinary. What went beyond the norm: about 25 minutes of local CI per push, also after
+  Actions worked again and for documents; the Linux container on top; the Python matrix for an
+  implementation that doesn't ship; the injection eval three times plus a paid one; about 40
+  Anthropic requests in one release check.
+
 ## 2026-11-11 21:40 — OpenAI documented as a preview; supported later (2.51)
 
 TODO items: 2.51 (new, open); 2.29.6 (note). PR: #64 (branch `docs/ush-openai-future`).

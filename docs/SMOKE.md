@@ -16,8 +16,10 @@ both implementations of the command, Python ([src/py/](../src/py/README.md)) and
   `ANTHROPIC_API_KEY`, as in normal use.
 - **Work in a scratch directory.** Every request runs in a new empty directory; nothing outside it
   is meant to change, and changes need approval, which the automated part never gives.
-- **Free before paid.** Run the model checks on a local Ollama model first. The Anthropic run costs
-  money (about 15 requests) and needs `--paid`.
+- **Free before paid.** Run the model checks on a local Ollama model first. A paid run (Anthropic,
+  OpenAI) costs money, about 15 requests, and needs `--paid`: once per provider for a release, as
+  a smoke test only. A failed paid check is looked into with the mock or a local model, not by
+  repeating it (user, 2026-11-11).
 - **Record the result.** The script writes `smoke-report.md`; paste it into DONE with the version
   and machine.
 
