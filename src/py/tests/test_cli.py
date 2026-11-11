@@ -675,6 +675,24 @@ class CliTest(TempDirTest):
         self.assertIn("ush · qwen3:8b", self.ush("history").stdout + result.stderr)
 
     @unittest.skipUnless(HAVE_SDK, "anthropic SDK not installed")
+    def test_a_local_models_string_boolean_is_a_boolean(self):
+        """llama3.1:8b sends `"interactive": "true"`; it was refused 3 times (TODO 2.45)."""
+        handoff = os.path.join(self.tmp, "handoff")
+        os.mkdir(handoff, 0o700)
+        use = {"type": "tool_use", "id": "call_1", "name": "propose_command",
+               "input": {"command": "top", "purpose": "watch the processes", "effect": "read",
+                         "interactive": "true"}}
+        with MockAPI([([use], "tool_use")], tags=[{"name": "llama3.1:8b"}]) as api:
+            env = {"USH_PROVIDER": "ollama", "USH_MODEL": "llama3.1:8b",
+                   "USH_OLLAMA_URL": api.url, "USH_HANDOFF": handoff}
+            result = self.ush("-N", "//watch my processes", env=env)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotIn("refused", result.stderr)
+        self.assertEqual(len(api.requests), 1)
+        with open(os.path.join(handoff, "proposal")) as f:
+            self.assertEqual(f.read(), "interactive\ntop")
+
+    @unittest.skipUnless(HAVE_SDK, "anthropic SDK not installed")
     def test_a_tool_call_written_as_text_by_a_local_model_is_a_proposal(self):
         written = ('{"name": "ls", "parameters": {"command": "-d", "purpose": "the directory", '
                    '"effect": "read", "interactive": "false"}}')

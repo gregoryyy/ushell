@@ -279,7 +279,10 @@ can only add friction (always ask, or never run, even when approved) is safe and
   The Ollama adapter sends only model, limits, system prompt, tools, and messages. Small
   models write Llama's call format as text with the command as the name (`{"name": "ls",
   "parameters": {…}}`), which Ollama passes on as text; the adapter reads such a text as a
-  call, and holds text that may be one back from the screen until the turn ends (TODO 2.31). Its
+  call, and holds text that may be one back from the screen until the turn ends (TODO 2.31).
+  In those models' calls, written as text or not, exactly `"true"` and `"false"` in a boolean
+  field are booleans (TODO 2.45: llama3.1:8b sends `"interactive": "true"`, which the schema
+  check refused every time); Anthropic's calls stay strict. Its
   endpoint must be a loopback address, and its HTTP client ignores proxy variables and
   redirects, so "stays on this machine" is true by construction. Cloud models are
   detected through `remote_host` in `/api/tags` and disclosed. Settings select the

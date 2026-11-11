@@ -89,7 +89,23 @@ func TextToolCall(text string, tools []Block) (string, Block, bool) {
 		}
 		name = str(fits[0]["name"])
 	}
-	props, _ := byName[name]["input_schema"].(Block)["properties"].(Block)
+	return name, ToolBooleans(name, args, tools), true
+}
+
+// ToolBooleans: the input with "true" and "false" in a tool's boolean fields as booleans (TODO
+// 2.45): llama3.1:8b sends `"interactive": "true"` in its tool calls, which the schema check would
+// refuse every time. Only those two strings, exactly; anything else is left for the check.
+func ToolBooleans(name string, args Block, tools []Block) Block {
+	var props Block
+	for _, t := range tools {
+		if str(t["name"]) == name {
+			schema, _ := t["input_schema"].(Block)
+			props, _ = schema["properties"].(Block)
+		}
+	}
+	if props == nil {
+		return args
+	}
 	out := Block{}
 	for k, v := range args {
 		spec, _ := props[k].(Block)
@@ -99,7 +115,7 @@ func TextToolCall(text string, tools []Block) (string, Block, bool) {
 			out[k] = v
 		}
 	}
-	return name, out, true
+	return out
 }
 
 // fitsSchema: the input has every required key of the tool and no key the tool lacks.
