@@ -659,6 +659,14 @@ here.
   documents against `ush help` stay in ushpy as `test_help_docs`. Acceptance: history kept by
   `git mv`; the test counts unchanged in sum; CI runs the release tool's tests and the document
   tests; the moved release tool, run on the `v0.2.3` source, gives the published checksums.
+- [x] 6.5 Local CI on Linux (user, 2026-11-11: "do local ci", then "set up a docker container",
+  after every Ubuntu job on GitHub failed while apt-get could not resolve Ubuntu's mirrors, so
+  0.2.4's candidate had no Linux run): the workflow's `ubuntu-latest` entries in a container on
+  this machine, by the same `tools/ci/run.py`. Docker through Colima (MIT) and the Docker CLI
+  (Apache-2.0) from Homebrew; an Ubuntu 26.04 image pinned by digest, its downloads by version and
+  checksum; the commit cloned from GitHub. Acceptance: `just ci-linux` passes on main's head,
+  `--post` sets the Linux statuses, the README documents it, and 8da67d8 (0.2.4) gets the Linux
+  run its gate lacked. Done 2026-11-11 (DONE 16:52).
 
 ## Old IDs
 

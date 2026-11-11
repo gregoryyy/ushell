@@ -14,6 +14,47 @@ implementation kept its own log: [ushpy](archive/DONE-ushpy.md), [ushgo](archive
 
 ---
 
+## 2026-11-11 16:52 — Local CI on Linux in a container; 0.2.4 passes on Linux
+
+TODO items: 6.5 (new, done). PR: #61 (branch `docs/ush-0.2.4-released`, with the 0.2.4 record).
+
+Agent: Opus 5.5, reasoning: not exposed, subagents: none.
+
+### Implementation notes
+
+- **The request** (user): "do local ci", then "set up a docker container". GitHub's Ubuntu jobs
+  could not install zsh (the runners' DNS, DONE 15:57), so 0.2.4 had no Linux run.
+- **Docker:** Colima 0.10.3 (MIT), the Docker CLI 29.9.3 and buildx 0.38.2 (Apache-2.0) from
+  Homebrew; `colima start --vm-type vz --vz-rosetta --cpu 4 --memory 8 --disk 60`; buildx
+  registered in `~/.docker/config.json` (`cliPluginsExtraDirs`). Docker Desktop was not used: it
+  needs a licence for larger organisations and a GUI app.
+- **[tools/ci/linux/Dockerfile](../tools/ci/linux/Dockerfile):** Ubuntu 26.04 (`ubuntu-latest`
+  is "resolute" in the runner logs), pinned by the digest of its multi-platform index; zsh 5.9,
+  mandoc, git and `python3` from Ubuntu; Go 1.27.4, uv 0.13.5 (2026-10-22) and gh 2.103.3
+  (2026-10-26) by version and SHA-256; Python 3.10 and 3.13 from uv; user `runner`, no sudo.
+- **[tools/ci/linux.sh](../tools/ci/linux.sh), `just ci-linux`:** builds the image once per
+  Dockerfile version, clones the pushed commit from GitHub in the container, runs `run.py` there
+  with the `ubuntu-latest` jobs (`--job ushpy,ushgo,ushgo-conform`), copies the logs to
+  `.ci/linux-<date>-<commit>/`; `--post` passes `gh auth token` for that run; `--platform
+  linux/amd64` for GitHub's architecture. tools/ci/README.md documents it.
+- **Validation on 8da67d8 (0.2.4), `tools/ci/linux.sh 8da67d8`, linux/arm64:** ushpy (3.10):
+  pass in 4 min 44 s; ushpy (3.13): pass in 4 min 34 s; ushgo: pass in 30 s; ushgo-conform: pass
+  in 3 min 41 s. The macOS entries are listed as not run on Linux.
+
+### Deviations
+
+- **The first image failed 23 zsh-plugin tests** (ushpy 3.10: 21 failures, 2 errors, 257 tests in
+  14 min 38 s): those tests start zsh with `PATH=…:/usr/bin:/bin`, and their fake `ush` runs
+  `python3` from there; GitHub's runner image has a system `python3`, the image didn't. The image
+  now installs Ubuntu's `python3`; the two tests reproduced by hand passed, then the full run.
+- **A run was cut off** (exit 137) when the session restarted, with the macOS run of 4a3c7f6;
+  both ran again one after the other.
+
+### Insights
+
+- The plugin tests depend on a `python3` in `/usr/bin`, which the runner image happens to have;
+  a fake `ush` in POSIX sh would remove that dependency.
+
 ## 2026-11-11 15:57 — Release 0.2.4: the gate, the tag, the GitHub release and the tap
 
 TODO items: 5.13 (done). PR: #61 (branch `docs/ush-0.2.4-released`); the release PR was #60,
