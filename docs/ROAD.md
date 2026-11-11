@@ -12,7 +12,7 @@ This file merges, on 2026-11-10, the repository roadmap (`docs/ROAD.md`) and ush
 | --- | --- | --- | --- |
 | 0. Repository (done but CI) | One default branch, CI, licence | Below | All PRs on the default branch; CI runs; licence chosen |
 | 1. First release (done) | The local `//` shell, safe to hand to others | 1, 2.9–2.11 (done); 5.3, 5.5 | The release gate in [AGENTS.md](../AGENTS.md) and [SECTEST](SECTEST.md): no open High finding, the suite on macOS and Linux, model-in-the-loop results recorded; licence and distribution decided (GAPS Q1, Q2) |
-| 2. Daily use | Fewer approvals for harmless commands, enforced read-only in agent mode, long sessions | 2.6, 2.23, 2.4, 2.5, 2.24, 2.25 | A few weeks of daily use without a policy bypass; approvals per request measured and falling; F8's scenario at 0 in 20 |
+| 2. Daily use | Fewer approvals for harmless commands, enforced read-only in agent mode, long sessions | 2.6, 2.23, 2.4, 2.5, 2.24, 2.25, 2.35–2.41 | A few weeks of daily use without a policy bypass; approvals per request measured and falling; F8's scenario at 0 in 20 |
 | 3. Compiled port (done) | The same `ush` as a single static Go binary, the deliverable | 0, 4 (done); 5 | The Go binary passes ush's black-box tests and the smoke test; releases then ship it |
 | 4. Platforms, shells, context | More model platforms (OpenAI, Mistral, European, local servers); bash, sh, fish, PowerShell; requests that see recent history | 2.29, 2.23, 2.32, 2.27, 2.33, 2.28, 2.34, 2.26, 2.30 | No release of the new platforms before 2.23 (GAPS Q17); each platform's mock tests and one free live run, with the injection eval; the plugin's pty tests pass in each shell; history filtered as SEC requires |
 | 5. Shared paradigm with wish | One `//` contract and policy semantics for ush and wish | 2.7 | wish's shell integration exists (in the wish repository) |
@@ -66,6 +66,10 @@ Then, for everyone:
 - Extend the read-only command table from real sessions (2.4), each command with negative tests.
 - Explanations kept per command line (2.24); notes on output and files with Ctrl-N (2.25).
 - Compaction or context editing for long sessions (2.5).
+- Ask-back, reviewed multi-line scripts, a thinking/progress visibility toggle, research without
+  execution, and explicit confirmation for every proposed command (2.35–2.39).
+- Delete, Home and End in the line editor (2.40).
+- Contextual next-step actions and a "go on" shortcut for larger plans (2.41).
 - Whether the checker model is on by default (GAPS Q4).
 
 ## 3. Compiled port

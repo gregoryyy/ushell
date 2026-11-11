@@ -14,6 +14,49 @@ implementation kept its own log: [ushpy](archive/DONE-ushpy.md), [ushgo](archive
 
 ---
 
+## 2026-11-11 08:32 — The interaction follow-ups of 2026-11-08 on main: TODO 2.35–2.39, 2.41
+
+TODO items: 2.35, 2.36, 2.37, 2.38, 2.39, 2.41 (new, open); GAPS Q18 (new). PR: not yet opened
+(branch `docs/ush-2.35-followups`).
+
+Agent: Opus 5.5, reasoning: not exposed, subagents: none.
+
+### Implementation notes
+
+- **Found:** looking up the "[3~" report (TODO 2.40, #55), the agent found the item on the local
+  branch `docs/ush-interaction-followups`. Its one commit, f9dbb19 (2026-11-08, the user with
+  Copilot), adds 2.35–2.41 to TODO and ROAD. The branch was never pushed and has no PR, so none of
+  it reached main; later items started at 2.42. The user asked "was this a TODO already? if not
+  we've missed some of my earlier instructions", and on the agent's report: "go with these
+  additions".
+- **Brought over** onto the current documents (the branch is based on #41, before the move to
+  `docs/`), not merged:
+  - TODO 2.35–2.39 and 2.41, with the text exactly as on the branch, between 2.34 and 2.42. 2.40
+    comes with its fix in #55.
+  - ROAD phase 2: the items in the table, and the two lines of the branch, plus one for 2.40.
+- **Added:** GAPS Q18, blocking 2.39. The item says a pre-filled line is not consent, while Enter
+  on the reviewed line is the confirmation by design. Proposed: keep Enter as the confirmation,
+  and make 2.39 an audit with tests that nothing starts before it. Alternatives: a second prompt
+  for every proposal, or only for those that aren't read-only. Asked: whether a proposal ran
+  without Enter.
+- **Other branches** with TODO, GAPS or ROAD changes not on main (`wish-split`,
+  `docs/wish-site-workspace`, `chore/wish-moved`) hold wish documents, superseded by #43 and #45.
+  No other ush item was missing.
+- **Validation:** `just links`: passed.
+
+### Deviations
+
+- **The branch's status lines** (ROAD, TODO: 2026-11-08 10:52) are not taken; TODO and GAPS get
+  today's.
+
+### Insights
+
+- Planning written on a local branch doesn't reach the agent's start-of-task reading (TODO, GAPS
+  and ROAD on the current branch). Unpushed branches with document changes are worth a check when
+  a request sounds familiar.
+
+---
+
 ## 2026-11-11 06:17 — Flaky test: the key after Esc waits for zsh
 
 TODO items: 2.44 (new, done); test code only, run against both implementations. PR: not yet
