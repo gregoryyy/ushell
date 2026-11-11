@@ -293,12 +293,11 @@ models, local and small among them.
 - **Resolved:** TODO 2.29 (release condition) and [ROAD](ROAD.md) phase 4: the platforms can be
   built and merged, but no release ships them before TODO 2.23, and that release's gate runs the
   injection eval on one model per new adapter.
-- **Answer for 0.3.0-rc1** (2026-11-11, Gregor Heinrich), told that this condition holds the
-  release candidate back: "not ANOTHER test of the same!!! don't retest everything again. no
-  repeated tests, release!". 0.3.0-rc1 ships the OpenAI preview (2.29.6) before 2.23, with F8 in
-  its release notes, as the alternative above and as for 0.2.0-rc1; the per-adapter eval is
-  replaced by the smoke test (DONE 22:49), and OpenAI's is technical debt (2.51). 0.3.0 itself:
-  open.
+- **Answer for 0.3.0-rc1** (2026-11-11), when told that this condition holds the release
+  candidate back: release it without repeating the test runs. 0.3.0-rc1 ships the OpenAI
+  preview (2.29.6) before 2.23, with F8 in its release notes, as the alternative above and as
+  for 0.2.0-rc1; the per-adapter eval is replaced by the smoke test (DONE 22:49), and OpenAI's is
+  technical debt (2.51). 0.3.0 itself: open.
 
 ### Q18. What counts as confirming a proposal? — blocking for TODO 2.39
 

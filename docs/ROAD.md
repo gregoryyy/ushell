@@ -111,8 +111,8 @@ provider adapters, the shells in the plugins and the prompts. In the user's orde
   (GAPS Q16).
 - **History as context (2.26),** per shell, once the shells exist: filtered, off by default.
 
-**0.4.0**, until 2026-11-11 planned as 0.3.0 (TODO 5.11, user, 2026-10-30: "for the next version 0.3.0, expand to bash, sh and other
-commonly used shells") takes the first steps of both tracks: the shell interface with bash, fish
+**0.4.0**, until 2026-11-11 planned as 0.3.0 (TODO 5.11, requested 2026-10-30: bash, sh and other
+commonly used shells) takes the first steps of both tracks: the shell interface with bash, fish
 and POSIX sh, and the Chat Completions adapter with OpenAI, Mistral and any OpenAI-compatible URL.
 Because of the new adapter it also needs argument origin (2.23, GAPS Q17). PowerShell, the local
 server presets and the other platforms come after it.

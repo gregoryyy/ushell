@@ -40,8 +40,8 @@ jobs:
 
   # The Python ush suite with the oldest and newest supported Python (TODO 1.9, 2.3), on Linux only:
   # ushpy doesn't ship, and its black-box tests run on macOS too, against the Go binary, in
-  # ushgo-conform (user, 2026-11-11: "adjust testing for future prs and releases"). Locally only
-  # this machine's platform runs; on macOS, `just ushpy-test`.
+  # ushgo-conform (decided 2026-11-11). Locally only this machine's platform runs; on macOS,
+  # `just ushpy-test`.
   ushpy:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15

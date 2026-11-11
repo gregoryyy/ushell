@@ -17,16 +17,15 @@ implementation kept its own log: [ushpy](archive/DONE-ushpy.md), [ushgo](archive
 ## 2026-11-11 22:52 — Version 0.3.0-rc1: release notes, version, man page
 
 TODO items: 5.14 (new; open until published), 5.11 (now 0.4.0); GAPS Q17 (answered for the rc).
-PR: #65 (branch `chore/ush-testing-scope`, with the testing scope of 22:49).
+PR: #65 (branch `chore/ush-testing-scope`, with the test runs of 22:49).
 
 Agent: Opus 5.5, reasoning: not exposed, subagents: none.
 
 ### Implementation notes
 
-- **The request** (user, 2026-11-11): "then version bump can IMO be to 0.3.0", "for the 0.3.0-rc
-  we can keep testing it extensively as technical debt", then, on the reminder that GAPS Q17 holds
-  the release back until 2.23: "not ANOTHER test of the same!!! don't retest everything again. no
-  repeated tests, release!".
+- **The request** (2026-11-11): version 0.3.0, first as a release candidate, with OpenAI's
+  testing as its technical debt; reminded that GAPS Q17 holds the release back until 2.23, the
+  maintainer decided to release without repeating the test runs.
 - **Contents,** what ships since `v0.2.4` (`src/go`, `src/shell`, `src/man`: e31cd92, 029c15b,
   f622921): OpenAI as a preview (2.29.6), the model list in `ush ai configure` and `ush ai models`
   (2.47), one key per provider and `ush ai clear-key [PROVIDER]`, next steps only with an answer in
@@ -48,10 +47,10 @@ Agent: Opus 5.5, reasoning: not exposed, subagents: none.
 ### Deviations
 
 - **No fresh gate on the candidate:** AGENTS.md asks for fresh checks on the exact candidate
-  commit; the user waived them for this release candidate ("no repeated tests, release!"). The
+  commit; the maintainer waived them for this release candidate. The
   archives are built from the tag, and their checksums are checked after upload.
 
-## 2026-11-11 22:49 — Less testing: Actions for PRs, the Go deliverable for releases
+## 2026-11-11 22:49 — Final tests: Actions for each PR, one final run of the shipped build per release
 
 TODO items: none (process). PR: #65 (branch `chore/ush-testing-scope`).
 
@@ -59,11 +58,10 @@ Agent: Opus 5.5, reasoning: not exposed, subagents: none.
 
 ### Implementation notes
 
-- **The request** (user, 2026-11-11): "there is an excessive amount of tests now for a seemingly
-  simple tool. did you overdo it by industry standards?", then "adjust testing for future prs and
-  releases". Before: "why do we make extensive tests on the python run when it is the go version
-  being released", "focus on the go part that goes to homebrew", and paid providers for "a few
-  calls", "more of a smoke test", "most tests on local ollama models".
+- **The request** (2026-11-11): avoid running the same tests again and again in PRs and releases,
+  after the question whether testing went beyond industry practice; releases test the Go build that Homebrew ships,
+  not ushpy, and paid providers get a few smoke-test calls, with most model tests on local
+  Ollama models.
 - **PRs** (AGENTS.md, SDLC, tools/ci/README.md): GitHub Actions' checks decide; locally only the
   tests a change touches. Local CI (`just ci --post`, `just ci-linux`) is the fallback while
   Actions doesn't start jobs, not a step after every push. Actions has run every job since
