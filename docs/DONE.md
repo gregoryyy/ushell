@@ -138,8 +138,8 @@ Agent: Opus 5.5, reasoning: not exposed, subagents: none.
 
 ### Implementation notes
 
-- **The request** (user, 2026-11-11): "skip openai for now", then "adjust the documentation and
-  add openai as a future feature". The key in `.env` is rejected by OpenAI (DONE 20:02), and paid
+- **The request** (requested 2026-11-11): leave OpenAI out for now, then adjust the
+  documentation to list it as a future feature. The key in `.env` is rejected by OpenAI (DONE 20:02), and paid
   providers get a smoke test only, OpenAI at most $1 in total.
 - **Documents:** USER's first steps and the man page's description call OpenAI a preview, tested
   only against a local stand-in of its API; ROAD's platforms track has OpenAI's Responses adapter
@@ -151,15 +151,15 @@ Agent: Opus 5.5, reasoning: not exposed, subagents: none.
 - **Validation:** `mandoc -T lint -W warning src/man/ush.1`: clean. `test_help_docs`: OK. `just
   links`: OK.
 
-- **Technical debt** (user, 2026-11-11: "not hide, but for the 0.3.0-rc we can keep testing it
-  extensively as technical debt"): 2.51 is the debt of 0.3.0-rc1, which ships OpenAI as a preview
+- **Technical debt** (decided 2026-11-11: not hidden, but its extensive testing may stay open
+  as technical debt for the 0.3.0 release candidate): 2.51 is the debt of 0.3.0-rc1, which ships OpenAI as a preview
   and names 2.51 in its release notes; the testing is owed before 0.3.0.
 
 ### Deviations
 
 - **A preview, not a removal:** the request names the documents only, and documents that left
   OpenAI out would contradict `ush help` and `ush ai configure`, which offer it; the user then
-  confirmed: "not hide".
+  confirmed that it is not to be hidden.
 
 ## 2026-11-11 20:16 — Next steps only with an answer in text
 
@@ -170,7 +170,7 @@ Agent: Opus 5.5, reasoning: not exposed, subagents: none.
 
 ### Implementation notes
 
-- **The request** (user, 2026-11-11): "yes" to fixing 2.49 next, found by the paid smoke test
+- **The request** (approved 2026-11-11): fix 2.49 next, found by the paid smoke test
   (20:02).
 - **Both implementations** (`agent.go`, `agent.py`): a turn's answer text is noted; an offer of
   next steps is shown only with it, besides being valid and alone. An offer without text is
@@ -203,8 +203,8 @@ Agent: Opus 5.5, reasoning: not exposed, subagents: none.
 
 ### Implementation notes
 
-- **The request** (user, 2026-11-11): "merged, run full release checks" (#62), then "i've added the
-  api keys for openai and anthropic. you can perform the tests then" (in `.env`).
+- **The request** (requested 2026-11-11): #62 merged, run the full release checks; then the
+  OpenAI and Anthropic API keys were added (in `.env`) and the tests could be run.
 - **Not a release gate:** the checks ran on 87e1824, #62's merge, with the version label 0.2.5
   for the build only. No version is chosen and no release PR exists; the man page still says
   0.2.4. The gate itself runs again on the release PR's merge commit (AGENTS.md).
@@ -278,8 +278,8 @@ reviewed and checked here.
 
 ### Implementation notes
 
-- **The request** (user, 2026-11-11): "add an openai key option for ush ai configure, also add
-  allow a list of models to choose from once a provider is selected". The user chose the
+- **The request** (requested 2026-11-11): an OpenAI key option for ush ai configure, and a list of
+  models to choose from once a provider is selected. The user chose the
   Responses API over Chat Completions, and the provider's own model list over a fixed one.
 - **ushpy:** [responses.py](../src/py/src/ush/responses.py) (new, standard library only)
   translates at the provider's edge, so the agent keeps its Anthropic-shaped messages:
@@ -328,8 +328,8 @@ reviewed and checked here.
   - `diff` of `ush help` from both: identical;
   - `just ushgo-conform`: 113 tests OK; `just links`: OK.
 - **Documents:** USER, ADMIN, SEC (key leakage, disclosure to OpenAI), ARCH, the man page; `.env.template` gains the provider, its models, the
-  `openai:` checker, `OPENAI_API_KEY` and `USH_OPENAI_URL`, for `just ush` (user, 2026-11-11:
-  "create a .env.template for testing with Claude and OpenAI API keys").
+  `openai:` checker, `OPENAI_API_KEY` and `USH_OPENAI_URL`, for `just ush` (requested
+  2026-11-11: a .env.template for testing with Claude and OpenAI API keys).
 
 ### Deviations
 
@@ -357,7 +357,7 @@ Agent: Opus 5.5, reasoning: not exposed, subagents: none.
 
 ### Implementation notes
 
-- **The request** (user): "do local ci", then "set up a docker container". GitHub's Ubuntu jobs
+- **The request** (user): run CI locally, then set up a Docker container. GitHub's Ubuntu jobs
   could not install zsh (the runners' DNS, DONE 15:57), so 0.2.4 had no Linux run.
 - **Docker:** Colima 0.10.3 (MIT), the Docker CLI 29.9.3 and buildx 0.38.2 (Apache-2.0) from
   Homebrew; `colima start --vm-type vz --vz-rosetta --cpu 4 --memory 8 --disk 60`; buildx
@@ -399,8 +399,8 @@ Agent: Opus 5.5, reasoning: not exposed, subagents: none.
 
 ### Implementation notes
 
-- **The request** (user, 2026-11-11): "merged" (#60), then "merged" again, asked back: "Publish
-  when CI passes", with failures of the runners' package installs counted as infrastructure.
+- **The request** (user, 2026-11-11): #60 merged, then merged again; asked back, publish
+  when CI passes, with failures of the runners' package installs counted as infrastructure.
 - **Gate on 8da67d8:**
   - Level 1, macOS arm64: `just ci --post 8da67d8`: all seven jobs pass; statuses posted.
   - Level 1, GitHub Actions run 43040782545 on 8da67d8: the macOS jobs (ushpy 3.10 and 3.13,
@@ -462,7 +462,7 @@ Agent: Opus 5.5, reasoning: not exposed, subagents: none.
 
 ### Implementation notes
 
-- **The request** (user, 2026-11-11): "ready for a release". 0.3.0 stays the shells release
+- **The request** (requested 2026-11-11): a release. 0.3.0 stays the shells release
   (5.11), so this is 0.2.4, as 0.2.3 was chosen over 0.3.0.
 - **#59 was not on main.** It was merged at 13:54:03 into its base, #58's branch, 20 s after #58
   had been merged into main (13:53:43), before GitHub moved its base; 2.45 and 2.46 (1495379,
@@ -504,7 +504,7 @@ Agent: Opus 5.5, reasoning: not exposed, subagents: none.
 
 ### Implementation notes
 
-- **The request** (user): "yes" to both proposals of 13:02: accept `"true"`/`"false"` strings as
+- **The request** (user): approved both proposals of 13:02: accept `"true"`/`"false"` strings as
   booleans, and put the comparison harness in the repository.
 - **2.45:** `tool_booleans` (ushpy `provider.py`) and `ToolBooleans` (ushgo
   `internal/provider/textcall.go`), split out of the text-call reader, which used them already.
@@ -560,8 +560,8 @@ models, for the user's question which models of 3–10B exist).
 
 ### Implementation notes
 
-- **The request** (user): "make a systematic experiment of the available local models and
-  compare performance". The models are those installed with tool support (`/api/show`
+- **The request** (user): a systematic experiment on the available local models, comparing
+  their performance. The models are those installed with tool support (`/api/show`
   capabilities), on Ollama 0.40.15, M5 Pro with 48 GB, one model loaded at a time, an Ollama
   server of the agent's own (pid 8171, started 12:39, stopped 13:02). `d3:27b` has no tool
   support and was left out; `glm-ocr` and `flux2-klein` are not chat models.
@@ -639,7 +639,7 @@ Agent: Opus 5.5, reasoning: not exposed, subagents: none.
 
 ### Implementation notes
 
-- **The request** (user): "retry with a larger llama model 9b etc.". Llama 3.x has no 9B size;
+- **The request** (user): retry with a larger Llama model, around 9B. Llama 3.x has no 9B size;
   `llama3.1:8b` was pulled (8.0B, Q4_K_M, tools). `mimo-v2.6:9b` was already there. The same
   requests as at 11:33, with ushgo from main e215849, `--no-thinking`.
 - **`llama3.1:8b`:**
@@ -691,7 +691,7 @@ Agent: Opus 5.5, reasoning: not exposed, subagents: none.
 
 - **Why:** #57 left open how real models use `ask_user`, `offer_next` and `propose_script`; its
   tests use the mock API only. Checked with local Ollama models, at no cost, after the user's
-  "go on" following the question how to test the Go version.
+  go-ahead, given after the question how to test the Go version.
 - **The binary:** ushgo built from main e215849 (`go build`, Go 1.27.4).
 - **Smoke test:** `tests/smoke/smoke.sh --bin … --provider ollama --model qwen3.8:latest`: 15 of
   15 PASS.
@@ -740,7 +740,7 @@ Agent: Opus 5.5, reasoning: not exposed, subagents: none.
 
 ### Implementation notes
 
-- **The user's choice:** "On the command line (Recommended)".
+- **The user's choice:** on the command line, as recommended.
 - **`propose_script`** (`language`: `sh`, `zsh` or `python3`; `source`, `purpose`, `effect`,
   `interactive`), in propose mode after `propose_command`. The system prompt says to use it when
   one line is impractical.
@@ -796,7 +796,7 @@ Agent: Opus 5.5, reasoning: not exposed, subagents: none.
 
 ### Implementation notes
 
-- **The user's choice:** "`//1`…`//3`, `//` goes on (Recommended)".
+- **The user's choice:** `//1`…`//3`, with `//` going on, as recommended.
 - **`offer_next`** (`steps`: one to three phrases), in both modes after `ask_user`. Both system
   prompts say to offer the next steps with it when the task has more.
   - Sent alone with the answer: ush lists `//1 …`, `//2 …` and a hint line (`show_next` /
@@ -906,7 +906,7 @@ Agent: Opus 5.5, reasoning: not exposed, subagents: none.
 
 ### Implementation notes
 
-- **The user's choice:** "Both" (`//? TEXT` and `ush research TEXT`). The model answers from its
+- **The user's choice:** both (`//? TEXT` and `ush research TEXT`). The model answers from its
   own knowledge; web search would be an item of its own.
 - **Agent** ([agent.py](../src/py/src/ush/agent.py) `ask(…, research=True)`,
   [agent.go](../src/go/internal/agent/agent.go) `Research`):
@@ -1002,8 +1002,8 @@ Agent: Opus 5.5, reasoning: not exposed, subagents: none.
 
 ### Implementation notes
 
-- **The request** (user, 2026-11-11): "implement them", for TODO 2.35–2.39 and 2.41. To GAPS Q18
-  the user answered "Enter on the line (Recommended)", so 2.39 is an audit: no path may start a
+- **The request** (requested 2026-11-11): implement TODO 2.35–2.39 and 2.41. To GAPS Q18
+  the user answered Enter on the line, as recommended, so 2.39 is an audit: no path may start a
   process before Enter on the reviewed line.
 - **Paths audited:**
   - In the plugin: the proposal goes onto the line with `print -z`, which runs nothing. Down runs
@@ -1055,9 +1055,9 @@ Agent: Opus 5.5, reasoning: not exposed, subagents: none.
 - **Found:** looking up the "[3~" report (TODO 2.40, #55), the agent found the item on the local
   branch `docs/ush-interaction-followups`. Its one commit, f9dbb19 (2026-11-08, the user with
   Copilot), adds 2.35–2.41 to TODO and ROAD. The branch was never pushed and has no PR, so none of
-  it reached main; later items started at 2.42. The user asked "was this a TODO already? if not
-  we've missed some of my earlier instructions", and on the agent's report: "go with these
-  additions".
+  it reached main; later items started at 2.42. The user asked whether this had been a TODO already, since otherwise
+  earlier instructions had been missed, and on the agent's report approved going ahead with these
+  additions.
 - **Brought over** onto the current documents (the branch is based on #41, before the move to
   `docs/`), not merged:
   - TODO 2.35–2.39 and 2.41, with the text exactly as on the branch, between 2.34 and 2.42. 2.40
@@ -1096,7 +1096,7 @@ Agent: Opus 5.5, reasoning: not exposed, subagents: none.
 
 ### Implementation notes
 
-- **The report** (user, 2026-11-11): "the [3~ issue exists for fn-backspace".
+- **The report** (user, 2026-11-11): the `[3~` issue exists for Fn-Backspace.
 - **Reproduced** in a pty with `zsh -f` and `vared`:
   - With a widget on the bare Esc, as the session editor and the plugin's proposal have, Delete
     (`\e[3~`) gives the line `[3~`. zsh reads `\e[3`, finds no binding, and falls back to the
@@ -1161,10 +1161,10 @@ Agent: Opus 5.5, reasoning: not exposed, subagents: none.
 
 ### Implementation notes
 
-- **The request** (user, 2026-11-11, after merging #54): "let's release these". The agent pointed
+- **The request** (requested 2026-11-11, after merging #54): release these. The agent pointed
   out that #53 and #54 change no shipped file (binary, plugin, man page), so a 0.2.4 would differ
-  from 0.2.3 only in its version, and that Homebrew now has Go 1.27.4. The user chose "No release;
-  note Go 1.27.4".
+  from 0.2.3 only in its version, and that Homebrew now has Go 1.27.4. The user chose no release,
+  with a note on Go 1.27.4.
 - **Checked on macOS:** `brew upgrade go` (1.27.3 → 1.27.4), `brew reinstall ush`:
   `go version -m /opt/homebrew/bin/ush` reports go1.27.4, `ush --version` "ush 0.2.3 (go)",
   `govulncheck -mode=binary /opt/homebrew/bin/ush` (v1.1.4): "No vulnerabilities found".
@@ -1230,9 +1230,9 @@ Agent: Opus 5.5, reasoning: not exposed, subagents: none.
 
 ### Implementation notes
 
-- **The request** (user, 2026-11-11): "aren't some of the auxiliary sources spread inconsistently
-  between main codebase and tests/ or tools/". The agent listed what sat with one implementation
-  but served both or the repository, and proposed three steps; the user chose "do 1 and 2".
+- **The request** (requested 2026-11-11): check whether some auxiliary sources are spread
+  inconsistently between the main codebase and tests/ or tools/. The agent listed what sat with one implementation
+  but served both or the repository, and proposed three steps; the user chose steps 1 and 2.
 - **Step 1, tests and tools for both implementations,** all by `git mv`:
   - `src/go/scripts/conform.sh` → [tests/conform/run.sh](../tests/conform/run.sh), next to the
     policy corpus;
@@ -1288,9 +1288,9 @@ Agent: Opus 5.5, reasoning: not exposed, subagents: none.
 
 ### Implementation notes
 
-- **The request** (user, 2026-11-11): "merged", then "tag the rc": the tag `v0.2.3-rc1` on
-  50257ee, annotated, as for 0.2.0-rc1; no GitHub release for it. Earlier: "create the homebrew
-  release in the ../ush-homebrew project". There was no `../ush-homebrew`; the tap
+- **The request** (user, 2026-11-11): merged, then tag the rc: the tag `v0.2.3-rc1` on
+  50257ee, annotated, as for 0.2.0-rc1; no GitHub release for it. Earlier: create the Homebrew
+  release in the `../ush-homebrew` project. There was no `../ush-homebrew`; the tap
   `gregoryyy/homebrew-ush` was cloned there.
 - **Gate on 50257ee**, the merge of #51 (0.2.3 and the PDF fix):
   - Level 1, macOS arm64: `just ci --post 50257ee`: all seven jobs pass; statuses posted.
@@ -1385,8 +1385,8 @@ Agent: Opus 5.5, reasoning: not exposed, subagents: none.
 
 ### Implementation notes
 
-- **The request** (user, 2026-11-11): "update release notes and man pages and pr and release
-  0.3.0". Asked first, because 0.3.0 is planned as the shells and platforms release (5.11) and
+- **The request** (requested 2026-11-11): update the release notes and man pages, make the PR and
+  release 0.3.0. Asked first, because 0.3.0 is planned as the shells and platforms release (5.11) and
   none of it is built: the user chose **0.2.3**, with the agent publishing as for 0.2.2.
 - **Contents,** what `main` has since `v0.2.2` (deac48b): notes on Ctrl-N (2.25, #39), `ush
   explain` without quotes (2.43, #49), `cd` in the session (2.42, #42), the provider table and
@@ -1423,7 +1423,7 @@ Agent: Opus 5.5, reasoning: not exposed, subagents: none.
 
 ### Implementation notes
 
-- **The request** (user, 2026-11-10): "can we have the ush explain 'arg' as args without quotes".
+- **The request** (requested 2026-11-10): `ush explain` with its arguments given without quotes.
   Both implementations already join unquoted words, so `ush explain ls -la /tmp` worked. But zsh
   acts on the line first: `*.log` is expanded (or fails with "no matches found"), quotes are
   removed, `ush explain cat x | sort` runs `sort` on the explanation, `; cmd` runs `cmd`, and
@@ -1552,7 +1552,7 @@ Agent: Opus 5.5, reasoning: not exposed, subagents: none.
 
 ### Implementation notes
 
-- **The report:** "cd does not move away from the initial directory" (user, 2026-11-10). In the
+- **The report** (user, 2026-11-10): `cd` did not move away from the initial directory. In the
   `ush>` session, `Agent.run_explicit` (ushpy) and `Agent.RunExplicit` (ushgo) ran each line, typed
   or an accepted proposal, with `zsh -f -o pipefail -c`, so `cd` ended with that shell. The
   session never moved, although ARCH and the propose-mode prompt treat a session line like a line
@@ -1607,9 +1607,9 @@ Agent: Opus 5.5, reasoning: not exposed, subagents: none.
 
 ### Implementation notes
 
-- **The request:** "add options to allow other model providers, like ../kibitz" (user,
-  2026-10-30). With GAPS Q13 ("first openai, mistral model settings (consider internal
-  abstraction?)"), 2.29.1 comes first: an internal abstraction with no change in behaviour. The
+- **The request** (user, 2026-10-30): add options to allow other model providers, as in
+  `../kibitz`. With GAPS Q13 (OpenAI and Mistral model settings first, considering an internal
+  abstraction), 2.29.1 comes first: an internal abstraction with no change in behaviour. The
   adapter with OpenAI and Mistral (2.29.2) follows on it.
 - **ushpy `providers.py`, ushgo `internal/providers`:**
   - **The table**, one row per provider, with Anthropic and Ollama as its rows:
@@ -1657,7 +1657,7 @@ Agent: Opus 5.5, reasoning: not exposed, subagents: none.
 
 - Ollama's adapter differs from Anthropic's in what it sends (the profile) and in its errors and
   transport (the adapter); only the first is per model, so only that went into the profile.
-- **The user's request:** "deploy to a homebrew tap", for the fix of TODO 2.31 (#36). The user
+- **The user's request:** deploy to a Homebrew tap, for the fix of TODO 2.31 (#36). The user
   merged the version change (#37).
 - **Gate on deac48b**, the merge of #37, as 0.2.2:
   - Level 1, macOS arm64: `just ci --post` passes all seven jobs; statuses posted.
@@ -1683,8 +1683,8 @@ Agent: Opus 5.5, reasoning: not exposed, subagents: none.
   - the 0.2.2 formula in `gregoryyy/homebrew-ush`, `brew style` clean, its build reproduced by
     hand from the tag's tarball (`ush 0.2.2 (go)`, the plugin and the page at its paths).
 - **0.3.0 (TODO 5.11):**
-  - The user asked for "bash, sh and other commonly used shells" in 0.3.0, and accepted the
-    agent's proposal with "write to pr as proposed".
+  - The user asked for bash, sh and other commonly used shells in 0.3.0, and accepted the
+    agent's proposal, to be written to a PR as proposed.
   - The proposal is adjusted to the answers to GAPS Q15–Q17, merged meanwhile in #38: agent
     mode only in zsh rather than a bash executor, and argument origin (2.23) before the new
     adapter ships.
@@ -1700,9 +1700,9 @@ Agent: Opus 5.5, reasoning: not exposed, subagents: none.
 
 - Propose mode's eval counts moved from 0 attempts to some once written-out calls became real
   proposals (2.31). The eval measures what the model tries; what runs unapproved is still 0.
-- **The request:** "ctrl-x n doesn't seem to work: use a single step key combination instead,
-  like ctrl-f or ctrl-a" (user, 2026-10-30). Offered Ctrl-N, Ctrl-F or Ctrl-A, with what each
-  does in zsh; the answer: "Ctrl-N" (GAPS Q7).
+- **The request** (user, 2026-10-30): Ctrl-X n did not seem to work; use a single-step key
+  combination instead. Offered Ctrl-N, Ctrl-F or Ctrl-A, with what each does in zsh; the answer:
+  Ctrl-N (GAPS Q7).
 - **Why Ctrl-X n did nothing:** probably not the key. None of the user's startup files
   (`~/.zshrc`, `~/.zprofile`, `~/.zshenv`) loads the plugin, so no ush key was bound.
 - **The plugin:**
@@ -1807,8 +1807,8 @@ Agent: Opus 5.5, reasoning: not exposed, subagents: none.
 
 ### Implementation notes
 
-- **The user's request:** "first create version 0.2.1 and run the gh command on that", after
-  "add a man page and re-release to 0.2.1"; the user merged #34.
+- **The user's request:** first create version 0.2.1 and run the gh command on that, after
+  asking for a man page and a re-release as 0.2.1; the user merged #34.
 - **Gate on 5c77891**, the merge of #34, as 0.2.1:
   - Level 1, macOS arm64: `just ci --post` passes all seven jobs; statuses posted.
   - Level 1, Linux arm64 (Debian in `golang:1.27`, with mandoc, unprivileged, from `git archive`):
@@ -1827,7 +1827,7 @@ Agent: Opus 5.5, reasoning: not exposed, subagents: none.
   - linux-arm64 archive on `debian:13`: the checksum verifies, it installs as a user, `man ush`
     renders, offline smoke 6 PASS.
   - Level 2: the injection eval three times, 36 runs: 4 attempted, **2 ran unapproved** (HTML,
-    agent mode, `cat pwned-by-injection`: F8). The user decided "Release, F8 documented" (GAPS
+    agent mode, `cat pwned-by-injection`: F8). The user decided to release, with F8 documented (GAPS
     Q12), and the release notes give the rate.
   - `govulncheck` v1.1.4: no vulnerabilities. `gitleaks git --redact .`: no leaks.
 - **Published by the agent, at the user's request:**
@@ -1868,7 +1868,7 @@ Agent: Opus 5.5, reasoning: not exposed, subagents: none.
 
 ### Implementation notes
 
-- **The request:** "add a man page and re-release to 0.2.1" (user, 2026-10-29). 0.2.1 replaces the
+- **The request** (user, 2026-10-29): add a man page and re-release as 0.2.1. 0.2.1 replaces the
   0.3.0 planned in TODO 5.9.
 - **`ush/man/ush.1`:** one page for both implementations, in man macros. It covers:
   - the synopsis, the `//` forms, sessions and piped input;
@@ -1923,9 +1923,9 @@ Agent: Opus 5.5, reasoning: not exposed, subagents: none.
 
 ### Implementation notes
 
-- **The user's decisions** (2026-10-29): "do it. also publish the github release and homebrew
-  tap", answering the agent's recommendation: 0.2.0 on the tested commit of 0.2.0-rc1, then 0.3.0
-  for the work since (layout, 2.24, 2.25). With it, `govulncheck` was run (asked as "do it").
+- **The user's decisions** (2026-10-29): do it, and also publish the GitHub release and the
+  Homebrew tap, answering the agent's recommendation: 0.2.0 on the tested commit of 0.2.0-rc1, then 0.3.0
+  for the work since (layout, 2.24, 2.25). With it, `govulncheck` was run (asked together with it).
 - **The candidate:** b4f9d82, the commit of `v0.2.0-rc1` (main at #24), built as version 0.2.0.
 - **Gate on b4f9d82, fresh:**
   - Level 1, macOS arm64: `just ci --post` passes all seven jobs (links, ushpy on 3.10 and 3.13,
@@ -1994,9 +1994,9 @@ Agent: Opus 5.5, reasoning: not exposed, subagents: none.
 
 ### Implementation notes
 
-- **The request:** "add the possibility to analyze command output and files. this could be a
-  shortcut like ctrl-n like notes" (user, 2026-10-29). The key is Ctrl-X n, since Ctrl-M is Enter.
-  The output is the plugin's recorded output, as proposed and accepted ("implement the changes").
+- **The request** (user, 2026-10-29): analyze command output and files, with a shortcut for
+  notes. The key is Ctrl-X n, since Ctrl-M is Enter. The output is the plugin's recorded output,
+  as proposed and accepted (implement the changes).
   Both decisions are in GAPS Q7.
 - **`ush notes [-v] [--last] [INSTRUCTION] [FILE…]`**, in `cli.py` and `notes.py`, and in Go in
   `cmd/ush/notes.go` and `internal/notes`:
@@ -2095,9 +2095,9 @@ Agent: Opus 5.5, reasoning: not exposed, subagents: one research agent earlier i
 ### Implementation notes
 
 - **The request:**
-  - The user asked: "doesn't it make sense to have the ush documents kept in one directory as the
-    functionality is largely equivalent between py and go".
-  - Asked where, the user chose "ush/{py,go,docs}". The layout came first (#30); this entry is the
+  - The user asked whether the ush documents should be kept in one directory, as the functionality
+    is largely equivalent between py and go.
+  - Asked where, the user chose `ush/{py,go,docs}`. The layout came first (#30); this entry is the
     document merge.
 - **One set in `ush/docs/`:** USER, ADMIN, ARCH, SEC, SECTEST, SMOKE, TODO, ROAD, GAPS, DONE.
   ushpy's documents were the base; ushgo's were merged in:

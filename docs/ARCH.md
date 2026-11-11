@@ -84,8 +84,8 @@ under preserved thinking.
 
 ## Propose mode
 
-The default since 2026-10-28 (TODO 2.17). The user's request: "the idea of the ushell is to
-propose specific shell commands and prewrite them to be executed by the user"; their choices are in
+The default since 2026-10-28 (TODO 2.17). The user's request: ush is meant to
+propose specific shell commands and prewrite them for the user to execute; their choices are in
 [GAPS](GAPS.md) Q6.
 
 1. `// REQUEST` runs `ush` as in agent mode, but the model has `propose_command` (`command`,
@@ -306,9 +306,9 @@ can only add friction (always ask, or never run, even when approved) is safe and
   the key, Ollama's `/api/tags`) and offer chat models only, newest first; ush's own short list
   when the provider can't be asked (no key yet, offline). Names that don't match the provider's
   model pattern are dropped, so a gateway can't put escape sequences on the terminal.
-- **An independent checker model** (TODO 2.13, 2026-10-27). The user asked for "an
-  adversarial model to check the proposed implementation that takes independent sources; it can be
-  a small model" (interpretation in [GAPS](GAPS.md) A5). A second model judges each proposed command
+- **An independent checker model** (TODO 2.13, 2026-10-27). The user asked for an
+  adversarial model, possibly a small one, to check the proposed implementation from independent
+  sources (interpretation in [GAPS](GAPS.md) A5). A second model judges each proposed command
   or script against the user's requests only: it never sees command output, piped input, files, or
   the main model's reasoning, which is where injected instructions live. Its prompt marks the
   requests and the proposal with a random tag, so a proposal can't close them, and gives five

@@ -59,9 +59,9 @@ repository.
   question (`Q1`), marked **blocking** if it stops a milestone, with a proposed answer where there is
   one. Add an assumption (`A1`) when the documents rely on something unconfirmed. Never act on a
   blocking question's proposed answer without the user's reply.
-  - Answers carry date, time and author: `**Answer** (2026-10-27 14:52, Gregor Heinrich): …`.
+  - Answers carry date and time: `**Answer** (2026-10-27 14:52): …`.
   - If an answer changes, the new one goes on top; the earlier ones stay below it, struck through,
-    each with its own date, time and author.
+    each with its own date and time.
   - Once answered, the decision moves into the affected document, and the entry gets a line
     `**Resolved** (date time, by whom): where the decision went`. Resolved entries stay.
 

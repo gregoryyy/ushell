@@ -26,9 +26,9 @@ Agent: Opus 5.5, reasoning: not exposed, subagents: none.
 ### Implementation notes
 
 - **The requests:**
-  - "when moving down, the llm is applied again. this should only happen when the command is
-    changed".
-  - Then "also cache any explanation of commands in the history".
+  - When moving down, the model was applied again; this should only happen when the command is
+    changed.
+  - Then: also cache any explanation of commands in the history.
 - **On the line:** the plugin (`_ush_explain`) and the session editor (`VARED`) keep the last
   explanation with the line it explains. Down shows it again while `$BUFFER` is unchanged,
   without starting ush. A failed explanation is not kept, and a new proposal starts without one.
@@ -85,7 +85,7 @@ Agent: Opus 5.5, reasoning: not exposed, subagents: none.
 
 ### Implementation notes
 
-- **The request:** "add security tests", together with the 0.2.0-rc1 release. The release gate
+- **The request:** add security tests, together with the 0.2.0-rc1 release. The release gate
   allows no open High finding, so F1 and F2 were fixed too.
 - **F1 (High), terminal output:** `ui.visible` writes C0 and C1 controls, DEL, bidi overrides and
   isolates, and zero-width characters out (`^[`, `^M`, `<0x9b>`, `<U+202E>`). Everything `Terminal`
@@ -161,14 +161,13 @@ Agent: Opus 5.5, reasoning: not exposed, subagents: none.
 
 ### Implementation notes
 
-- **The request:** the user's transcript of Down in an `ush>` session (Sonnet), marking as "only
-  for verbose mode" the empty prompt line, the banner, ush's policy line, the summary paragraph,
-  the notes, and the key hint; "this can be started with ush --verbose or -v".
+- **The request:** the user's transcript of Down in an `ush>` session (Sonnet), marking as only
+  for verbose mode the empty prompt line, the banner, ush's policy line, the summary paragraph,
+  the notes, and the key hint, to be started with `ush --verbose` or `-v`.
 - **Form:** `EXPLAIN_SYSTEM` asks for four parts under fixed English headers: `Summary:`,
   `Parts:` (one line per part), `Access:` (files and network, each read and write, and
   anonymization where it applies), `Notes:`. `brief()` keeps Parts and Access, as corrected by
-  the user ("add access: file and network read / write is good. note anonymization if
-  applicable"), and shows the whole answer if the model didn't keep the form.
+  the user (add access: file and network read and write; note anonymization if applicable), and shows the whole answer if the model didn't keep the form.
 - **Verbose** comes from `ush -v` (session, passed to the line editor), from `ush -v //…` (stored
   in the proposal, so the plugin's Down picks it up), or from `ush explain -v`. It adds:
   - the banner and policy line on stderr;
@@ -218,8 +217,9 @@ Agent: Opus 5.5, reasoning: not exposed, subagents: none.
 
 ### Implementation notes
 
-- **The report:** "the behavior hasn't changed, i chose propose but the proposal isn't prepared on
-  the command line, i have to copy it manually. there's also no explanation." There were two
+- **The report:** the behavior had not changed: with propose chosen, the proposal was not
+  prepared on the command line and had to be copied manually, and there was no explanation. There
+  were two
   causes:
   - The plugin still isn't in the user's `~/.zshrc`, so `//` in the shell can't fill the line.
     Adding it is the user's step; the AI's attempt to append the line was blocked by a
@@ -228,9 +228,9 @@ Agent: Opus 5.5, reasoning: not exposed, subagents: none.
     readline `insert_text` in a hook. A pty probe with the installed Python 3.13 showed that with
     libedit (macOS) neither the pre-input nor the startup hook puts text on the line.
 - **The user's spec for the explanation**, given in two messages:
-  - "the cursor should be still on the line so the command can be changed, but esc closes the
-    explanation, enter executes the command";
-  - "the command explanation is to be above the command after the // instruction".
+  - the cursor stays on the line so the command can be changed, Esc closes the explanation,
+    and Enter executes the command;
+  - the command explanation goes above the command after the `//` instruction.
 - **Plugin:**
   - The explanation goes into `PREDISPLAY`, display-only text that zle draws between the prompt and
     the command, ending in `→ ` before the command. Putting it into the prompt instead would let a
@@ -261,8 +261,8 @@ Agent: Opus 5.5, reasoning: not exposed, subagents: none.
 
 ### Deviations
 
-- The user offered to defer the session pre-fill to the Go port ("if it is too complicated to make
-  it work from python"), then pointed at `vared`. It was not complicated, so it is in this change.
+- The user offered to defer the session pre-fill to the Go port if it was too complicated to make
+  it work from Python, then pointed at `vared`. It was not complicated, so it is in this change.
 
 ### Insights
 
@@ -281,8 +281,8 @@ Agent: Opus 5.5, reasoning: not exposed, subagents: none.
 
 ### Implementation notes
 
-- **The request:** "add a function to explain the proposed command. arrow down beyond the proposed
-  command explains the command, using the language model."
+- **The request:** add a function to explain the proposed command: arrow down beyond the
+  proposed command explains it, using the language model.
 - **`ush explain COMMAND…`** (`cli._explain`) runs nothing:
   - It prints the disclosure (`explaining, runs nothing · the command goes to …`) and ush's policy
     verdict, which is local, without the model.
@@ -336,8 +336,8 @@ Agent: Opus 5.5, reasoning: not exposed, subagents: none.
 
 ### Implementation notes
 
-- **The report:** "there's no way to get the proposed command directly on the commandline.
-  pre-fill the commandline with the command, esc to remove it and start from scratch". The cause
+- **The report:** there was no way to get the proposed command directly on the command line;
+  it should be pre-filled, with Esc to remove it and start from scratch. The cause
   was that the plugin wasn't in the user's `~/.zshrc`. The installer only printed the line, and
   without the plugin ush can only print a proposal: a child process can't fill its shell's
   command line.
@@ -350,8 +350,8 @@ Agent: Opus 5.5, reasoning: not exposed, subagents: none.
     path with a quote.
   - The Go release archive carries the script.
 - **Esc:**
-  - The binding: the user's follow-up, "esc should only be used within the context of a command
-    proposed after //, everything else stays". So `precmd` binds Esc in the emacs keymap only
+  - The binding: the user's follow-up: Esc should only be used within the context of a command
+    proposed after `//`, everything else stays. So `precmd` binds Esc in the emacs keymap only
     when it puts a proposal on the line. It saves the old binding as `bindkey -L` prints it,
     and restores it in `preexec`, in the next `precmd` (a line abandoned with Ctrl-C), and when Esc
     is used.
@@ -390,8 +390,8 @@ Agent: Opus 5.5, reasoning: not exposed, subagents: none.
 
 ### Implementation notes
 
-- **The request:** "the idea of the ushell is to propose specific shell commands and prewrite them
-  to be executed by the user." The user's choices (GAPS Q6):
+- **The request:** ush is meant to propose specific shell commands and prewrite them for the
+  user to execute. The user's choices (GAPS Q6):
   - ush proposes investigation commands too, rather than running them;
   - agent mode stays, behind a flag;
   - one command at a time.
@@ -481,7 +481,7 @@ Agent: Opus 5.5, reasoning: not exposed, subagents: none.
 
 ### Implementation notes
 
-- **The report:** "the model name expected seems to require the provider twice". After choosing
+- **The report:** the expected model name seemed to require the provider twice. After choosing
   Anthropic, the checker answer `claude-haiku-5-5` was refused as "not provider:model". The error
   also ended `ai configure`, so the answers given before it (model `claude-haiku-5-5`) were lost.
 - **Bare checker names** (`Settings.set_checker`): `claude-…` is Anthropic's, anything else
@@ -553,7 +553,7 @@ Agent: Opus 5.5, reasoning: not exposed, subagents: none.
 
 ### Deviations
 
-- None from the request; the refusal list for writing commands goes beyond "a whitelist" because a
+- None from the request; the refusal list for writing commands goes beyond a whitelist because a
   rule for `rm` would let a forged `read` claim run it.
 
 ### Insights
@@ -643,8 +643,8 @@ Agent: Opus 5.5, reasoning: not exposed, subagents: none.
 
 ### Deviations
 
-- The request was ambiguous ("an adversarial model to check the proposed implementation that
-  takes independent sources"); it was built as a runtime checker of proposed commands and
+- The request was ambiguous (an adversarial model to check the proposed implementation from
+  independent sources); it was built as a runtime checker of proposed commands and
   recorded as GAPS A5, so it can be corrected.
 - No newer small model (qwen3.5:2b or 4b) was pulled to measure: that's a multi-GB download for the
   user to choose. The menu recommends the measured llama3.2:3b and marks qwen3.5:4b as unmeasured.
@@ -739,7 +739,7 @@ Validation (macOS 26, arm64, zsh 5.9):
 Deviations and decisions:
 
 - Name: `wsh` and then `zish` were requested; both are taken (Wave Terminal's `wsh`
-  CLI; an active Zig shell named `zish`). The user chose `ush`, "the you shell".
+  CLI; an active Zig shell named `zish`). The user chose `ush`, read as the user's shell.
 - Python instead of wish's TypeScript core. Reasons: sudo/root-owned installs,
   standard-library pty/process control, and the official SDK. SDK 2.3.0 (released
   2026-10-23) targets API version 2026-10-21 and sends keys as bearer tokens; it
