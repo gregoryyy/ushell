@@ -636,7 +636,7 @@ Until 2026-10-29: ushgo TODO 2.1–2.7.
   Follow-up 2026-11-11: Homebrew's Go is 1.27.4, so `brew upgrade go && brew reinstall ush`
   builds 0.2.3 without GO-2026-6859, and the Homebrew limitation in the release notes is gone.
   No 0.2.4: what main has since 0.2.3 (#53, #54) doesn't change what ships (DONE).
-- [ ] 5.13 0.2.4 (user, 2026-11-11: "ready for a release"; 0.3.0 stays the shells release, 5.11):
+- [x] 5.13 0.2.4 (user, 2026-11-11: "ready for a release"; 0.3.0 stays the shells release, 5.11):
   what main has since 0.2.3 that ships: ask back, scripts in propose mode, the thinking toggle,
   research, next steps and the Enter-only audit (2.35–2.39, 2.41, #57), Delete, Home and End in
   the editor (2.40, #55), string booleans from local models (2.45, #59, landed with this
@@ -644,7 +644,7 @@ Until 2026-10-29: ushgo TODO 2.1–2.7.
   [docs/releases/0.2.4.md](releases/0.2.4.md). After the merge: the gate (5.3) on the merge
   commit, the tag `v0.2.4`, the GitHub release with the four archives and `SHA256SUMS`, and the
   formula in the tap. Acceptance: the gate's results recorded in DONE; the published checksums
-  verified after download.
+  verified after download. Done 2026-11-11 on 8da67d8 (DONE).
 - [ ] 5.11 0.3.0 (user, 2026-10-30: "for the next version 0.3.0, expand to bash, sh and other commonly
   used shells"; the agent's proposal, accepted with "write to pr as proposed" and adjusted to the
   answers to GAPS Q15–Q17). Contents:
@@ -688,6 +688,14 @@ here.
   documents against `ush help` stay in ushpy as `test_help_docs`. Acceptance: history kept by
   `git mv`; the test counts unchanged in sum; CI runs the release tool's tests and the document
   tests; the moved release tool, run on the `v0.2.3` source, gives the published checksums.
+- [x] 6.5 Local CI on Linux (user, 2026-11-11: "do local ci", then "set up a docker container",
+  after every Ubuntu job on GitHub failed while apt-get could not resolve Ubuntu's mirrors, so
+  0.2.4's candidate had no Linux run): the workflow's `ubuntu-latest` entries in a container on
+  this machine, by the same `tools/ci/run.py`. Docker through Colima (MIT) and the Docker CLI
+  (Apache-2.0) from Homebrew; an Ubuntu 26.04 image pinned by digest, its downloads by version and
+  checksum; the commit cloned from GitHub. Acceptance: `just ci-linux` passes on main's head,
+  `--post` sets the Linux statuses, the README documents it, and 8da67d8 (0.2.4) gets the Linux
+  run its gate lacked. Done 2026-11-11 (DONE 16:52).
 
 ## Old IDs
 
