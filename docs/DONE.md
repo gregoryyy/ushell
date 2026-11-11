@@ -57,6 +57,100 @@ Agent: Opus 5.5, reasoning: not exposed, subagents: none.
 
 ---
 
+## 2026-11-11 08:24 — Fn-Backspace, Home and End no longer insert `[3~`
+
+TODO items: 2.40 (done; the item from the local branch `docs/ush-interaction-followups`).
+PR: not yet opened (branch `fix/ush-2.40-delete-key`).
+
+Agent: Opus 5.5, reasoning: not exposed, subagents: none.
+
+
+### Implementation notes
+
+- **The report** (user, 2026-11-11): "the [3~ issue exists for fn-backspace".
+- **Reproduced** in a pty with `zsh -f` and `vared`:
+  - With a widget on the bare Esc, as the session editor and the plugin's proposal have, Delete
+    (`\e[3~`) gives the line `[3~`. zsh reads `\e[3`, finds no binding, and falls back to the
+    longest bound prefix, the Esc. The Esc widget runs (in the session it clears a pre-filled line,
+    on a proposal it removes the proposal), and `[3~` is typed.
+  - Plain zsh, without the Esc binding, types `~`. That comes from zsh's defaults, not from ush.
+  - The emacs keymap binds none of Delete, Home, End, Page Up or Down. The user's zsh doesn't
+    either (`bindkey | grep 3~`: nothing).
+  - Binding a sequence to `undefined-key` is the same as no binding: Page Up still gave `[5~`.
+    `beep` stops it.
+- **Session editor** (`VARED` in [ui.py](../src/py/src/ush/ui.py), `varedScript` in
+  [ui.go](../src/go/internal/ui/ui.go), the same lines):
+  - Delete `\e[3~` → `delete-char`;
+  - Home `\e[H`, `\eOH`, `\e[1~` → `beginning-of-line`;
+  - End `\e[F`, `\eOF`, `\e[4~` → `end-of-line`;
+  - Page Up and Down `\e[5~`, `\e[6~` → `beep`.
+- **Plugin** ([ush.plugin.zsh](../src/shell/ush.plugin.zsh)): `_ush_fn_keys` holds the same keys.
+  `_ush_keys_bind` binds each one in the emacs keymap only if it is `undefined-key` there, and
+  notes it in `_ush_fn_bound`. `_ush_keys_restore` removes them along with Esc's binding. A key
+  the user bound keeps that binding, also during the proposal.
+- **Tests** ([test_zsh_plugin.py](../src/py/tests/test_zsh_plugin.py)), 4 new:
+  - `test_fn_keys_edit_the_line`: the three Home/End variants, Delete at the start, Page Up and
+    Down;
+  - `test_delete_in_typed_input`;
+  - `test_fn_keys_edit_the_proposal`: a proposal edited with Home, Delete and End runs as edited,
+    and counts as what ran;
+  - `test_fn_keys_keep_their_own_bindings`: the user's Delete binding is used and kept; Home and
+    Page Up are `undefined-key` again after the proposal.
+  - Before the fix, the first three failed with `GOT'[3~'`, `GOT'[H[3~[F[5~[6~!'` and records
+    `[None, None]` (the proposal had been removed). The fourth passed already.
+- **Validation** on macOS, Go 1.27.4:
+  - `just ushgo-test`: exit 0;
+  - `PYTHON=/opt/homebrew/bin/python3.12 just ushpy-test`: 231 tests OK (227 before);
+  - `just ushgo-conform`: 88 tests OK (84 before), so the Go session editor passes the same tests;
+  - `just links`: passed. `mandoc -T lint -W warning src/man/ush.1`: clean.
+- **Docs:** USER (keys on a proposal), the man page (under Esc), ARCH (keys on a proposal).
+
+### Deviations
+
+- **More than Delete:** the TODO item names Delete. Home, End, Page Up and Down failed the same
+  way: the Fn-arrows on a Mac send them, and in the session each one cleared a pre-filled line
+  and typed its sequence. They are fixed together. No existing binding changes: the plugin binds
+  only keys that are undefined, and the session's zsh starts with `-f`.
+- **The plugin as well as the session editor:** the item names the session editor. On a proposal,
+  the plugin's Esc caught Delete in the same way.
+- **2.35–2.39 and 2.41 stay on the user's branch;** only 2.40 is added to TODO here.
+
+### Insights
+
+- In zsh, binding a bare Esc to a widget makes every unbound escape sequence that starts with
+  `\e` run that widget and type the rest. Binding to `undefined-key` doesn't prevent that; any
+  real widget does, `beep` included. Other unbound keys (Insert, F-keys, Ctrl-arrows in some
+  terminals) still behave that way on a proposal and in the session.
+
+## 2026-11-11 07:44 — No 0.2.4: Homebrew's Go is now 1.27.4
+
+TODO items: 5.12 (follow-up). PR: #53 (branch `chore/aux-layout`).
+
+Agent: Opus 5.5, reasoning: not exposed, subagents: none.
+
+### Implementation notes
+
+- **The request** (user, 2026-11-11, after merging #54): "let's release these". The agent pointed
+  out that #53 and #54 change no shipped file (binary, plugin, man page), so a 0.2.4 would differ
+  from 0.2.3 only in its version, and that Homebrew now has Go 1.27.4. The user chose "No release;
+  note Go 1.27.4".
+- **Checked on macOS:** `brew upgrade go` (1.27.3 → 1.27.4), `brew reinstall ush`:
+  `go version -m /opt/homebrew/bin/ush` reports go1.27.4, `ush --version` "ush 0.2.3 (go)",
+  `govulncheck -mode=binary /opt/homebrew/bin/ush` (v1.1.4): "No vulnerabilities found".
+- **Recorded** in TODO 5.12. [docs/releases/0.2.3.md](releases/0.2.3.md) and the GitHub release
+  are left as published: the limitation was true when 0.2.3 was released.
+
+### Deviations
+
+- None.
+
+### Insights
+
+- The tap builds from source, so a fixed Go toolchain reaches Homebrew users by
+  `brew upgrade go && brew reinstall ush`, without a new ush version.
+
+---
+
 ## 2026-11-11 06:17 — Flaky test: the key after Esc waits for zsh
 
 TODO items: 2.44 (new, done); test code only, run against both implementations. PR: not yet
@@ -94,6 +188,63 @@ Agent: Opus 5.5, reasoning: not exposed, subagents: none.
 
 - In a pty test, "quiet for a while" isn't a sign that the program has handled a key: wait for
   its reaction. A bare Esc is the key where this shows, through KEYTIMEOUT.
+
+---
+
+## 2026-11-11 05:53 — Auxiliary code by what it serves: `tests/` and `tools/`
+
+TODO items: 6.4 (new, done). PR: not yet opened (branch `chore/aux-layout`).
+
+Agent: Opus 5.5, reasoning: not exposed, subagents: none.
+
+### Implementation notes
+
+- **The request** (user, 2026-11-11): "aren't some of the auxiliary sources spread inconsistently
+  between main codebase and tests/ or tools/". The agent listed what sat with one implementation
+  but served both or the repository, and proposed three steps; the user chose "do 1 and 2".
+- **Step 1, tests and tools for both implementations,** all by `git mv`:
+  - `src/go/scripts/conform.sh` → [tests/conform/run.sh](../tests/conform/run.sh), next to the
+    policy corpus;
+  - `src/py/scripts/smoke.sh` → [tests/smoke/smoke.sh](../tests/smoke/smoke.sh);
+  - `src/py/scripts/injection_eval.py` → [tests/security/injection_eval.py](../tests/security/injection_eval.py);
+  - `tools/check-links.py` → [tools/docs/check-links.py](../tools/docs/check-links.py);
+  - `test_docs` split: the three checks that need no implementation (the manual page is
+    well-formed, one document set, TODO items say where they are built) → [tools/docs/test_docs.py](../tools/docs/test_docs.py),
+    run by `just links` and the CI job `links` (which now installs mandoc on Ubuntu); the two that
+    compare the documents with ushpy's `ush help` stay in ushpy as `test_help_docs`.
+- **Step 2, the release tooling** → [tools/release/](../tools/release/): `main.go` and its tests
+  as a module of their own (`github.com/gregoryyy/ushell/tools/release`), `release.sh`,
+  `formula.sh`, and a `test.sh`. The tool finds the ush module as `src/go/` at or above the
+  working directory (it used the nearest `go.mod`). Archives go to `dist/` at the root (was
+  `src/go/dist/`). `just ushgo-test` and the CI job `ushgo` also run `tools/release/test.sh`.
+- **Kept where they are:** `policy_corpus.py` (it writes the corpus from ushpy's policy), each
+  implementation's `scripts/test.sh`, `src/go/packaging/` (the archive's installer).
+- **References:** justfile, ci.yml, `tools/ci/test_workflow.py` (the new steps of `links` and
+  `ushgo`), `.gitignore`, README, ADMIN, ARCH, SEC, SECTEST, SDLC, SMOKE, USER, both
+  implementations' READMEs, `tools/ci/README.md`, the man page's comment. Completed TODO items,
+  SECTEST's dated eval sections, DONE and the archive keep their old paths.
+- **Validation** on macOS, with Go 1.27.4: `just ushgo-test` (now also `tools/release/test.sh`):
+  exit 0. `PYTHON=/opt/homebrew/bin/python3.12 just ushpy-test`: 223 tests OK (226 before; the
+  3 moved checks run in `tools/docs/`). `just ushgo-conform` (`tests/conform/run.sh`): 83 tests
+  OK. `just links`: links passed, `tools/docs` 3 tests OK. The release tool, moved and built
+  once, run on a worktree of `v0.2.3` with that commit's time: SHA256SUMS identical to the
+  published 0.2.3 ones. (`tools/release/release.sh 0.2.3 --check` on this tree is reproducible
+  too, with other checksums: another commit time and the man page's changed comment.)
+
+### Deviations
+
+- **`check-links.py` went to `tools/docs/`,** not `tools/links/` as proposed, so that the link check
+  and the document tests sit together.
+- **`test_docs` was split, not moved:** two of its five tests read ushpy's `USAGE`.
+- **Two DONE headings repaired:** inserting the 05:40 entry (#52) and this one dropped the heading
+  line of the entry below each, `## 2026-11-11 05:20 — …` and `## 2026-11-11 05:40 — …`;
+  both are restored as they were, as are the `---` separators above the entries of 22:58, 15:02
+  and 12:30 on 2026-11-10, dropped the same way. The entries' text is unchanged.
+
+### Insights
+
+- `tests/conform/` now holds the corpus and the runner, but the black-box tests it runs are still
+  in `src/py/tests/`, mixed with ushpy's unit tests (step 3 of the proposal, not chosen).
 
 ---
 
@@ -166,7 +317,9 @@ Agent: Opus 5.5, reasoning: not exposed, subagents: none.
 - Agent tools may keep refs of their own (`refs/agents/…`) that gitleaks scans; CI's scan up to
   the commit is the one that counts for a release.
 
- — `just pdfs` without the deprecation warning
+---
+
+## 2026-11-11 05:20 — `just pdfs` without the deprecation warning
 
 TODO items: 6.3 (new, done). PR: not yet opened (branch `fix/pdf-math-method`).
 
@@ -228,6 +381,8 @@ Agent: Opus 5.5, reasoning: not exposed, subagents: none.
 - Ctrl-N and the `cd` fix had waited on `main` since 2026-10-30 and 2026-11-10; a release after
   each user-visible fix keeps Homebrew users current.
 
+---
+
 ## 2026-11-10 22:58 — `ush explain` without quotes
 
 TODO items: 2.43 (new, done), in the plugin both implementations share. PR: not yet opened
@@ -272,6 +427,8 @@ Agent: Opus 5.5, reasoning: not exposed, subagents: none.
 - `${#${(z)s}}` counts characters, not words, when `(z)` yields one word; split into an array
   first.
 
+---
+
 ## 2026-11-10 15:02 — CI: zsh for the ushgo job on Ubuntu
 
 TODO items: 6.2 (new, done). PR: not yet opened (branch `fix/ci-ushgo-zsh`, stacked on #46).
@@ -303,6 +460,8 @@ Agent: Opus 5.5, reasoning: not exposed, subagents: none.
 - The `sh` fallback silently drops pipefail on a machine without zsh. ush needs zsh for its plugin,
   so this mainly affects `ush` without the plugin; whether to set pipefail where `sh` supports it is
   open.
+
+---
 
 ## 2026-11-10 12:30 — One project, one layout: `src/`, `docs/`, `tests/conform/`
 

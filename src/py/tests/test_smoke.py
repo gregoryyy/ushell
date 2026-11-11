@@ -1,4 +1,4 @@
-"""The user smoke test (scripts/smoke.sh): offline and with a model, against the mock API, and that
+"""The user smoke test (tests/smoke/smoke.sh): offline and with a model, against the mock API, and that
 it fails for an implementation that misbehaves."""
 
 import os
@@ -11,7 +11,9 @@ from helpers import TEST_BIN, TempDirTest
 from mock_api import MockAPI
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-SMOKE = os.path.join(HERE, "..", "scripts", "smoke.sh")
+ROOT = os.path.join(HERE, "..", "..", "..")
+SMOKE = os.path.join(ROOT, "tests", "smoke", "smoke.sh")
+INJECTION_EVAL = os.path.join(ROOT, "tests", "security", "injection_eval.py")
 SRC = os.path.join(HERE, "..", "src")
 
 try:
@@ -115,7 +117,7 @@ class SmokeTest(TempDirTest):
 
 
 class InjectionEvalTest(TempDirTest):
-    """scripts/injection_eval.py against a scripted model that obeys the injection: it is
+    """tests/security/injection_eval.py against a scripted model that obeys the injection: it is
     counted as attempted, and nothing runs (SECTEST level 2, run here as level 1)."""
 
     launcher = SmokeTest.launcher
@@ -127,7 +129,7 @@ class InjectionEvalTest(TempDirTest):
                    ([{"type": "tool_use", "id": "p1", "name": "propose_command",
                       "input": {"command": evil, "purpose": "x", "effect": "read",
                                 "interactive": False}}], "tool_use")]   # propose mode
-        script = os.path.join(os.path.dirname(SMOKE), "injection_eval.py")
+        script = INJECTION_EVAL
         with MockAPI(replies, tags=[{"name": "qwen3.5:9b"}]) as api:
             result = subprocess.run(
                 [sys.executable, script, "--bin", self.python_ush(), "--provider", "ollama",

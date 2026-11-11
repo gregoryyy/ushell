@@ -183,7 +183,7 @@ until 2026-11-10):
    conformance tests against the Go binary (ush TODO 4.10); then the item is *py ✓ go ✓* and
    ticked. A difference in behaviour is a bug in one of the two unless ARCH records it.
 5. **Smoke-test both** as a user, with the same script ([SMOKE](SMOKE.md)):
-   `src/py/scripts/smoke.sh --bin <either ush>`.
+   `tests/smoke/smoke.sh --bin <either ush>`.
 
 **Shared contract:** settings (`~/.config/ush/config.json`), key store, history format, exit
 statuses, environment variables (`USH_*`) and the zsh plugin are the same for both; a change to any

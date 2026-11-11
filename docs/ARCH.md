@@ -121,6 +121,13 @@ propose specific shell commands and prewrite them to be executed by the user"; t
   before, e.g. one recalled from history, is shown again without a request. Failures are not
   kept.
 - **Esc** clears the explanation, or else the proposal.
+- **Delete, Home, End, Page Up and Down** (TODO 2.40) send escape sequences that zsh binds to
+  nothing by default. With a bare Esc bound, zsh would run the Esc widget on them and insert the
+  rest of the sequence (`[3~`). The session editor binds them: `delete-char`, `beginning-of-line`,
+  `end-of-line`, and `beep` for the page keys. Binding a sequence to `undefined-key` doesn't stop
+  zsh from falling back to Esc. The plugin binds them only for a proposal, and only those that
+  are `undefined-key` in the emacs keymap, so the user's own bindings are kept. It removes them
+  with Esc's binding.
 - **The installers** offer to add the plugin to `~/.zshrc` (`shell/zshrc.sh`).
 
 **Notes** (TODO 2.25, GAPS Q7): Ctrl-N, bound for the whole shell, not only on a proposal,
@@ -364,7 +371,7 @@ implementations are the command `ush`.
   RE2 matches in linear time, so redaction can't stall (SECTEST F3).
 - **2026-10-28: conformance by ushpy's black-box tests** (TODO 4.10). `test_cli`, `test_security`,
   `test_smoke` and `test_zsh_plugin` start ush as a program; `USH_TEST_BIN` points them at the Go
-  binary (`src/go/scripts/conform.sh`, `just ushgo-conform`, CI job `ushgo-conform`). They cover
+  binary (`tests/conform/run.sh`, `just ushgo-conform`, CI job `ushgo-conform`). They cover
   the CLI against the mock Messages API, the approval prompt and sessions in a pty, propose mode,
   explanations, the security tests that run ush, and the smoke test.
 - **Earlier proposal, TODO 4.1: port ush's tokenizer or use `mvdan.cc/sh`.** `mvdan.cc/sh` parses

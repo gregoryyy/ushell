@@ -27,8 +27,8 @@ cd src/go && go build -o ush ./cmd/ush   # writes ./ush
 ### Release build
 
 ```sh
-just ushgo-release 0.1.0                # or scripts/release.sh 0.1.0: archives in src/go/dist/
-scripts/release.sh 0.1.0 --check        # build twice, compare, keep nothing
+just ushgo-release 0.1.0                # or ../../tools/release/release.sh 0.1.0: archives in dist/
+just ushgo-release 0.1.0 --check        # build twice, compare, keep nothing
 ```
 
 One `ush-VERSION-OS-ARCH.tar.gz` per platform (macOS and Linux, arm64 and amd64), each with the
@@ -51,7 +51,7 @@ ush's documents are shared by both implementations, in [docs/](../../docs/):
   [GAPS](../../docs/GAPS.md) and [DONE](../../docs/DONE.md); ushgo's log until 2026-10-29 is in
   [archive/](../../docs/archive/DONE-ushgo.md).
 - The user smoke test is shared with Python: [SMOKE](../../docs/SMOKE.md),
-  `../py/scripts/smoke.sh --bin ./ush`.
+  `../../tests/smoke/smoke.sh --bin ./ush`.
 
 The process is the repository's [SDLC](../../docs/SDLC.md).
 
@@ -61,3 +61,6 @@ The process is the repository's [SDLC](../../docs/SDLC.md).
 cmd/ush/       the command (main.go) and its tests
 scripts/       test.sh: format, vet, test
 ```
+
+The release tool is in [tools/release/](../../tools/release/), the conformance runner in
+[tests/conform/](../../tests/conform/), and the smoke test in [tests/smoke/](../../tests/smoke/).

@@ -1,5 +1,5 @@
 .\" The manual page of ush, for both implementations (TODO 2.14). The user guide, docs/USER.md,
-.\" is the long form; test_docs checks that every option and subcommand of `ush help` is here.
+.\" is the long form; test_help_docs checks that every option and subcommand of `ush help` is here.
 .TH USH 1 2026-11-11 "ush 0.2.3" "User Commands"
 .SH NAME
 ush \- the you shell: ask in plain language at the zsh prompt, get the commands that answer it
@@ -113,6 +113,10 @@ closes the explanation; otherwise it is your history.
 .TP
 .B Esc
 closes the explanation, or else removes the proposal (in vi mode: Ctrl\-U).
+.TP
+.BR Delete ", " Home ", " End
+edit the line (on a Mac: Fn\-Backspace, Fn\-Left, Fn\-Right); Page Up and Down do nothing.
+In the session always; on a proposal where zsh leaves them unbound.
 .TP
 .B Ctrl\-N
 notes on output or files, printed before the next prompt.

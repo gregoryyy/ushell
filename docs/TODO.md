@@ -389,6 +389,16 @@ Done in Python, and in Go through the port (section 4).
   session, edited proposals, and commands requiring an interactive terminal; decline or missing
   confirmation runs nothing, and confirmation runs only the exact command the user reviewed.
   **Blocking:** GAPS Q18 (what counts as confirmation).
+- [x] 2.40 *py ✓ go ✓* Fix macOS Fn-Backspace/Delete in the session editor (user, 2026-11-08):
+  pressing Fn-Backspace to delete the character under the cursor currently inserts the literal
+  terminal sequence `[3~` instead. Bind and handle the Delete sequence correctly in the editor
+  without changing other keybindings. Acceptance: pty tests verify Fn-Backspace deletes at the
+  cursor in a proposal and ordinary input, never inserts `[3~`, and existing editing/history keys
+  remain unchanged. (The item comes from the local branch `docs/ush-interaction-followups`,
+  which has 2.35–2.41 and no PR; reported again 2026-11-11: "the [3~ issue exists for
+  fn-backspace".) Done: the session editor binds Delete, Home, End (also `\eOH`/`\e[1~`,
+  `\eOF`/`\e[4~`) and Page Up/Down (`beep`); the plugin binds the same keys for a proposal where
+  the emacs keymap leaves them undefined, and removes them with Esc's binding (ARCH).
 - [ ] 2.41 *py – go –* Contextual "go on" actions for larger plans (user, 2026-11-08): when a
   request spans multiple steps, offer the typical next actions and a shortcut to choose "go on"
   and continue to the next step without retyping the request. This asks ush/model to continue the
@@ -539,6 +549,9 @@ Until 2026-10-29: ushgo TODO 2.1–2.7.
   commit, the tag `v0.2.3`, the GitHub release with the four archives and `SHA256SUMS`, and the
   formula in the tap. Acceptance: the gate's results recorded in DONE; the published checksums
   verified after download. Done 2026-11-11 on 50257ee (DONE).
+  Follow-up 2026-11-11: Homebrew's Go is 1.27.4, so `brew upgrade go && brew reinstall ush`
+  builds 0.2.3 without GO-2026-6859, and the Homebrew limitation in the release notes is gone.
+  No 0.2.4: what main has since 0.2.3 (#53, #54) doesn't change what ships (DONE).
 - [ ] 5.11 0.3.0 (user, 2026-10-30: "for the next version 0.3.0, expand to bash, sh and other commonly
   used shells"; the agent's proposal, accepted with "write to pr as proposed" and adjusted to the
   answers to GAPS Q15–Q17). Contents:
@@ -572,6 +585,16 @@ here.
 - [x] 6.3 `just pdfs` without pandoc's deprecation warning (user, 2026-11-11: "adjust the
   deprecation warning in just pdfs"): `--mathml` became `--math-method=mathml`, which pandoc
   3.13 asks for. Acceptance: no warning; formulas still MathML; the PDFs build.
+- [x] 6.4 Auxiliary code by what it serves (user, 2026-11-11: "aren't some of the auxiliary
+  sources spread inconsistently between main codebase and tests/ or tools/", then "do 1 and 2" of
+  the agent's proposal). Tests for both implementations in `tests/`: `tests/conform/run.sh` (was
+  `src/go/scripts/conform.sh`), `tests/smoke/smoke.sh` and `tests/security/injection_eval.py`
+  (were in `src/py/scripts/`). Repository tools in `tools/`: `tools/docs/` (the link checker and
+  the document checks of `test_docs` that need no implementation), `tools/release/` (the release
+  tool as a module of its own, `release.sh`, `formula.sh`; archives in `dist/`). The checks of the
+  documents against `ush help` stay in ushpy as `test_help_docs`. Acceptance: history kept by
+  `git mv`; the test counts unchanged in sum; CI runs the release tool's tests and the document
+  tests; the moved release tool, run on the `v0.2.3` source, gives the published checksums.
 
 ## Old IDs
 
