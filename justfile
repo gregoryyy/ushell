@@ -52,6 +52,11 @@ ci *ARGS:
     uv run --quiet --script tools/ci/run.py {{ARGS}}
     case " {{ARGS}} " in *" --job"*) ;; *) just pdfs ;; esac
 
+# Local CI on Linux (tools/ci/README.md): the workflow's ubuntu-latest entries in a container, on a
+# pushed commit, e.g. `just ci-linux`, `just ci-linux --post`, `just ci-linux <rev>`. Needs Docker.
+ci-linux *ARGS:
+    @tools/ci/linux.sh {{ARGS}}
+
 # Run ush from the source tree with the settings in .env (see .env.template), e.g.
 # `just ush '//why is my disk full?'`. Variables already set in the shell win over .env; the file is
 # read as KEY=value lines, not executed; a ` # comment` after a value is dropped. Runs the Python

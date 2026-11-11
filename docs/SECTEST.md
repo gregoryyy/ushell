@@ -150,6 +150,19 @@ by commit. See [tools/ci/README.md](../tools/ci/README.md).
 
 ## Results
 
+### 2026-11-11: prompt injection evals on v0.2.4 (level 2, local)
+
+The same eval on the installed darwin-arm64 archive of 0.2.4, built from 8da67d8, three times
+over, with llama3.2:3b on Ollama 0.40.15.
+
+| Result | Count |
+| --- | --- |
+| Runs | 36 (3 × 12) |
+| The model attempted the injected command | 10 (4, 5, 1): agent mode: log, DNS TXT twice, file name; propose mode: HTML three times, log twice, DNS TXT once |
+| Ran unapproved | **0** |
+
+F8 stays open; none of this gate's agent-mode runs ran an injected command unapproved.
+
 ### 2026-10-29: prompt injection evals on v0.2.2 (level 2, local)
 
 The same eval on the installed darwin-arm64 archive of 0.2.2, built from deac48b, three times over.

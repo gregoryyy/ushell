@@ -14,6 +14,110 @@ implementation kept its own log: [ushpy](archive/DONE-ushpy.md), [ushgo](archive
 
 ---
 
+## 2026-11-11 16:52 — Local CI on Linux in a container; 0.2.4 passes on Linux
+
+TODO items: 6.5 (new, done). PR: #61 (branch `docs/ush-0.2.4-released`, with the 0.2.4 record).
+
+Agent: Opus 5.5, reasoning: not exposed, subagents: none.
+
+### Implementation notes
+
+- **The request** (user): "do local ci", then "set up a docker container". GitHub's Ubuntu jobs
+  could not install zsh (the runners' DNS, DONE 15:57), so 0.2.4 had no Linux run.
+- **Docker:** Colima 0.10.3 (MIT), the Docker CLI 29.9.3 and buildx 0.38.2 (Apache-2.0) from
+  Homebrew; `colima start --vm-type vz --vz-rosetta --cpu 4 --memory 8 --disk 60`; buildx
+  registered in `~/.docker/config.json` (`cliPluginsExtraDirs`). Docker Desktop was not used: it
+  needs a licence for larger organisations and a GUI app.
+- **[tools/ci/linux/Dockerfile](../tools/ci/linux/Dockerfile):** Ubuntu 26.04 (`ubuntu-latest`
+  is "resolute" in the runner logs), pinned by the digest of its multi-platform index; zsh 5.9,
+  mandoc, git and `python3` from Ubuntu; Go 1.27.4, uv 0.13.5 (2026-10-22) and gh 2.103.3
+  (2026-10-26) by version and SHA-256; Python 3.10 and 3.13 from uv; user `runner`, no sudo.
+- **[tools/ci/linux.sh](../tools/ci/linux.sh), `just ci-linux`:** builds the image once per
+  Dockerfile version, clones the pushed commit from GitHub in the container, runs `run.py` there
+  with the `ubuntu-latest` jobs (`--job ushpy,ushgo,ushgo-conform`), copies the logs to
+  `.ci/linux-<date>-<commit>/`; `--post` passes `gh auth token` for that run; `--platform
+  linux/amd64` for GitHub's architecture. tools/ci/README.md documents it.
+- **Validation on 8da67d8 (0.2.4), `tools/ci/linux.sh 8da67d8`, linux/arm64:** ushpy (3.10):
+  pass in 4 min 44 s; ushpy (3.13): pass in 4 min 34 s; ushgo: pass in 30 s; ushgo-conform: pass
+  in 3 min 41 s. The macOS entries are listed as not run on Linux.
+
+### Deviations
+
+- **The first image failed 23 zsh-plugin tests** (ushpy 3.10: 21 failures, 2 errors, 257 tests in
+  14 min 38 s): those tests start zsh with `PATH=…:/usr/bin:/bin`, and their fake `ush` runs
+  `python3` from there; GitHub's runner image has a system `python3`, the image didn't. The image
+  now installs Ubuntu's `python3`; the two tests reproduced by hand passed, then the full run.
+- **A run was cut off** (exit 137) when the session restarted, with the macOS run of 4a3c7f6;
+  both ran again one after the other.
+
+### Insights
+
+- The plugin tests depend on a `python3` in `/usr/bin`, which the runner image happens to have;
+  a fake `ush` in POSIX sh would remove that dependency.
+
+## 2026-11-11 15:57 — Release 0.2.4: the gate, the tag, the GitHub release and the tap
+
+TODO items: 5.13 (done). PR: #61 (branch `docs/ush-0.2.4-released`); the release PR was #60,
+the candidate 8da67d8 (its merge, which also landed #59).
+
+Agent: Opus 5.5, reasoning: not exposed, subagents: none.
+
+### Implementation notes
+
+- **The request** (user, 2026-11-11): "merged" (#60), then "merged" again, asked back: "Publish
+  when CI passes", with failures of the runners' package installs counted as infrastructure.
+- **Gate on 8da67d8:**
+  - Level 1, macOS arm64: `just ci --post 8da67d8`: all seven jobs pass; statuses posted.
+  - Level 1, GitHub Actions run 43040782545 on 8da67d8: the macOS jobs (ushpy 3.10 and 3.13,
+    ushgo, the conformance suite), `tools` and `secrets` pass. Every Ubuntu job failed in its
+    first step, `apt-get install zsh` (`mandoc` in `links`): "Temporary failure resolving
+    'azure.archive.ubuntu.com'", the runners' DNS, before any test ran; the run on 676453a (#58's
+    merge) failed the same way. A rerun of the failed jobs (attempt 2) failed at the same
+    steps, with the same DNS errors, so no Linux test ran on this candidate.
+  - Release build with go1.27.4: `just ushgo-release 0.2.4 --check` (two builds identical), then
+    the build:
+    - `b3434bd1…` darwin-arm64
+    - `e0d4098d…` darwin-amd64
+    - `bbaa6597…` linux-arm64
+    - `dc3b04c8…` linux-amd64
+  - darwin-arm64 archive installed in a temporary prefix (`install.sh --prefix … --no-zshrc`):
+    the checksum verifies, `ush 0.2.4 (go)`, built with go1.27.4, nothing writable by others,
+    `man ush` shows 0.2.4 of 2026-11-11. `govulncheck -mode=binary`: no vulnerabilities.
+  - Smoke on that archive: offline 6 PASS. With llama3.2:3b (Ollama 0.40.15, the agent's own
+    server, pid 49638, 15:42, stopped after the checks): the first run 12 PASS, 2 WARN, 1 FAIL,
+    "continue with //": "the model's tool calls were refused 3 times in a row". Rerun twice:
+    12 PASS, 3 WARN, 0 FAIL both times; the 0.2.3 archive with the same model, twice: 11 PASS,
+    4 WARN, 0 FAIL. Read as the model's variance, not a regression; recorded as it happened.
+    The WARNs: the model answered without running `df`, and proposed no command.
+  - Level 2: the injection eval three times on that archive with llama3.2:3b, 36 runs: 10
+    attempted (4, 5, 1), 0 ran unapproved (SECTEST).
+  - `gitleaks git --redact --log-opts=8da67d8 .` (8.30.1): no leaks.
+- **Published by the agent, at the user's request** (5.13):
+  - the annotated tag `v0.2.4` ("ush 0.2.4") on 8da67d8;
+  - the GitHub release v0.2.4 (latest), with the four archives, `SHA256SUMS` and
+    [releases/0.2.4.md](releases/0.2.4.md) as notes. Downloaded again: the checksums verify, and
+    `SHA256SUMS` is byte-identical to the build's;
+  - the 0.2.4 formula in `gregoryyy/homebrew-ush` (3b51a2d), from `formula.sh 0.2.4`: the
+    tarball's checksum `42bd1713…`, checked on a fresh download; `brew style` clean; its build
+    reproduced by hand from the tag's tarball with Homebrew's Go: `ush 0.2.4 (go)`, built with
+    go1.27.4, the plugin and the page at their paths. `brew info gregoryyy/ush/ush`: 0.2.3 →
+    stable 0.2.4.
+
+### Deviations
+
+- **Linux not checked in this gate:** the Ubuntu jobs never reached their tests (see above); the
+  Linux archives are built, not run, as for every release so far.
+- **Ubuntu runners without DNS:** since 13:57 every Ubuntu job of GitHub Actions has failed while
+  `apt-get` installs zsh or mandoc (three runs). Until they resolve again, Linux is untested on
+  main; a step that retries or a runner image with zsh would make the jobs independent of `apt`.
+- **The installed `ush`** (`/opt/homebrew/bin/ush`, 0.2.3) was not upgraded; `brew upgrade ush`
+  is the user's.
+
+### Insights
+
+- The comparison harness (2.46) was not part of the gate; the smoke test and the injection eval
+  are. A model of the comparison's size (qwen3.8, 27B) would test the new tools in the gate too.
+
 ## 2026-11-11 15:00 — Version 0.2.4: release notes, version, man page; #59 landed
 
 TODO items: 5.13 (new; open until published), 2.45, 2.46 (landing). PR: #60 (branch

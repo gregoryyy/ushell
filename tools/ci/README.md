@@ -87,11 +87,35 @@ their own when Actions returns.
 | `just ci --post` | And set the commit statuses (the commit must be pushed) |
 | `just ci --keep` | Keep the worktree for inspection |
 
+## Linux in a container: `just ci-linux`
+
+The `ubuntu-latest` entries (ushpy × 3.10 and 3.13, ushgo, ushgo-conform) run in a Linux
+container by the same `run.py`, which on Linux picks the Linux entries (TODO 6.5).
+[linux/Dockerfile](linux/Dockerfile) is Ubuntu 26.04, what `ubuntu-latest` is since 2026-11, with
+zsh, mandoc, git, Go 1.27.4, uv and gh at pinned versions and checksums, and Python 3.10 and 3.13
+from uv; it runs as a user `runner`, not root, without sudo. [linux.sh](linux.sh) builds the image
+once per Dockerfile version, clones the commit from GitHub into the container (so the commit must
+be pushed, and nothing of the working copy is used), runs the jobs, and copies the logs to
+`.ci/linux-<date>-<commit>/`.
+
+| Command | What it does |
+| --- | --- |
+| `just ci-linux` | The Ubuntu entries on `HEAD` |
+| `just ci-linux <rev> --post` | On another commit, and set `local / … (ubuntu-latest …)` statuses |
+| `just ci-linux --job ushgo` | Selected jobs |
+| `just ci-linux --platform linux/amd64` | On GitHub's architecture, emulated (slower) |
+
+It needs Docker: `brew install colima docker docker-buildx`, then `colima start --vm-type vz
+--vz-rosetta` (Rosetta for `linux/amd64`). The default platform is the machine's, `linux/arm64`
+on an Apple Mac. With `--post`, `gh auth token` is passed into the container for that run, where
+`run.py` posts the statuses; the steps get the reduced environment without it. The container is
+removed after the run. Run it after `just ci`, not at the same time: the two don't share the lock.
+
 ## Differences from GitHub Actions
 
-- **Platform:** on a Mac, the `ush` entries for `ubuntu-latest` don't run, and the jobs on a fixed
-  `ubuntu-24.04` runner run on macOS instead. A failure only on Linux slips through until Actions
-  returns or someone runs `just ci` on Linux.
+- **Platform:** on a Mac, the entries for `ubuntu-latest` don't run, and the jobs on a fixed
+  `ubuntu-24.04` runner run on macOS instead. `just ci-linux` runs the `ubuntu-latest` entries in
+  a container (below).
 - **Python:** the machine's installed patch release (e.g. 3.10.18), where GitHub installs the
   latest one. `uv python install 3.10` adds a missing version.
 - **Secret scanning:** locally the Homebrew release of gitleaks over the whole history up to the
