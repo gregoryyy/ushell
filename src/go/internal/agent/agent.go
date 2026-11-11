@@ -9,6 +9,8 @@ package agent
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -82,7 +84,7 @@ func New(p provider.Provider, t *ui.Terminal, s config.Settings, id config.Ident
 	prompt := systemRun
 	a.tools = append(append([]block{}, Tools...), AskTool, NextTool)
 	if o.Propose {
-		prompt, a.tools = systemPropose, []block{ProposeTool, AskTool, NextTool}
+		prompt, a.tools = systemPropose, []block{ProposeTool, ScriptTool, AskTool, NextTool}
 	}
 	replacer := strings.NewReplacer("{os}", OSName(), "{user}", id.Name, "{root}", root, "{cwd}", cwd,
 		"{shell}", shell)
@@ -503,7 +505,7 @@ func (a *Agent) propose(ctx context.Context, uses []block, entry *history.Entry)
 			continue
 		}
 		// An invalid question gets its own error; any other tool is not a proposal.
-		tools := []block{ProposeTool}
+		tools := []block{ProposeTool, ScriptTool}
 		if name == str(AskTool["name"]) {
 			tools = a.tools
 		}
@@ -517,7 +519,11 @@ func (a *Agent) propose(ctx context.Context, uses []block, entry *history.Entry)
 		}
 		in := args.(block)
 		a.steps++
+		script := name == str(ScriptTool["name"])
 		command := strings.TrimSpace(str(in["command"]))
+		if script {
+			command = ScriptLine(str(in["language"]), str(in["source"]))
+		}
 		purpose := truncate(strings.Join(strings.Fields(str(in["purpose"])), " "), 200)
 		verdict := policy.Classify(command, a.rules()) // advisory only: the user runs it
 		var notes []string
@@ -527,8 +533,12 @@ func (a *Agent) propose(ctx context.Context, uses []block, entry *history.Entry)
 			notes = append(notes, "not verified as read-only: "+verdict.Reason)
 		}
 		step := history.Step{Kind: "proposal", Command: command, Purpose: purpose, Decision: "proposed"}
+		kind, checked := "command", command
+		if script {
+			step.Language, kind, checked = str(in["language"]), str(in["language"]), str(in["source"])
+		}
 		if a.Checker != nil {
-			v := a.Checker.Check(ctx, a.cleanAll(a.Requests), "command", a.clean(command), a.clean(purpose), str(in["effect"]))
+			v := a.Checker.Check(ctx, a.cleanAll(a.Requests), kind, a.clean(checked), a.clean(purpose), str(in["effect"]))
 			step.Check = v.Summary()
 			if !v.OK() {
 				what := "gave no verdict"
@@ -538,13 +548,42 @@ func (a *Agent) propose(ctx context.Context, uses []block, entry *history.Entry)
 				notes = append(notes, fmt.Sprintf("the checker %s: %s", what, v.Reason))
 			}
 		}
-		a.UI.ShowProposal(command, purpose, notes)
+		if script {
+			a.UI.ShowScript(str(in["language"]), str(in["source"]), purpose, "")
+			a.UI.ShowProposal(strings.SplitN(command, "\n", 2)[0]+" …", "", notes)
+		} else {
+			a.UI.ShowProposal(command, purpose, notes)
+		}
 		entry.Steps = append(entry.Steps, step)
 		cwd, _ := os.Getwd()
 		a.Proposal = block{"id": b["id"], "command": command, "purpose": purpose, "verbose": a.Options.Verbose,
 			"interactive": in["interactive"] == true, "cwd": cwd}
 	}
 	return results
+}
+
+// ScriptLine is a proposed script as one entry for the user's command line (TODO 2.36): the source
+// as it is, in a quoted here-document, run with `LANGUAGE -c`, so the terminal stays its stdin and
+// nothing in the source is expanded first. The end marker is one no line of the source is.
+func ScriptLine(language, source string) string {
+	lines := strings.Split(strings.TrimRight(source, "\n"), "\n")
+	marker := "USH_EOF"
+	for containsLine(lines, marker) {
+		b := make([]byte, 3)
+		_, _ = rand.Read(b)
+		marker = "USH_EOF_" + hex.EncodeToString(b)
+	}
+	parts := append([]string{language + ` -c "$(cat <<'` + marker + `'`}, lines...)
+	return strings.Join(append(parts, marker, `)"`), "\n")
+}
+
+func containsLine(lines []string, s string) bool {
+	for _, l := range lines {
+		if l == s {
+			return true
+		}
+	}
+	return false
 }
 
 // proposalResults: the result of the pending proposal, and the results due with it.
@@ -916,6 +955,9 @@ func validate(name string, args any, tools []block) string {
 	}
 	if len([]rune(text)) > 100_000 {
 		return "command or script is too long"
+	}
+	if name == str(ScriptTool["name"]) && Control.MatchString(text) {
+		return "the script contains control characters; propose it without them"
 	}
 	if name == "propose_command" && Control.MatchString(text) {
 		// It goes onto the user's command line: nothing there may hide or rewrite what it shows.

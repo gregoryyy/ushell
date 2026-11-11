@@ -166,11 +166,18 @@ elif args[:1] == ["explain"]:
     print("EXPLAIN" + json.dumps(args[1:]))
 elif args == ["//"]:
     print("RAN" + json.dumps([read("ran"), read("output")]))
-elif len(args[0][2:].split()) < 2:
-    print("REQUEST" + json.dumps(args))
     for name in ("ran", "output"):
         if os.path.exists(os.path.join(d, name)):
             os.remove(os.path.join(d, name))
+elif len(args[0][2:].split()) < 2:
+    print("REQUEST" + json.dumps(args))
+elif args[0][2:].split()[0] == "script":
+    # A proposed script as ush hands it over (TODO 2.36): `//script FILE` proposes `touch FILE`
+    # and a sum, on several lines.
+    target = args[0][2:].split()[1]
+    with open(os.path.join(d, "proposal"), "w") as f:
+        f.write("capture\\nsh -c \\"$(cat <<'USH_EOF'\\ntouch " + target +
+                "\\necho sum=$((6*7))\\nUSH_EOF\\n)\\"")
 else:
     mode, command = args[0][2:].strip().split(" ", 1)
     with open(os.path.join(d, "proposal"), "w") as f:
@@ -297,6 +304,28 @@ class ZshProposeTest(TempDirTest):
         self.assertIn("down-line-or-history", out[1])
         self.assertIn('REQUEST["// build"]', out[3])
         self.assertEqual(self.records(out[4]), [None, None])
+
+    def test_a_proposed_script_runs_whole_on_enter_as_edited(self):
+        # TODO 2.36: a multi-line script is one entry on the command line. Esc removes it and
+        # nothing runs; Enter runs exactly what is on the line, edits included, and `//` gets
+        # that and its output.
+        line = "sh -c \"$(cat <<'USH_EOF'\ntouch {}\necho sum=$((6*7))\nUSH_EOF\n)\""
+        out = self.session([
+            ("// script first\r", "USH_EOF"),
+            ("\x1b", "proposal removed"),
+            ("//\r", "PROMPT> "),
+            ("// script second\r", "USH_EOF"),
+            ("\x1b[A\x1b[A\x05+1", "+1"),  # Up two lines (to `echo sum=…`), End, an edit
+            ("\r", "PROMPT> "),
+            ("//\r", "PROMPT> "),
+        ])
+        self.assertEqual(self.records(out[2]), [None, None])
+        self.assertFalse(os.path.exists(os.path.join(self.tmp, "first")))
+        self.assertTrue(os.path.exists(os.path.join(self.tmp, "second")))
+        self.assertIn("sum=42+1", out[5])
+        ran, output = self.records(out[6])
+        edited = line.format("second").replace("$((6*7))", "$((6*7))+1")
+        self.assertEqual((ran, output), ("0\n" + edited + "\n", "sum=42+1\n"))
 
     def test_esc_removes_the_proposal(self):
         out = self.session([
@@ -719,6 +748,46 @@ class SessionExplainTest(TempDirTest):
         explained = [r["body"]["messages"][-1]["content"] for r in api.requests[1:]]
         self.assertEqual(len(api.requests), 3, explained)
         self.assertIn("echo kept-one x", json.dumps(explained[-1]))
+
+    def test_a_proposed_script_is_prefilled_whole_in_the_session(self):
+        # TODO 2.36: at `ush>`, the script is pre-filled as one multi-line entry; Enter runs it
+        # all, and `//` sends what ran with its output.
+        src = SRC
+        replies = [
+            ([{"type": "tool_use", "id": "s1", "name": "propose_script",
+               "input": {"language": "sh", "source": "echo one-$((1+1))\necho two-$((2+2))",
+                         "purpose": "two lines", "effect": "read", "interactive": False}}], "tool_use"),
+            ([{"type": "text", "text": "BOTH-RAN"}], "end_turn"),
+        ]
+        with MockAPI(replies) as api:
+            pid, fd = pty.fork()
+            if pid == 0:
+                os.environ.update({"PYTHONPATH": src, "HOME": self.tmp, "NO_COLOR": "1",
+                                   "TERM": "xterm-256color",
+                                   "XDG_CONFIG_HOME": os.path.join(self.tmp, "config"),
+                                   "XDG_STATE_HOME": os.path.join(self.tmp, "state"),
+                                   "ANTHROPIC_API_KEY": SYNTHETIC_KEY, "USH_BASE_URL": api.url})
+                os.environ.pop("USH_HANDOFF", None)
+                os.chdir(self.tmp)
+                argv = ush_argv()
+                os.execv(argv[0], argv)
+            try:
+                read = ZshPluginTest._read
+                read(fd, "ush> ", timeout=20)
+                outputs = []
+                for keys, until in [("// run two lines\r", "USH_EOF"),
+                                    ("\r", re.compile(r"two-4[\s\S]*ush> ")),
+                                    ("//\r", re.compile(r"BOTH-RAN[\s\S]*ush> ")), ("\x04", "")]:
+                    os.write(fd, keys.encode())
+                    outputs.append(read(fd, until, timeout=20))
+            finally:
+                os.close(fd)
+                os.waitpid(pid, 0)
+        self.assertIn("one-2", outputs[1])
+        result = api.requests[1]["body"]["messages"][-1]["content"][0]
+        self.assertEqual(result["tool_use_id"], "s1")
+        self.assertIn("ran the proposed command", result["content"])
+        self.assertIn("one-2\ntwo-4", result["content"])
 
     def test_next_steps_are_picked_in_the_session(self):
         # TODO 2.41: in `ush>`, `//N` picks an offered step, an unoffered one is refused without

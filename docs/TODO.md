@@ -371,13 +371,21 @@ Done in Python, and in Go through the port (section 4).
   `test_a_question_puts_slashes_on_the_line_without_proposal_keys`,
   `test_a_question_prefills_slashes_for_the_answer` (both implementations), and ushpy's
   `test_the_model_asks_back_and_the_answer_is_its_result`, `test_no_answer_and_bad_questions`.
-- [ ] 2.36 *py – go –* Multi-line scripts in propose mode (user, 2026-11-08): let ush build a
+- [x] 2.36 *py ✓ go ✓* Multi-line scripts in propose mode (user, 2026-11-08): let ush build a
   multi-line script for a task, show its complete source for review and editing, then execute it
   only after the user explicitly approves that reviewed source. Agent mode already has
   `run_script`, which requires approval; this adds the reviewed script workflow to propose mode.
   Acceptance: tests cover complete, terminal-safe source display; edits are exactly what runs;
   decline, abort, and invalid scripts run nothing; execution and captured output continue the
   conversation in both implementations.
+  Done (the user chose "On the command line"): `propose_script` (`sh`, `zsh`, `python3`); the
+  source is shown with line numbers and handed over as one entry,
+  `LANGUAGE -c "$(cat <<'USH_EOF' … USH_EOF\n)"`, a quoted here-document with an end marker no
+  source line equals; control characters refused. Enter runs it as edited, Esc removes it, `//`
+  continues with what ran. Tests: `test_a_script_is_proposed_as_one_entry_for_the_command_line`,
+  `test_bad_scripts_are_refused` (ushpy), `test_a_proposed_script_is_handed_over_whole`,
+  `test_a_proposed_script_runs_whole_on_enter_as_edited`,
+  `test_a_proposed_script_is_prefilled_whole_in_the_session` (both implementations).
 - [x] 2.37 *py ✓ go ✓* Toggle thinking visibility (user, 2026-11-08): let the user show or hide
   model thinking/progress blocks in the terminal without changing the request, provider behavior,
   or conversation data needed for follow-up. Acceptance: on/off tests in both implementations

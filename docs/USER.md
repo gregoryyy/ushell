@@ -86,6 +86,21 @@ objected. With the zsh plugin it then waits on your command line:
   the proposal runs before you press Enter on it (or Ctrl-N, below): explaining it, removing it,
   or asking something else over it starts nothing.
 - **Edit** it first; ush sees the command that actually ran.
+
+When one command line won't do, ush proposes a short **script** (`sh`, `zsh` or `python3`). It
+shows the whole source with line numbers, then puts it on your command line as one entry:
+
+```sh
+python3 -c "$(cat <<'USH_EOF'
+import os
+print(os.getcwd())
+USH_EOF
+)"
+```
+
+The source between the markers is exactly the script, expanded by nothing; read it there, move
+into it with Up and edit it, and Enter runs all of it, as you left it. Esc removes it, as any
+proposal. Your terminal stays the script's input, and ush records its output for `//`.
 - **Down** (the arrow key, past the last line of the proposal) explains it: what each part of
   the command does, and what it accesses: files and network, read and write, and whether
   personal data or secrets end up hidden or exposed. With `-v` (`ush -v` for a session, or `ush -v //…`) you also get a summary,

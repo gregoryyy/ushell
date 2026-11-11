@@ -116,7 +116,7 @@ class CliTest(TempDirTest):
             with open(os.path.join(handoff, "proposal")) as f:
                 self.assertEqual(f.read(), f"capture\ntouch {made}")
             self.assertEqual([t["name"] for t in api.requests[0]["body"]["tools"]],
-                             ["propose_command", "ask_user", "offer_next"])
+                             ["propose_command", "propose_script", "ask_user", "offer_next"])
             os.remove(os.path.join(handoff, "proposal"))  # taken by the plugin
             with open(os.path.join(handoff, "ran"), "w") as f:
                 f.write(f"0\ntouch {made}\n")
@@ -419,6 +419,40 @@ class CliTest(TempDirTest):
                          ["run_command", "run_script", "ask_user", "offer_next"])
 
     @unittest.skipUnless(HAVE_SDK, "anthropic SDK not installed")
+    def test_a_proposed_script_is_handed_over_whole(self):
+        # TODO 2.36: the script goes to the plugin as one entry; `//` continues with what ran.
+        handoff = os.path.join(self.tmp, "ush.handoff1")
+        os.mkdir(handoff, 0o700)
+        source = "for f in *.log; do\n  wc -l \"$f\"\ndone"
+        replies = [
+            ([{"type": "tool_use", "id": "s1", "name": "propose_script",
+               "input": {"language": "sh", "source": source, "purpose": "count lines",
+                         "effect": "read", "interactive": False}}], "tool_use"),
+            ([{"type": "text", "text": "a.log has 3 lines."}], "end_turn"),
+        ]
+        line = "sh -c \"$(cat <<'USH_EOF'\n" + source + "\nUSH_EOF\n)\""
+        env = {"ANTHROPIC_API_KEY": SYNTHETIC_KEY, "USH_HANDOFF": handoff}
+        with MockAPI(replies) as api:
+            env["USH_BASE_URL"] = api.url
+            first = self.ush("//count the log lines", env=env)
+            self.assertEqual(first.returncode, 0, first.stderr)
+            self.assertIn("sh script", first.stderr)
+            self.assertIn('   2 │   wc -l "$f"', first.stderr)
+            with open(os.path.join(handoff, "proposal")) as f:
+                self.assertEqual(f.read(), "capture\n" + line)
+            os.remove(os.path.join(handoff, "proposal"))
+            with open(os.path.join(handoff, "ran"), "w") as f:
+                f.write("0\n" + line + "\n")
+            with open(os.path.join(handoff, "output"), "w") as f:
+                f.write("3 a.log\n")
+            second = self.ush("//", env=env)
+        self.assertEqual(second.returncode, 0, second.stderr)
+        result = api.requests[1]["body"]["messages"][-1]["content"][0]
+        self.assertEqual(result["tool_use_id"], "s1")
+        self.assertIn("ran the proposed command", result["content"])
+        self.assertIn("3 a.log", result["content"])
+
+    @unittest.skipUnless(HAVE_SDK, "anthropic SDK not installed")
     def test_next_steps_are_picked_with_a_number_or_gone_on_with(self):
         # TODO 2.41: offer_next lists //1…//3 with the answer; `//2` picks one, `//` goes on,
         # and either is the offer's result. Nothing runs or is proposed by it.
@@ -536,7 +570,7 @@ class CliTest(TempDirTest):
         body = api.requests[1]["body"]
         # The conversation has a tool call, so the tools stay defined; the proposal is answered.
         self.assertEqual([t["name"] for t in body["tools"]],
-                         ["propose_command", "ask_user", "offer_next"])
+                         ["propose_command", "propose_script", "ask_user", "offer_next"])
         content = body["messages"][-1]["content"]
         self.assertEqual(content[0]["tool_use_id"], "p1")
         self.assertIn("did not run the proposed command", content[0]["content"])

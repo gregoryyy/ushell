@@ -14,6 +14,62 @@ implementation kept its own log: [ushpy](archive/DONE-ushpy.md), [ushgo](archive
 
 ---
 
+## 2026-11-11 09:31 — Scripts in propose mode, on the command line (TODO 2.36)
+
+TODO items: 2.36 (done). PR: not yet opened (branch `feat/ush-2.35-interaction`).
+
+Agent: Opus 5.5, reasoning: not exposed, subagents: none.
+
+### Implementation notes
+
+- **The user's choice:** "On the command line (Recommended)".
+- **`propose_script`** (`language`: `sh`, `zsh` or `python3`; `source`, `purpose`, `effect`,
+  `interactive`), in propose mode after `propose_command`. The system prompt says to use it when
+  one line is impractical.
+  - ush shows the source with line numbers (`show_script`) and a `→` line with the notes, and
+    hands it over as one multi-line proposal: `script_line` / `ScriptLine` build
+    `LANGUAGE -c "$(cat <<'USH_EOF'`, the source as it is, `USH_EOF`, `)"`.
+  - The here-document is quoted, so nothing in the source is expanded. `-c` keeps the terminal
+    as stdin: with `sh <<EOF` a command that reads stdin would read the rest of the script.
+  - A source line equal to `USH_EOF` gets the marker a random suffix. Control characters other
+    than tab and newline are refused, as are unknown languages and empty sources.
+  - From there it is a proposal: the plugin's `print -z` puts it on the line, `preexec` records it
+    as edited, `ush>` pre-fills it in `vared`, Esc removes it, `//` continues with what ran.
+  - The history step has the language.
+- **Tests:**
+  - `test_a_script_is_proposed_as_one_entry_for_the_command_line` (ushpy): the exact entry with
+    `$HOME` and backquotes left alone, the numbered source, and marker collision.
+  - `test_bad_scripts_are_refused` (ushpy): `perl`, an empty source, an escape sequence, `\r`.
+  - `test_a_proposed_script_is_handed_over_whole`: the handoff file and the continuation.
+  - `test_a_proposed_script_runs_whole_on_enter_as_edited` (plugin): Esc runs nothing; Up twice,
+    End and `+1` edit a line inside it, Enter runs it (`sum=42+1`), and `//` gets the edited
+    entry and its output.
+  - `test_a_proposed_script_is_prefilled_whole_in_the_session` (`ush>`).
+  - All but the two ushpy unit tests run against both implementations.
+- **Correction to the 09:01 entry (2.35):** the branch that test added to the plugin tests' fake
+  `ush` went in between the `//` branch's `print` and its cleanup loop. From then on, `//` in the
+  fake kept `ran` and `output`, and the loop ran for requests instead. That commit and 2.41's ran
+  only selected tests, so no run failed. The loop is back under `//`, and this commit's full runs
+  are the first since 2.35 with all plugin tests.
+- **Docs:** USER (Proposals, with an example), the man page (the plugin's Enter), ARCH, SEC.
+- **Validation** on macOS, Go 1.27.4, with all six items:
+  - `just ushgo-test`: exit 0;
+  - `PYTHON=/opt/homebrew/bin/python3.12 just ushpy-test`: 248 tests OK (227 on main);
+  - `just ushgo-conform`: 99 tests OK (84 on main);
+  - `just links`, `mandoc -T lint -W warning`: clean.
+
+### Deviations
+
+- **One form for all three languages** (`LANGUAGE -c "$(cat <<…)"`), not `python3 - <<EOF` and
+  `sh <<EOF`. The marker lines frame the source, but stdin stays the terminal.
+
+### Insights
+
+- A here-document in a command substitution is a readable, editable way to put a script on a
+  command line, and zsh's line editor handles it as one entry.
+
+---
+
 ## 2026-11-11 09:13 — Next steps: `//1`…`//3`, and `//` goes on (TODO 2.41)
 
 TODO items: 2.41 (done). PR: not yet opened (branch `feat/ush-2.35-interaction`).

@@ -129,6 +129,11 @@ Piped input becomes context for the request, up to 200 KB.
 runs the proposal in your shell, as if you had typed it; ush records its exit status and output for
 the next
 .BR // .
+A proposed script
+.RB ( sh ", " zsh " or " python3 )
+is one entry of several lines,
+.IB language " \-c \(dq$(cat <<\(aqUSH_EOF\(aq"
+then the source, unexpanded, and the end marker: read and edit it there, and Enter runs all of it.
 .TP
 .B Down
 explains the proposal above the command line: what each part does, which files and network it

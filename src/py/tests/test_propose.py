@@ -7,7 +7,7 @@ from unittest import mock
 
 from helpers import SYNTHETIC_KEY, TempDirTest, fake_identity, text
 from test_agent import assert_every_tool_use_answered
-from ush.agent import ASK_TOOL, NEXT_TOOL, PROPOSE_TOOL
+from ush.agent import ASK_TOOL, NEXT_TOOL, PROPOSE_TOOL, SCRIPT_TOOL, script_line
 from ush.handoff import (EXPLANATIONS_KEPT, SESSION_TTL, Explanations, Ran, Sessions,
                          handoff_dir, last_ran, session_key, take_ran, write_proposal)
 
@@ -76,6 +76,44 @@ class ProposeAgentTest(TempDirTest):
             self.assertIn(problem, provider.requests[1][-1]["content"][0]["content"], steps)
             self.assertNotIn("//1", ui.err.getvalue())
 
+    def test_a_script_is_proposed_as_one_entry_for_the_command_line(self):
+        # TODO 2.36: the full source is shown, and the proposal is the source in a quoted
+        # here-document, run with `LANGUAGE -c`, so nothing in it is expanded and stdin stays
+        # the terminal. A source line equal to the end marker gets another marker.
+        source = "import os\nprint(os.getcwd())  # $HOME `x` 'q'\n"
+        agent, provider, ui, history = self.make([[{
+            "type": "tool_use", "id": "s1", "name": "propose_script",
+            "input": {"language": "python3", "source": source, "purpose": "where am I",
+                      "effect": "read", "interactive": False}}]])
+        self.assertEqual(agent.ask("where").outcome, "proposed")
+        expected = ("python3 -c \"$(cat <<'USH_EOF'\nimport os\nprint(os.getcwd())  # $HOME `x` 'q'"
+                    "\nUSH_EOF\n)\"")
+        self.assertEqual(agent.proposal["command"], expected)
+        err = ui.err.getvalue()
+        self.assertIn("python3 script", err)
+        self.assertIn("   2 │ print(os.getcwd())", err)
+        step = history.find("last").steps[0]
+        self.assertEqual((step.kind, step.language), ("proposal", "python3"))
+        tricky = script_line("sh", "echo a\nUSH_EOF\necho b")
+        marker = tricky.split("\n")[-2]
+        self.assertTrue(marker.startswith("USH_EOF_"))
+        self.assertEqual(tricky.split("\n")[0], f"sh -c \"$(cat <<'{marker}'")
+
+    def test_bad_scripts_are_refused(self):
+        for language, source, problem in (("perl", "print 1", "must be one of"),
+                                          ("sh", "  \n", "empty command"),
+                                          ("sh", "echo \x1b[2Jhidden", "control characters"),
+                                          ("sh", "echo a\r\necho b", "control characters")):
+            agent, provider, _, _ = self.make([
+                [{"type": "tool_use", "id": "s1", "name": "propose_script",
+                  "input": {"language": language, "source": source, "purpose": "x",
+                            "effect": "read", "interactive": False}}],
+                [text("fine")],
+            ])
+            self.assertEqual(agent.ask("x").outcome, "answered")
+            self.assertIsNone(agent.proposal)
+            self.assertIn(problem, provider.requests[1][-1]["content"][0]["content"], source)
+
     def test_propose_mode_never_starts_a_process(self):
         # TODO 2.39 (GAPS Q18): in propose mode the user runs every command, with Enter on their
         # own command line; ush starts nothing, whatever the model sends or the user does next.
@@ -120,7 +158,7 @@ class ProposeAgentTest(TempDirTest):
         original = provider.turn
         provider.turn = lambda system, t, *a, **k: (tools.append(t), original(system, t, *a, **k))[1]
         agent.ask("hello")
-        self.assertEqual(tools, [[PROPOSE_TOOL, ASK_TOOL, NEXT_TOOL]])
+        self.assertEqual(tools, [[PROPOSE_TOOL, SCRIPT_TOOL, ASK_TOOL, NEXT_TOOL]])
         self.assertIn("You do not run commands", agent.system)
 
     def test_unverified_read_is_marked(self):

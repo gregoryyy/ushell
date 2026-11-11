@@ -106,6 +106,22 @@ propose specific shell commands and prewrite them to be executed by the user"; t
    working directory, and the redacted output (bounded head and tail), or that nothing ran. The
    model then proposes the next command or answers.
 
+**Scripts** (TODO 2.36): `propose_script` (`language`: `sh`, `zsh` or `python3`; `source`,
+`purpose`, `effect`, `interactive`) proposes a script for the command line. ush shows the source
+with line numbers (`show_script`) and hands it over as one multi-line proposal (`script_line`):
+
+    LANGUAGE -c "$(cat <<'USH_EOF'
+    SOURCE
+    USH_EOF
+    )"
+
+The here-document is quoted, so nothing in the source is expanded; `-c` keeps the terminal as the
+script's stdin (with `sh <<EOF` the script would read its own rest). If a source line is
+`USH_EOF`, the marker gets a random suffix. Control characters other than tab and newline are
+refused. The plugin's `print -z` puts the whole entry on the line; `preexec` records it as typed,
+edits included, and the `ush>` session pre-fills it in `vared`. From there it is a proposal like
+any other: Enter runs it, Esc removes it, `//` continues with what ran and its output.
+
 **Asking back** (TODO 2.35): `ask_user` (`question`) is offered in both modes. ush shows the
 question as a `//` line (`// Which directory, build or dist?`), and the request ends as `asked`.
 The other calls of that turn get "wait for the answer" results, due with it. With the plugin, ush
