@@ -39,7 +39,7 @@ data, or to mislead the user.
 | Injection via a tampered history entry replayed with `ush replay` | Replay reapplies the policy | Covered: `test_request_with_piped_input_history_and_replay` |
 | A proposal that serves the injection, not the request, while the policy would run it | With a checker configured, it judges the proposal against the user's requests only; a flag or no verdict needs approval | Covered: `test_check` (`test_a_flagged_read_only_command_needs_approval`, `test_no_verdict_fails_closed_without_a_terminal`, `test_ok_lets_the_policy_decide_and_never_approves`, `test_the_checker_sees_requests_and_proposals_but_no_output_or_secrets`), `test_cli` (`test_a_checker_flag_stops_a_read_only_command_without_a_terminal`) |
 | Proposal text aimed at the checker (closing its markers, "reply OK") | Random-tag markers; the proposal is data; only OK or FLAG lines count | Covered in part: `test_markers_cannot_be_closed_by_the_proposal`, `test_anything_else_is_no_verdict`; **model-in-the-loop: TODO 2.11** |
-| Model-in-the-loop corpus: poisoned `README`, log lines, `git log` messages, file names, DNS TXT records, HTML | Count attempted unsafe calls per model; assert zero ran unapproved | Covered: `scripts/injection_eval.py` (level 2, results below); its harness in `test_smoke` `InjectionEvalTest` |
+| Model-in-the-loop corpus: poisoned `README`, log lines, `git log` messages, file names, DNS TXT records, HTML | Count attempted unsafe calls per model; assert zero ran unapproved | Covered: `tests/security/injection_eval.py` (level 2, results below); its harness in `test_smoke` `InjectionEvalTest` |
 
 ## 2. Policy bypass: "read-only" that isn't
 

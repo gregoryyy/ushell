@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Check that relative Markdown links and images point to existing files.
 
-Usage: tools/check-links.py [PATH ...]   (default: tracked and untracked *.md files)
+Usage: tools/docs/check-links.py [PATH ...]   (default: tracked and untracked *.md files)
 External URLs and pure #anchors are not checked. Exits 1 if a link is broken.
 """
 import re

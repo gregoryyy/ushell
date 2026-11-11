@@ -371,7 +371,7 @@ implementations are the command `ush`.
   RE2 matches in linear time, so redaction can't stall (SECTEST F3).
 - **2026-10-28: conformance by ushpy's black-box tests** (TODO 4.10). `test_cli`, `test_security`,
   `test_smoke` and `test_zsh_plugin` start ush as a program; `USH_TEST_BIN` points them at the Go
-  binary (`src/go/scripts/conform.sh`, `just ushgo-conform`, CI job `ushgo-conform`). They cover
+  binary (`tests/conform/run.sh`, `just ushgo-conform`, CI job `ushgo-conform`). They cover
   the CLI against the mock Messages API, the approval prompt and sessions in a pty, propose mode,
   explanations, the security tests that run ush, and the smoke test.
 - **Earlier proposal, TODO 4.1: port ush's tokenizer or use `mvdan.cc/sh`.** `mvdan.cc/sh` parses

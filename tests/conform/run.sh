@@ -1,11 +1,12 @@
 #!/bin/sh
-# Conformance (ushgo TODO 1.10): ushpy's black-box tests against the Go binary. They start ush as
+# Conformance (ushgo TODO 1.10): ushpy's black-box tests against the Go binary, next to the policy
+# corpus both implementations must satisfy (policy.json). They start ush as
 # a program (USH_TEST_BIN): the command line against a mock Messages API, the approval prompt and
 # sessions in a pty, the zsh plugin, the security tests that run ush, and the smoke test. The
 # same tests pass for the Python implementation, so the two behave the same.
 # `just ushgo-conform` and the CI job ushgo-conform run this; it needs Go 1.27, Python 3.10+, zsh.
 set -eu
-root=$(cd "$(dirname "$0")/../../.." && pwd)
+root=$(cd "$(dirname "$0")/../.." && pwd)
 work=$(mktemp -d "${TMPDIR:-/tmp}/ush-conform.XXXXXX")
 trap 'rm -rf "$work"' EXIT
 (cd "$root/src/go" && GOTOOLCHAIN=local GOFLAGS=-mod=readonly CGO_ENABLED=0 go build -o "$work/ush" ./cmd/ush)
