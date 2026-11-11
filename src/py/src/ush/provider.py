@@ -105,12 +105,16 @@ class AnthropicProvider:
         and Ollama turns it into a call only when the name is one of the tools: with the command
         as the name (`"ls"`), the call arrives as text. `text_tool_call` reads it, and the agent
         checks it as any call. Text that may be such a call is held back from the screen until the
-        turn ends.
+        turn ends. Their calls, written as text or not, get "true" and "false" in boolean fields as
+        booleans (`tool_booleans`).
         """
         if not self.profile.text_tool_calls:
             return self._turn(system, tools, messages, on_text, on_progress)
         held = HeldText(on_text)
         turn = self._turn(system, tools, messages, held.write, on_progress)
+        for block in turn.content:
+            if block.get("type") == "tool_use" and isinstance(block.get("input"), dict):
+                block["input"] = tool_booleans(block.get("name"), block["input"], tools)
         if not any(b.get("type") == "tool_use" for b in turn.content):
             text = "".join(b.get("text", "") for b in turn.content if b.get("type") == "text")
             call = text_tool_call(text, tools)
@@ -319,10 +323,19 @@ def text_tool_call(text: str, tools: list[dict]) -> Optional[tuple[str, dict]]:
                 and PROGRAM.fullmatch(name) and shutil.which(name)):
             args = {**args, "command": f"{name} {command.strip()}".strip()}
         name = fits[0]["name"]
-    properties = by_name[name]["input_schema"]["properties"]
-    args = {k: (v == "true" if properties.get(k, {}).get("type") == "boolean"
+    return name, tool_booleans(name, args, tools)
+
+
+def tool_booleans(name: str, args: dict, tools: list[dict]) -> dict:
+    """The input with "true" and "false" in a tool's boolean fields as booleans (TODO 2.45):
+    llama3.1:8b sends `"interactive": "true"` in its tool calls, which the schema check would
+    refuse every time. Only those two strings, exactly; anything else is left for the check."""
+    tool = next((t for t in tools if t["name"] == name), None)
+    if tool is None:
+        return args
+    properties = tool["input_schema"]["properties"]
+    return {k: (v == "true" if properties.get(k, {}).get("type") == "boolean"
                 and v in ("true", "false") else v) for k, v in args.items()}
-    return name, args
 
 
 class HeldText:

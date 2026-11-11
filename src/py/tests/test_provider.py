@@ -263,6 +263,29 @@ class OllamaTextToolCallTest(TempDirTest):
             turn, shown = self.turn(provider)
         self.assertEqual((shown, turn.stop_reason), (self.WRITTEN, "end_turn"))
 
+    def test_ollama_string_booleans_in_a_real_call_are_booleans(self):
+        """llama3.1:8b, 2026-11-11: every call had `"interactive": "true"` (TODO 2.45)."""
+        def use(interactive):
+            return {"type": "tool_use", "id": "call_1", "name": "propose_command",
+                    "input": {"command": "top", "purpose": "watch", "effect": "read",
+                              "interactive": interactive}}
+        replies = [([use(v)], "tool_use") for v in ("true", "false", "yes", "True")]
+        with MockAPI(replies) as api:
+            provider = OllamaProvider("llama3.1:8b", api.url, max_retries=0)
+            got = [self.turn(provider)[0].content[0]["input"]["interactive"] for _ in replies]
+        # Only "true" and "false" exactly; anything else is left for the agent's check to refuse.
+        self.assertEqual(got, [True, False, "yes", "True"])
+
+    def test_anthropic_string_booleans_stay_strings(self):
+        use = {"type": "tool_use", "id": "toolu_1", "name": "propose_command",
+               "input": {"command": "top", "purpose": "watch", "effect": "read",
+                         "interactive": "true"}}
+        with MockAPI([([use], "tool_use")]) as api:
+            provider = AnthropicProvider(SYNTHETIC_KEY, "claude-opus-5-5", "medium",
+                                         base_url=api.url, max_retries=0)
+            turn, _ = self.turn(provider)
+        self.assertEqual(turn.content[0]["input"]["interactive"], "true")
+
 
 class OllamaRemoteHostTest(TempDirTest):
     TAGS = [{"name": "llama3.2:latest"}, {"name": "qwen3:8b"},

@@ -234,6 +234,7 @@ func (c *Client) statusError(resp *http.Response) error {
 // Turn streams one reply. Tool input that can't be parsed re-issues the turn, up to three times.
 // For a model that may write tool calls as text (its profile says so), such a text becomes a tool
 // call (TextToolCall), and text that may be one is held back from the screen until the turn ends.
+// Its calls, written as text or not, get "true" and "false" in boolean fields as booleans.
 func (c *Client) Turn(ctx context.Context, system string, tools []Block, messages []Block, onText, onProgress func(string)) (Turn, error) {
 	if !c.profile.TextToolCalls {
 		return c.turn(ctx, system, tools, messages, onText, onProgress)
@@ -246,6 +247,11 @@ func (c *Client) Turn(ctx context.Context, system string, tools []Block, message
 	turn, err := c.turn(ctx, system, tools, messages, held.Write, onProgress)
 	if err != nil {
 		return turn, err
+	}
+	for _, b := range turn.Content {
+		if input, ok := b["input"].(Block); ok && b["type"] == "tool_use" {
+			b["input"] = ToolBooleans(str(b["name"]), input, tools)
+		}
 	}
 	if converted, ok := fromText(turn, tools); ok {
 		return converted, nil

@@ -470,6 +470,23 @@ Done in Python, and in Go through the port (section 4).
   Esc and `l` together as Alt-l, and `ls` became `s`. Steps after a bare Esc now wait for zsh's
   output (`ANY_OUTPUT`), then quiet. Acceptance: a regression test that stops zsh before the Esc
   and resumes it a second later; it fails with the old wait, as on CI.
+- [x] 2.45 *py ✓ go ✓* String booleans from local models (user, 2026-11-11, "yes" to the
+  proposal in DONE 12:24): llama3.1:8b sends `"interactive": "true"` in its tool calls, and the
+  schema check refused every one ("tool calls were refused 3 times"). For providers whose profile
+  reads tool calls written as text (Ollama), exactly `"true"` and `"false"` in a tool's boolean
+  field are now booleans in every call, as they already were in calls written as text; any other
+  string is still refused, and Anthropic's calls stay strict. Acceptance: provider tests in both
+  implementations (`"true"`, `"false"`, `"yes"`, `"True"`; Anthropic unchanged), a CLI test that
+  hands such a proposal over as `interactive` (both implementations, failing without the fix), and
+  a live rerun of llama3.1:8b with 2.46.
+- [x] 2.46 *py ✓ go ✓* A rerunnable comparison of local models (user, 2026-11-11, "yes" to
+  putting DONE 13:02's harness in the repository): `tests/models/compare.py` sends ten graded
+  requests per trial to each named Ollama model and prints the table for DONE; documented in
+  [SMOKE](SMOKE.md#3-comparing-local-models-comparepy). Live models can't run in CI, so its
+  grading is tested against the mock API instead: a model that does everything right passes
+  every case, the failures it is meant to find fail, and a case with nothing to go on from does
+  not apply. `test_models` runs in ushpy's suite and, through the conformance suite, against
+  ushgo.
 - [ ] 3.1 Release 0.1 gate per [AGENTS.md](../AGENTS.md): fresh suite on the exact
   candidate on each supported OS/Python, dependency audit, release notes, human merge.
   Overtaken: releases ship the Go binary (5.2), and each release runs the gate of 5.3; 0.1 was
@@ -590,6 +607,15 @@ Until 2026-10-29: ushgo TODO 2.1–2.7.
   Follow-up 2026-11-11: Homebrew's Go is 1.27.4, so `brew upgrade go && brew reinstall ush`
   builds 0.2.3 without GO-2026-6859, and the Homebrew limitation in the release notes is gone.
   No 0.2.4: what main has since 0.2.3 (#53, #54) doesn't change what ships (DONE).
+- [ ] 5.13 0.2.4 (user, 2026-11-11: "ready for a release"; 0.3.0 stays the shells release, 5.11):
+  what main has since 0.2.3 that ships: ask back, scripts in propose mode, the thinking toggle,
+  research, next steps and the Enter-only audit (2.35–2.39, 2.41, #57), Delete, Home and End in
+  the editor (2.40, #55), string booleans from local models (2.45, #59, landed with this
+  release's PR). Version 0.2.4 in both implementations and the man page; release notes
+  [docs/releases/0.2.4.md](releases/0.2.4.md). After the merge: the gate (5.3) on the merge
+  commit, the tag `v0.2.4`, the GitHub release with the four archives and `SHA256SUMS`, and the
+  formula in the tap. Acceptance: the gate's results recorded in DONE; the published checksums
+  verified after download.
 - [ ] 5.11 0.3.0 (user, 2026-10-30: "for the next version 0.3.0, expand to bash, sh and other commonly
   used shells"; the agent's proposal, accepted with "write to pr as proposed" and adjusted to the
   answers to GAPS Q15–Q17). Contents:

@@ -171,3 +171,39 @@ func TestProseARealCallAndAnthropicTextAreUnchanged(t *testing.T) {
 		t.Error(turn, shown)
 	}
 }
+
+// llama3.1:8b, 2026-11-11: every call had `"interactive": "true"` (TODO 2.45). Ollama's calls get
+// exactly "true" and "false" as booleans; anything else is left for the agent's check to refuse,
+// and Anthropic's calls are left as they are.
+func TestOllamaStringBooleansInARealCallAreBooleans(t *testing.T) {
+	use := func(interactive any) reply {
+		return reply{blocks: []Block{{"type": "tool_use", "id": "call_1", "name": "propose_command",
+			"input": Block{"command": "top", "purpose": "watch", "effect": "read", "interactive": interactive}}}, stop: "tool_use"}
+	}
+	values := []any{"true", "false", "yes", "True"}
+	var replies []reply
+	for _, v := range values {
+		replies = append(replies, use(v))
+	}
+	m := newMock(append(replies, use("true"))...)
+	defer m.server.Close()
+	interactive := func(c *Client) any {
+		turn, err := c.Turn(context.Background(), "sys", schemas(t, "propose_command"),
+			[]Block{{"role": "user", "content": "x"}}, nil, nil)
+		if err != nil || len(turn.Content) != 1 {
+			t.Fatal(turn, err)
+		}
+		return turn.Content[0]["input"].(Block)["interactive"]
+	}
+	o := NewOllama("llama3.1:8b", m.server.URL)
+	for i, want := range []any{true, false, "yes", "True"} {
+		if got := interactive(o); got != want {
+			t.Errorf("%v: got %#v, want %#v", values[i], got, want)
+		}
+	}
+	a := NewAnthropic(syntheticKey, "claude-opus-5-5", "medium", m.server.URL)
+	a.MaxRetries = 0
+	if got := interactive(a); got != "true" {
+		t.Errorf("Anthropic: got %#v", got)
+	}
+}

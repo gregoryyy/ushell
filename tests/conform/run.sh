@@ -18,4 +18,4 @@ if [ ! -x .venv/bin/python ]; then
 fi
 "$work/ush" --version
 cd tests
-USH_TEST_BIN="$work/ush" ../.venv/bin/python -m unittest test_cli test_security test_smoke test_zsh_plugin "$@"
+USH_TEST_BIN="$work/ush" ../.venv/bin/python -m unittest test_cli test_security test_smoke test_zsh_plugin test_models "$@"
