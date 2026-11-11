@@ -220,7 +220,9 @@ can only add friction (always ask, or never run, even when approved) is safe and
 - **Model defaults:** `claude-opus-5-5`, adaptive thinking, effort `medium`. Between
   tool calls, ush shows progress updates (`display: "updates"`), and refusals fall
   back server-side (`fallbacks: "default"`). Both features are sent only to models
-  that support them.
+  that support them. The `thinking` setting (TODO 2.37) only decides whether the terminal shows
+  those updates and thinking blocks: `Terminal.progress` drops them when hidden, and the request,
+  the echoed conversation and the saved session are the same either way.
 - **Local models through Ollama's Anthropic-compatible API** (TODO 2.8) rather than
   a second adapter for Ollama's native or OpenAI-style API. A probe on 2026-10-27
   (Ollama 0.40.7) showed that `/v1/messages` accepts ush's request, strict tools

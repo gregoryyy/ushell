@@ -183,6 +183,13 @@ is Anthropic's, any other Ollama's;
 or
 .B ollama:
 in front says so explicitly.
+.TP
+.BR \-\-no\-thinking ", " \-\-thinking
+Hide or show the model's thinking and progress lines for this run; the default is the
+.B thinking
+setting
+.RB ( show ).
+Only the display changes: the request and the conversation are the same.
 .SH COMMANDS
 .TP
 .BR "ush explain " [ \-v ] " \fIcommand\fR ..."
@@ -243,7 +250,7 @@ can't redirect a root session.
 .BR ANTHROPIC_API_KEY ", " USH_API_KEY
 The API key, before the keychain and the key file.
 .TP
-.BR USH_PROVIDER ", " USH_MODEL ", " USH_OLLAMA_URL ", " USH_CHECKER
+.BR USH_PROVIDER ", " USH_MODEL ", " USH_OLLAMA_URL ", " USH_CHECKER ", " USH_THINKING
 Override the settings for one run.
 .TP
 .B USH_BASE_URL

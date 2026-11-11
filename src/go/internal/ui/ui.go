@@ -50,6 +50,7 @@ type Terminal struct {
 	Out, Err io.Writer
 	Color    bool
 	Verbose  bool     // -v: explanations from the line editor in full
+	Thinking bool     // show the model's thinking and progress (TODO 2.37)
 	History  []string // session lines, for Up in the line editor
 	UshArgv  []string // how the line editor runs `ush explain`
 	// Ask, if set, answers approval prompts instead of the terminal (tests).
@@ -65,7 +66,7 @@ type Terminal struct {
 func New() *Terminal {
 	self, _ := os.Executable()
 	return &Terminal{Out: os.Stdout, Err: os.Stderr, Color: IsTerminal(os.Stderr) && os.Getenv("NO_COLOR") == "",
-		UshArgv: []string{self}}
+		UshArgv: []string{self}, Thinking: true}
 }
 
 func (t *Terminal) style(code, text string) string {
@@ -89,6 +90,9 @@ func (t *Terminal) Error(text string) { t.emit(t.style("31", "ush: "+Visible(tex
 
 // Progress is a thinking note between tool calls.
 func (t *Terminal) Progress(text string) {
+	if !t.Thinking { // only the display changes
+		return
+	}
 	t.emit(t.dim("… " + Visible(strings.Join(strings.Fields(text), " "))))
 }
 

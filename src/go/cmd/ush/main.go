@@ -66,6 +66,8 @@ options:
   -m, --model MODEL  model for this run (default from ` + "`" + `ush ai configure` + "`" + `)
   -e, --effort LEVEL low, medium, high, xhigh, or max
   -k, --checker MODEL checker for this run: claude-haiku-5-5, qwen3.5:4b, or off
+      --no-thinking  hide the model's thinking and progress for this run
+                     (--thinking shows it; the default from ` + "`" + `ush ai configure` + "`" + `)
 
 By default ush runs nothing: it proposes one command at a time. With the zsh
 plugin the proposal lands on your command line; run it with Enter, edit it, or
@@ -79,8 +81,8 @@ Requests and command output (with secrets redacted) are sent to the configured
 AI provider; with a local Ollama model they stay on this machine. A checker
 model, if configured, judges each proposed command against your requests only;
 what it flags gets a warning, or needs your approval in agent mode.
-USH_PROVIDER, USH_MODEL, USH_CHECKER, and USH_OLLAMA_URL override the settings
-(not as root).
+USH_PROVIDER, USH_MODEL, USH_CHECKER, USH_THINKING, and USH_OLLAMA_URL override
+the settings (not as root).
 
 With the zsh plugin, ` + "`" + `ush //...` + "`" + ` and ` + "`" + `// ...` + "`" + ` need no quoting:
   source src/shell/ush.plugin.zsh
@@ -112,9 +114,9 @@ func run(args []string, stdout, stderr io.Writer) int {
 }
 
 type overrides struct {
-	model, effort, checker, mode string
-	newConversation              bool
-	set                          map[string]bool
+	model, effort, checker, mode, thinking string
+	newConversation                        bool
+	set                                    map[string]bool
 }
 
 func parseOptions(argv []string) (agent.Options, overrides, []string, error) {
@@ -136,6 +138,11 @@ func parseOptions(argv []string) (agent.Options, overrides, []string, error) {
 			ov.mode, ov.set["mode"] = "run", true
 		case a == "-N" || a == "--new":
 			ov.newConversation = true
+		case a == "--thinking" || a == "--no-thinking":
+			ov.thinking, ov.set["thinking"] = "show", true
+			if a == "--no-thinking" {
+				ov.thinking = "hide"
+			}
 		case (a == "-m" || a == "--model" || a == "-e" || a == "--effort" || a == "-k" || a == "--checker") && i+1 < len(argv):
 			value := argv[i+1]
 			switch a {
@@ -198,6 +205,12 @@ func realMain(argv []string, term *ui.Terminal) (int, error) {
 			return 2, err
 		}
 	}
+	if ov.set["thinking"] {
+		if err := settings.SetThinking(ov.thinking); err != nil {
+			return 2, err
+		}
+	}
+	term.Thinking = settings.Thinking == "show"
 	keys := config.NewKeyStore(id)
 	hist := newHistory(id)
 	if len(rest) > 0 {

@@ -72,19 +72,24 @@ class CliTest(TempDirTest):
         # A bad answer used to end `ai configure` with an error, losing what was entered; now the
         # same question is asked again. Ollama on an unused port: no key prompt, no models listed.
         answers = ["agent", "run", "openai", "ollama", "http://127.0.0.1:9", "bad name!", "llama3.2:3b",
-                   "anthropic:", "claude-haiku-5-5"]
+                   "anthropic:", "claude-haiku-5-5", "maybe", "hide"]
         result = self.ush("ai", "configure", stdin="\n".join(answers) + "\n")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("mode must be one of", result.stderr)
         self.assertIn("provider must be one of", result.stderr)
         self.assertIn("checker 'anthropic:' is not a model name", result.stderr)
         self.assertIn("checker: claude-haiku-5-5 through anthropic", result.stderr)
+        self.assertIn("thinking must be one of show, hide", result.stderr)
         with open(os.path.join(self.tmp, "config", "ush", "config.json"), encoding="utf-8") as f:
             saved = json.load(f)
         self.assertEqual((saved["mode"], saved["provider"], saved["ollama_url"],
-                          saved["ollama_model"], saved["checker"]),
+                          saved["ollama_model"], saved["checker"], saved["thinking"]),
                          ("run", "ollama", "http://127.0.0.1:9", "llama3.2:3b",
-                          "anthropic:claude-haiku-5-5"))
+                          "anthropic:claude-haiku-5-5", "hide"))
+        self.assertIn("thinking:  hidden", self.ush("ai", "status").stdout)
+        # Fewer answers than questions: the rest keep their values (it used to end in EOFError).
+        again = self.ush("ai", "configure", stdin="propose\n")
+        self.assertEqual(again.returncode, 0, again.stderr)
 
     @unittest.skipUnless(HAVE_SDK, "anthropic SDK not installed")
     def test_propose_mode_hands_over_and_continues(self):
@@ -370,6 +375,39 @@ class CliTest(TempDirTest):
         self.assertEqual(cli.brief("Parts:\n- a\nSummary: late"), "Parts:\n- a")
         self.assertEqual(cli.brief("Notes: x\nAccess: none\nParts:\n- a"), "Parts:\n- a\nAccess: none")
         self.assertEqual(cli.brief("free text"), "free text")
+
+    @unittest.skipUnless(HAVE_SDK, "anthropic SDK not installed")
+    def test_thinking_can_be_hidden_without_changing_the_request(self):
+        # TODO 2.37: --no-thinking, --thinking and USH_THINKING change only what the terminal
+        # shows. The request is the same, the thinking stays in the saved conversation for `//`,
+        # and none of it goes to stdout or the history.
+        reply = ([{"type": "thinking", "thinking": "PONDERING-THE-DISK"},
+                  {"type": "text", "text": "Plenty of space."}], "end_turn")
+        runs = {}
+        for name, args, extra in [("default", (), {}), ("flag", ("--no-thinking",), {}),
+                                  ("env", (), {"USH_THINKING": "hide"}),
+                                  ("flag over env", ("--thinking",), {"USH_THINKING": "hide"})]:
+            with MockAPI([reply]) as api:
+                env = {"ANTHROPIC_API_KEY": SYNTHETIC_KEY, "USH_BASE_URL": api.url, **extra}
+                result = self.ush("-N", *args, "//disk space?", env=env)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("Plenty of space.", result.stdout)
+            self.assertNotIn("PONDERING-THE-DISK", result.stdout)
+            sessions = os.path.join(self.tmp, "state", "ush", "sessions")
+            saved = "".join(open(os.path.join(sessions, n)).read() for n in os.listdir(sessions))
+            self.assertIn("PONDERING-THE-DISK", saved, name)  # kept for the next `//`
+            runs[name] = (result.stderr, api.requests[0]["body"])
+        self.assertIn("PONDERING-THE-DISK", runs["default"][0])
+        self.assertNotIn("PONDERING-THE-DISK", runs["flag"][0])
+        self.assertNotIn("PONDERING-THE-DISK", runs["env"][0])
+        self.assertIn("PONDERING-THE-DISK", runs["flag over env"][0])
+        bodies = [body for _, body in runs.values()]
+        self.assertTrue(all(body == bodies[0] for body in bodies), bodies)
+        with open(os.path.join(self.tmp, "state", "ush", "history.jsonl")) as f:
+            self.assertNotIn("PONDERING-THE-DISK", f.read())
+        bad = self.ush("//x", env={"ANTHROPIC_API_KEY": SYNTHETIC_KEY, "USH_THINKING": "loud"})
+        self.assertEqual(bad.returncode, 2)
+        self.assertIn("thinking must be one of show, hide", bad.stderr)
 
     def test_ai_status_never_prints_the_key(self):
         result = self.ush("ai", "status", env={"ANTHROPIC_API_KEY": SYNTHETIC_KEY})

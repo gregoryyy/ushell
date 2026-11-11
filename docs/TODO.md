@@ -371,11 +371,16 @@ Done in Python, and in Go through the port (section 4).
   Acceptance: tests cover complete, terminal-safe source display; edits are exactly what runs;
   decline, abort, and invalid scripts run nothing; execution and captured output continue the
   conversation in both implementations.
-- [ ] 2.37 *py – go –* Toggle thinking visibility (user, 2026-11-08): let the user show or hide
+- [x] 2.37 *py ✓ go ✓* Toggle thinking visibility (user, 2026-11-08): let the user show or hide
   model thinking/progress blocks in the terminal without changing the request, provider behavior,
   or conversation data needed for follow-up. Acceptance: on/off tests in both implementations
   verify the display changes while follow-up requests remain valid and no hidden content leaks
   into unrelated output or history.
+  Done: the setting `thinking` (`show`, the default, or `hide`) in `ush ai configure`, `USH_THINKING`,
+  and `--no-thinking` / `--thinking` for one run; `ush ai status` shows it. Hidden, the terminal
+  drops the thinking and progress lines; the request, the saved conversation and the history are
+  the same. Test: `test_thinking_can_be_hidden_without_changing_the_request` (both
+  implementations).
 - [ ] 2.38 *py – go –* Research available options without executing tasks (user, 2026-11-08):
   provide a research-only path for comparing available approaches. It must not execute commands
   or scripts, stage a proposal for shell execution, or perform the requested task; research results

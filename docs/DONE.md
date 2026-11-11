@@ -14,6 +14,51 @@ implementation kept its own log: [ushpy](archive/DONE-ushpy.md), [ushgo](archive
 
 ---
 
+## 2026-11-11 08:49 — Thinking shown or hidden (TODO 2.37)
+
+TODO items: 2.37 (done). PR: not yet opened (branch `feat/ush-2.35-interaction`).
+
+Agent: Opus 5.5, reasoning: not exposed, subagents: none.
+
+### Implementation notes
+
+- **The setting** `thinking` in `config.json`, `show` (the default, as before) or `hide`:
+  - asked last in `ush ai configure`;
+  - overridden by `USH_THINKING` (not as root, like the other overrides) and, for one run, by
+    `--no-thinking` or `--thinking`;
+  - shown by `ush ai status` (`thinking:  shown` or `hidden (…)`).
+  - In [config.py](../src/py/src/ush/config.py) and [config.go](../src/go/internal/config/config.go),
+    with `set_thinking` / `SetThinking`; in both usages, the man page, USER, ADMIN, ARCH and
+    ushpy's README.
+- **Display only:** `Terminal.progress` (ushpy) and `Terminal.Progress` (ushgo) return without
+  printing when hidden. The provider still gets `thinking` and `display: "updates"`, and the
+  thinking blocks stay in the messages that are echoed back and saved for `//`.
+- **`ush ai configure` with fewer answers than questions** used to end ushpy with an `EOFError`
+  traceback; now the remaining questions keep their values, as in ushgo.
+- **Tests** (both implementations, [test_cli.py](../src/py/tests/test_cli.py)):
+  - `test_thinking_can_be_hidden_without_changing_the_request`: a mock reply with a thinking block,
+    run four ways (default, `--no-thinking`, `USH_THINKING=hide`, `--thinking` over
+    `USH_THINKING=hide`). The thinking shows only in the first and the last, on stderr. The four
+    request bodies are identical. The saved session keeps the thinking; stdout and
+    `history.jsonl` don't have it. `USH_THINKING=loud` is a usage error.
+  - `test_configure_asks_again_after_a_bad_answer`: a bad answer, then `hide`; `ush ai status`
+    shows it; a configure with one answer ends without error.
+- **Validation:** `./scripts/test.sh -p test_cli.py -k thinking -k configure_asks`: 2 tests OK.
+  The same against the Go binary (`USH_TEST_BIN`): 2 tests OK. `go test ./...`: ok. `test_docs`:
+  5 tests OK. `just links`, `mandoc -T lint -W warning`: clean.
+
+### Deviations
+
+- **No key in the session to toggle it:** a setting and two options. A key would need the line
+  editor to report back to ush, more than the item asks for.
+
+### Insights
+
+- The thinking reached the terminal through one callback (`on_progress`) in both
+  implementations, so hiding it took one check there.
+
+---
+
 ## 2026-11-11 08:46 — A proposal runs only on Enter: the audit of TODO 2.39
 
 TODO items: 2.39 (done); GAPS Q18 (answered). PR: not yet opened (branch

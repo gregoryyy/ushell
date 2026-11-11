@@ -120,6 +120,7 @@ Settings in `config.json`:
 | `ollama_url` | `http://127.0.0.1:11434` | loopback only (`127.0.0.1`, `localhost`, `::1`) |
 | `ollama_model` | none | a pulled model with tool support |
 | `checker` | off | `provider:model`, e.g. `anthropic:claude-haiku-5-5` |
+| `thinking` | `show` | `show` or `hide` the model's thinking in the terminal; the request is the same |
 | `allow` | none | the user's allow rules ([USER](USER.md#your-allowlist)) |
 | `max_steps` | 30 | 1–200 commands per request |
 | `command_timeout` | 120 | 1–3600 s, default per command |
@@ -132,7 +133,7 @@ Environment variables (ignored as root, so `sudo -E` can't redirect a root sessi
 | Variable | Effect |
 | --- | --- |
 | `ANTHROPIC_API_KEY`, `USH_API_KEY` | the API key, before the keychain and the file |
-| `USH_PROVIDER`, `USH_MODEL`, `USH_OLLAMA_URL`, `USH_CHECKER` | override the settings for one run |
+| `USH_PROVIDER`, `USH_MODEL`, `USH_OLLAMA_URL`, `USH_CHECKER`, `USH_THINKING` | override the settings for one run |
 | `USH_BASE_URL` | another Anthropic endpoint, e.g. a company gateway |
 | `XDG_CONFIG_HOME`, `XDG_STATE_HOME` | where settings and history live |
 | `USH_BARE_SLASH=0` | before sourcing the plugin: no bare `// …` form |

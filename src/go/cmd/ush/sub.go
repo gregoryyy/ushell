@@ -119,6 +119,7 @@ func aiCommand(args []string, term *ui.Terminal, id config.Identity, settings co
 		if s.Checker != "" {
 			term.Info(fmt.Sprintf("checker: %s through %s", s.CheckerModel(), s.CheckerProvider()))
 		}
+		ask(term, fmt.Sprintf("the model's thinking: %s [%s]: ", strings.Join(config.Thinking, "/"), s.Thinking), s.SetThinking)
 		path, err := config.Save(id, s)
 		if err != nil {
 			return 1, err
@@ -162,6 +163,11 @@ func aiCommand(args []string, term *ui.Terminal, id config.Identity, settings co
 			checker = checkerDisclosure(settings)
 		}
 		fmt.Fprintln(out, "checker:   "+checker)
+		thinking := "hidden (the model still thinks; only the display is off)"
+		if settings.Thinking == "show" {
+			thinking = "shown"
+		}
+		fmt.Fprintln(out, "thinking:  "+thinking)
 		note := ""
 		if id.IsRoot() && len(settings.Allow) > 0 {
 			note = " (not used as root)"

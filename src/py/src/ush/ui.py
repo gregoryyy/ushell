@@ -53,6 +53,7 @@ class Terminal:
         self._answer_open = False
         self._status_open = False
         self.verbose = False   # -v: explanations from the line editor in full
+        self.thinking = True   # show the model's thinking and progress (TODO 2.37)
         self.history: list[str] = []   # session lines, for Up in the line editor
 
     # -- styling -----------------------------------------------------------
@@ -81,6 +82,9 @@ class Terminal:
         self._emit(self._style("31", "ush: " + visible(text)))
 
     def progress(self, text: str) -> None:
+        """The model's thinking or progress, unless hidden: only the display changes."""
+        if not self.thinking:
+            return
         self._emit(self.dim("… " + visible(" ".join(text.split()))))
 
     def answer(self, chunk: str) -> None:

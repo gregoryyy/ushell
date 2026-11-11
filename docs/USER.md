@@ -197,6 +197,12 @@ A model name starting with `claude-` is Anthropic's, any other is Ollama's; `ant
 | `-m`, `--model M` | model for this run |
 | `-e`, `--effort L` | Anthropic effort: `low`, `medium`, `high`, `xhigh`, `max` |
 | `-k`, `--checker MODEL` | checker for this run (`claude-haiku-5-5`, `llama3.2:3b`, `off`) |
+| `--no-thinking`, `--thinking` | hide or show the model's thinking and progress lines (`… `) for this run |
+
+The model's thinking is shown by default, as dim lines starting with `…`. To hide it for good,
+answer `hide` in `ush ai configure`, or set `USH_THINKING=hide`. Only the display changes: the
+model still thinks, ush sends the same request, and the conversation keeps the thinking, so `//`
+continues as before.
 
 ## Other commands
 

@@ -12,7 +12,7 @@ from typing import Callable, Optional
 from . import __version__, execute, notes
 from .agent import Agent, Options, os_name
 from .check import Checker
-from .config import (EFFORTS, PROVIDERS, ConfigError, Identity, KeyStore, Settings, path_risks,
+from .config import (EFFORTS, PROVIDERS, THINKING, ConfigError, Identity, KeyStore, Settings, path_risks,
                      apply_environment, check_ollama_url, identity, load_settings, mask,
                      save_settings)
 from .handoff import (Explanations, Sessions, handoff_dir, last_ran, session_key, take_ran,
@@ -60,6 +60,8 @@ options:
   -m, --model MODEL  model for this run (default from `ush ai configure`)
   -e, --effort LEVEL low, medium, high, xhigh, or max
   -k, --checker MODEL checker for this run: claude-haiku-5-5, qwen3.5:4b, or off
+      --no-thinking  hide the model's thinking and progress for this run
+                     (--thinking shows it; the default from `ush ai configure`)
 
 By default ush runs nothing: it proposes one command at a time. With the zsh
 plugin the proposal lands on your command line; run it with Enter, edit it, or
@@ -73,8 +75,8 @@ Requests and command output (with secrets redacted) are sent to the configured
 AI provider; with a local Ollama model they stay on this machine. A checker
 model, if configured, judges each proposed command against your requests only;
 what it flags gets a warning, or needs your approval in agent mode.
-USH_PROVIDER, USH_MODEL, USH_CHECKER, and USH_OLLAMA_URL override the settings
-(not as root).
+USH_PROVIDER, USH_MODEL, USH_CHECKER, USH_THINKING, and USH_OLLAMA_URL override
+the settings (not as root).
 
 With the zsh plugin, `ush //...` and `// ...` need no quoting:
   source src/shell/ush.plugin.zsh
@@ -199,6 +201,9 @@ def _main(argv: list[str], ui: Terminal) -> int:
         settings.set_checker(overrides["checker"])
     if "mode" in overrides:
         settings.set_mode(overrides["mode"])
+    if "thinking" in overrides:
+        settings.set_thinking(overrides["thinking"])
+    ui.thinking = settings.thinking == "show"
     keys = KeyStore(ident)
     history = History(ident.state_dir())
 
@@ -526,6 +531,8 @@ def _parse_options(argv: list[str]) -> tuple[Options, dict, list[str]]:
             overrides["mode"] = "run"
         elif a in ("-N", "--new"):
             overrides["new"] = True
+        elif a in ("--thinking", "--no-thinking"):
+            overrides["thinking"] = "show" if a == "--thinking" else "hide"
         elif a in ("-m", "--model", "-e", "--effort", "-k", "--checker") and i + 1 < len(argv):
             value = argv[i + 1]
             if a in ("-e", "--effort"):
@@ -630,7 +637,10 @@ def _session(agent: Agent, ui: Terminal, factory: ProviderFactory, follow_up: bo
 def _ask(ui: Terminal, prompt: str, apply: Callable[[str], None]) -> None:
     """Ask until the answer is empty (keep the current value) or `apply` accepts it."""
     while True:
-        answer = input(prompt).strip()
+        try:
+            answer = input(prompt).strip()
+        except EOFError:   # no more answers: keep the current value
+            return
         if not answer:
             return
         try:
@@ -681,6 +691,8 @@ def _ai(args: list[str], ui: Terminal, ident: Identity, settings: Settings,
         _ask(ui, f"checker model, or off [{settings.checker or 'off'}]: ", set_checker)
         if settings.checker:
             ui.info(f"checker: {settings.checker_model} through {settings.checker_provider}")
+        _ask(ui, f"the model's thinking: {'/'.join(THINKING)} [{settings.thinking}]: ",
+             settings.set_thinking)
         ui.info(f"settings saved to {save_settings(ident, settings)}")
         return 0
     if action == "status":
@@ -700,6 +712,8 @@ def _ai(args: list[str], ui: Terminal, ident: Identity, settings: Settings,
         print("mode:      " + ("propose: ush proposes commands, you run them" if
                                 settings.mode == "propose" else "run: ush runs commands (agent)"))
         print(f"checker:   {checker_disclosure(settings) if settings.checker else 'off'}")
+        print("thinking:  " + ("shown" if settings.thinking == "show" else
+                                "hidden (the model still thinks; only the display is off)"))
         print(f"allow:     {len(settings.allow)} rule(s), see `ush allow`" +
               (" (not used as root)" if ident.is_root and settings.allow else ""))
         print(f"user:      {ident.name}" + (f" (key and settings of {ident.owner_name})"
