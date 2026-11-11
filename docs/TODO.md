@@ -484,7 +484,7 @@ Until 2026-10-29: ushgo TODO 2.1–2.7.
   the merge the gate (5.3) on the merge commit, the tag `v0.2.2`, the GitHub release, and the
   formula in the tap. Release notes: [docs/releases/0.2.2.md](releases/0.2.2.md).
   Done 2026-10-29 on deac48b (DONE).
-- [ ] 5.12 0.2.3 (user, 2026-11-11: "update release notes and man pages and pr and release
+- [x] 5.12 0.2.3 (user, 2026-11-11: "update release notes and man pages and pr and release
   0.3.0"; asked which version, the user chose 0.2.3, keeping 0.3.0 for 5.11, and the agent to
   publish as for 0.2.2): what main has since 0.2.2: notes on Ctrl-N (2.25, #39), `ush explain`
   without quotes (2.43, #49), `cd` in the session (2.42, #42), the provider table (2.29.1, #41),
@@ -492,7 +492,7 @@ Until 2026-10-29: ushgo TODO 2.1–2.7.
   [docs/releases/0.2.3.md](releases/0.2.3.md). After the merge: the gate (5.3) on the merge
   commit, the tag `v0.2.3`, the GitHub release with the four archives and `SHA256SUMS`, and the
   formula in the tap. Acceptance: the gate's results recorded in DONE; the published checksums
-  verified after download.
+  verified after download. Done 2026-11-11 on 50257ee (DONE).
 - [ ] 5.11 0.3.0 (user, 2026-10-30: "for the next version 0.3.0, expand to bash, sh and other commonly
   used shells"; the agent's proposal, accepted with "write to pr as proposed" and adjusted to the
   answers to GAPS Q15–Q17). Contents:
